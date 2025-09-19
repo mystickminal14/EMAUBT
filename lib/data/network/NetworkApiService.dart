@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:ema_app/data/api_exception.dart';
+import 'package:ema_app/data/network/BaseApiService.dart';
+import 'package:ema_app/utils/utils.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:logger/logger.dart';
-import 'BaseApiService.dart';
-import '../api_exception.dart';
-import '../../utils/utils.dart';
 
 class NetworkApiService extends BaseApiServices {
   final Logger _logger = Logger();
@@ -72,7 +73,6 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
-  /// FolderViewModel: existing single-file multipart (for folder icons)
   @override
   Future postMultipartResponse(String url, Map<String, dynamic> fields, File? file) async {
     try {
@@ -98,7 +98,6 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
-  /// FilesViewModel: new method for main file + optional icon (file path or bytes)
   Future<Map<String, dynamic>> postFileMultipart(
       String url,
       Map<String, dynamic> fields, {
@@ -114,7 +113,6 @@ class NetworkApiService extends BaseApiServices {
       request.headers.addAll(_getHeaders());
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
 
-      // Add main file
       if (mainFilePath != null || mainFileBytes != null) {
         String extension = mainFileName?.split('.').last.toLowerCase() ??
             (mainFilePath?.split('.').last.toLowerCase() ?? 'bin');
@@ -136,7 +134,6 @@ class NetworkApiService extends BaseApiServices {
         }
       }
 
-      // Add icon (optional)
       if (iconBytes != null) {
         request.files.add(http.MultipartFile.fromBytes(
           'icon',
@@ -162,9 +159,49 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
+  Future<Map<String, dynamic>> postMultipartNoticeFiles(
+      String url,
+      Map<String, dynamic> fields, {
+        List<PlatformFile>? files,
+        required String fieldName,
+      }) async {
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+      request.headers.addAll(_getHeaders());
+      request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
+
+      if (files != null && files.isNotEmpty) {
+        for (var file in files) {
+          if (file.bytes != null) {
+            request.files.add(http.MultipartFile.fromBytes(
+              fieldName,
+              file.bytes!,
+              filename: file.name,
+              contentType: MediaType.parse(_getMimeType(file.extension ?? 'bin')),
+            ));
+          } else if (file.path != null) {
+            request.files.add(await http.MultipartFile.fromPath(
+              fieldName,
+              file.path!,
+              filename: file.name,
+              contentType: MediaType.parse(_getMimeType(file.extension ?? 'bin')),
+            ));
+          }
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      _logger.i('Notice Multipart POST $url: ${response.statusCode}');
+      return _returnResponse(response);
+    } on SocketException {
+      Utils.noInternet('No internet connection');
+      throw FetchDataException("No internet Connection");
+    }
+  }
+
   String _getMimeType(String extension) {
     switch (extension.toLowerCase()) {
-    // Audio
       case 'mp3':
         return 'audio/mpeg';
       case 'wav':
@@ -177,7 +214,6 @@ class NetworkApiService extends BaseApiServices {
         return 'audio/flac';
       case 'm4a':
         return 'audio/mp4';
-    // Video
       case 'mp4':
         return 'video/mp4';
       case 'mov':
@@ -190,7 +226,6 @@ class NetworkApiService extends BaseApiServices {
         return 'video/x-ms-wmv';
       case 'flv':
         return 'video/x-flv';
-    // Documents
       case 'pdf':
         return 'application/pdf';
       case 'doc':
@@ -203,7 +238,6 @@ class NetworkApiService extends BaseApiServices {
         return 'application/rtf';
       case 'odt':
         return 'application/vnd.oasis.opendocument.text';
-    // Images
       case 'jpg':
       case 'jpeg':
         return 'image/jpeg';
@@ -211,24 +245,20 @@ class NetworkApiService extends BaseApiServices {
         return 'image/png';
       case 'gif':
         return 'image/gif';
-    // Archives
       case 'zip':
         return 'application/zip';
       case 'rar':
         return 'application/x-rar-compressed';
       case '7z':
         return 'application/x-7z-compressed';
-    // Spreadsheets
       case 'xls':
         return 'application/vnd.ms-excel';
       case 'xlsx':
         return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    // Presentations
       case 'ppt':
         return 'application/vnd.ms-powerpoint';
       case 'pptx':
         return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-    // Data
       case 'csv':
         return 'text/csv';
       case 'json':

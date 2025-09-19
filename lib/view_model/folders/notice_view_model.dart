@@ -1,8 +1,7 @@
-import 'dart:io';
 import 'package:ema_app/data/network/NetworkApiService.dart';
+import 'package:ema_app/model/notice_model.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-import 'package:ema_app/model/notice_model.dart';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -48,18 +47,21 @@ class NoticeManagementViewModel extends ChangeNotifier {
     try {
       isLoading = true;
       notifyListeners();
-      final response =
-      await _apiService.getApiResponse('${BaseUrl.baseUrl}notices.php');
-      final noticeData = NoticeModel.fromJson(response);
-      if (noticeData != null) {
-        notices = noticeData as List<NoticeModel>;
+
+      final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}notices.php');
+
+      if (response != null && response['success'] == true) {
+        final List<dynamic> data = response['data'] ?? [];
+        notices = data.map((json) => NoticeModel.fromJson(json)).toList();
         _filterNotices();
         _logger.i('Fetched ${notices.length} notices');
       } else {
         notices = [];
         _filterNotices();
-        _showErrorMessage(context,
-            'Failed to fetch notices: ${response['message'] ?? 'Unknown error'}');
+        _showErrorMessage(
+          context,
+          'Failed to fetch notices: ${response?['message'] ?? 'Unknown error'}',
+        );
       }
     } catch (e) {
       notices = [];
@@ -72,8 +74,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
   }
 
   Future<void> pickFiles() async {
-    FilePickerResult? result =
-    await FilePicker.platform.pickFiles(allowMultiple: true);
+    FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null) {
       selectedFiles = result.files;
       notifyListeners();
@@ -89,24 +90,28 @@ class NoticeManagementViewModel extends ChangeNotifier {
     try {
       isActionLoading = true;
       notifyListeners();
+
       final fields = {
         'title': title!,
-        if (textContent != null && textContent!.isNotEmpty)
-          'text_content': textContent!,
+        if (textContent != null && textContent!.isNotEmpty) 'text_content': textContent!,
       };
-      final response = await _apiService.postMultipartResponse(
+
+      final response = await _apiService.postMultipartNoticeFiles(
         '${BaseUrl.baseUrl}notices.php',
         fields,
         files: selectedFiles.isNotEmpty ? selectedFiles : null,
         fieldName: 'files[]',
       );
+
       if (response['success'] == true) {
         _showSuccessMessage(context, 'Notice added successfully');
         clearFields();
         await fetchNotices(context);
       } else {
-        _showErrorMessage(context,
-            'Failed to add notice: ${response['message'] ?? 'Unknown error'}');
+        _showErrorMessage(
+          context,
+          'Failed to add notice: ${response['message'] ?? 'Unknown error'}',
+        );
       }
     } catch (e) {
       _showErrorMessage(context, 'Error adding notice: $e');
@@ -125,26 +130,30 @@ class NoticeManagementViewModel extends ChangeNotifier {
     try {
       isActionLoading = true;
       notifyListeners();
+
       final fields = {
         '_method': 'PUT',
         'id': notice.id!,
         'title': title!,
-        if (textContent != null && textContent!.isNotEmpty)
-          'text_content': textContent!,
+        if (textContent != null && textContent!.isNotEmpty) 'text_content': textContent!,
       };
-      final response = await _apiService.postFileMultipart(
+
+      final response = await _apiService.postMultipartNoticeFiles(
         '${BaseUrl.baseUrl}notices.php',
         fields,
         files: selectedFiles.isNotEmpty ? selectedFiles : null,
         fieldName: 'files[]',
       );
+
       if (response['success'] == true) {
         _showSuccessMessage(context, 'Notice updated successfully');
         clearFields();
         await fetchNotices(context);
       } else {
-        _showErrorMessage(context,
-            'Failed to update notice: ${response['message'] ?? 'Unknown error'}');
+        _showErrorMessage(
+          context,
+          'Failed to update notice: ${response['message'] ?? 'Unknown error'}',
+        );
       }
     } catch (e) {
       _showErrorMessage(context, 'Error updating notice: $e');
@@ -164,8 +173,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
         _showSuccessMessage(context, 'Notice deleted successfully');
         await fetchNotices(context);
       } else {
-        _showErrorMessage(context,
-            'Failed to delete notice: ${response['message'] ?? 'Unknown error'}');
+        _showErrorMessage(context, 'Failed to delete notice: ${response['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       _showErrorMessage(context, 'Error deleting notice: $e');
@@ -188,14 +196,12 @@ class NoticeManagementViewModel extends ChangeNotifier {
       filteredNotices = notices.where((notice) {
         final title = notice.title?.toLowerCase() ?? '';
         final textContent = notice.textContent?.toLowerCase() ?? '';
-        return title.contains(_searchQuery) ||
-            textContent.contains(_searchQuery);
+        return title.contains(_searchQuery) || textContent.contains(_searchQuery);
       }).toList();
     }
   }
 
-  void setFields(
-      {String? title, String? textContent, List<PlatformFile>? files}) {
+  void setFields({String? title, String? textContent, List<PlatformFile>? files}) {
     this.title = title;
     this.textContent = textContent;
     selectedFiles = files ?? selectedFiles;
