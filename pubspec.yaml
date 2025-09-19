@@ -1,0 +1,53 @@
+name: ema_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  image_picker: ^1.1.2
+  file_picker: ^10.0.0
+  flutter_image_compress: ^2.4.0
+  http: ^1.3.0
+  shared_preferences: ^2.5.2
+  flutter_sound: ^9.23.1
+  flutter_pdfview: ^1.4.0
+  video_player: ^2.9.3
+  audioplayers: ^6.4.0
+  url_launcher: ^6.3.1
+  path_provider: ^2.1.5
+  open_file: ^3.5.10
+  cached_network_image: ^3.4.1
+  connectivity_plus: ^6.1.3
+  dio: ^5.8.0+1
+  chewie: ^1.10.0
+  share_plus: ^11.0.0
+  webview_flutter: ^4.13.0
+  webview_flutter_android: ^4.7.0
+  webview_windows: ^0.4.0
+  desktop_drop: ^0.6.0
+  provider: ^6.1.2
+  flutter_cache_manager: ^3.3.1
+  image: ^4.0.17
+  mime: ^2.0.0
+  flutter_secure_storage: ^9.2.4
+  intl: ^0.20.2
+  http_parser: ^4.0.0
+  logger: ^2.5.0
+  another_flushbar: ^1.12.30
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/ema.jpg
+    - assets/ema.jpeg
