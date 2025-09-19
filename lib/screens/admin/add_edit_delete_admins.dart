@@ -1,181 +1,79 @@
-import 'dart:convert';
+import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:logger/logger.dart'; // Added for debugging
 
 class AddEditDeleteAdminsPage extends StatefulWidget {
   const AddEditDeleteAdminsPage({super.key});
 
   @override
-  _AddEditDeleteAdminsPage createState() => _AddEditDeleteAdminsPage();
+  _AddEditDeleteAdminsPageState createState() => _AddEditDeleteAdminsPageState();
 }
 
-class _AddEditDeleteAdminsPage extends State<AddEditDeleteAdminsPage> {
-  bool _isLoading = true;
-  bool _isActionLoading = false;
-  List<dynamic> _users = [];
-  List<dynamic> _admins = [];
-  List<dynamic> _filteredUsers = [];
-  List<dynamic> _filteredAdmins = [];
+class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
   final TextEditingController _searchController = TextEditingController();
+  final Logger _logger = Logger(); // Added for debugging
 
   @override
   void initState() {
     super.initState();
-    _fetchUsers();
-    _fetchAdmins();
-  }
-
-  Future<void> _fetchUsers() async {
-    final url = Uri.parse('https://theemaeducation.com/register.php');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        if (response.body.isEmpty) {
-          _showErrorSnackbar('Empty response from server');
-          return;
-        }
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          setState(() {
-            _users = data['users'];
-            _filteredUsers = _users;
-          });
-        } else {
-          _showErrorSnackbar('Failed to fetch users: ${data['message'] ?? 'Unknown error'}');
-        }
-      } else {
-        _showErrorSnackbar('Server error: ${response.statusCode}');
-      }
-    } catch (error) {
-      _showErrorSnackbar('Error: $error');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _fetchAdmins() async {
-    final url = Uri.parse('https://theemaeducation.com/give_admin_access.php');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        if (response.body.isEmpty) {
-          _showErrorSnackbar('Empty response from server');
-          return;
-        }
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          setState(() {
-            _admins = data['admins'];
-            _filteredAdmins = _admins;
-          });
-        } else {
-          _showErrorSnackbar('Error fetching admins: ${data['message'] ?? 'Unknown error'}');
-        }
-      } else {
-        _showErrorSnackbar('Server error: ${response.statusCode}');
-      }
-    } catch (error) {
-      _showErrorSnackbar('Error: $error');
-    }
-  }
-
-  Future<void> _grantAdminAccess(String userId, String fullName, String email) async {
-    setState(() => _isActionLoading = true);
-    final url = Uri.parse('https://theemaeducation.com/give_admin_access.php');
-    try {
-      final response = await http.post(
-        url,
-        body: {
-          'user_id': userId,
-          'full_name': fullName,
-          'email': email,
-          'action': 'grant',
-        },
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      );
-      if (response.statusCode != 200) {
-        _showErrorSnackbar('Server error: ${response.statusCode}');
-        return;
-      }
-      if (response.body.isEmpty) {
-        _showErrorSnackbar('Empty response from server');
-        return;
-      }
-      final data = json.decode(response.body);
-      if (data['success'] == true) {
-        _showErrorSnackbar('Admin access granted to ${data['full_name'] ?? fullName}');
-        await _fetchAdmins();
-        await _fetchUsers();
-      } else {
-        _showErrorSnackbar('Error: ${data['message'] ?? 'Unknown error'}');
-      }
-    } catch (error) {
-      _showErrorSnackbar('Error: $error');
-    } finally {
-      setState(() => _isActionLoading = false);
-    }
-  }
-
-  Future<void> _removeAdminAccess(String userId, String fullName) async {
-    setState(() => _isActionLoading = true);
-    final url = Uri.parse('https://theemaeducation.com/give_admin_access.php');
-    try {
-      final response = await http.post(
-        url,
-        body: {
-          'user_id': userId,
-          'action': 'remove',
-        },
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      );
-      if (response.statusCode != 200) {
-        _showErrorSnackbar('Server error: ${response.statusCode}');
-        return;
-      }
-      if (response.body.isEmpty) {
-        _showErrorSnackbar('Empty response from server');
-        return;
-      }
-      final data = json.decode(response.body);
-      if (data['success'] == true) {
-        _showErrorSnackbar('Admin access removed from ${data['full_name'] ?? fullName}');
-        await _fetchAdmins();
-        await _fetchUsers();
-      } else {
-        _showErrorSnackbar('Error: ${data['message'] ?? 'Unknown error'}');
-      }
-    } catch (error) {
-      _showErrorSnackbar('Error: $error');
-    } finally {
-      setState(() => _isActionLoading = false);
-    }
-  }
-
-  void _searchUsersAndAdmins() {
-    final query = _searchController.text.trim().toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredUsers = _users;
-        _filteredAdmins = _admins;
-      } else {
-        _filteredUsers = _users.where((user) {
-          final name = (user['full_name'] ?? '').toLowerCase();
-          final email = (user['email'] ?? '').toLowerCase();
-          return name.contains(query) || email.contains(query);
-        }).toList();
-        _filteredAdmins = _admins.where((admin) {
-          final name = (admin['full_name'] ?? '').toLowerCase();
-          final email = (admin['email'] ?? '').toLowerCase();
-          return name.contains(query) || email.contains(query);
-        }).toList();
-      }
+    final viewModel = context.read<AdminManagementViewModel>();
+    viewModel.fetchUsers(context);
+    viewModel.fetchAdmins(context);
+    _searchController.addListener(() {
+      viewModel.searchUsersAndAdmins(_searchController.text);
     });
   }
 
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  void _showLoadingDialog(BuildContext context, Future<void> operation) async {
+    _logger.i('Showing loading dialog'); // Debug log
+    final dialogFuture = showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: const [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text("Processing..."),
+          ],
+        ),
+      ),
+    );
+
+    // Ensure dialog is shown for at least 500ms
+    await Future.wait([
+      operation,
+      Future.delayed(const Duration(milliseconds: 500)),
+    ]);
+
+    if (context.mounted) {
+      _logger.i('Dismissing loading dialog'); // Debug log
+      Navigator.of(context).pop();
+    } else {
+      _logger.w('Context not mounted, cannot dismiss dialog'); // Debug log
+    }
+  }
+
+  Future<bool?> _showConfirmationDialog(
+      BuildContext context, String action, String name) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirm $action'),
+        content: Text('$action admin access for $name?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -186,10 +84,8 @@ class _AddEditDeleteAdminsPage extends State<AddEditDeleteAdminsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Get screen width and height for responsive sizing
     final width = MediaQuery.of(context).size.width;
     final isWide = width > 600;
-
     double getFontSize(double mobile, double tablet) => isWide ? tablet : mobile;
     double getPadding(double mobile, double tablet) => isWide ? tablet : mobile;
 
@@ -207,171 +103,211 @@ class _AddEditDeleteAdminsPage extends State<AddEditDeleteAdminsPage> {
         ),
       ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    padding: EdgeInsets.all(getPadding(12, 32)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Search
-                        TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            labelText: "Search by Name or Email",
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.search),
-                              onPressed: _searchUsersAndAdmins,
+        child: Consumer<AdminManagementViewModel>(
+          builder: (context, viewModel, _) {
+            if (viewModel.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: EdgeInsets.all(getPadding(12, 32)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Search
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          labelText: "Search by Name or Email",
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: () => viewModel.searchUsersAndAdmins(_searchController.text),
+                          ),
+                        ),
+                        onSubmitted: (value) => viewModel.searchUsersAndAdmins(value),
+                      ),
+                      SizedBox(height: getPadding(16, 32)),
+                      // Users Section
+                      Text(
+                        "Users:",
+                        style: TextStyle(
+                          fontSize: getFontSize(20, 28),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      viewModel.filteredUsers.isEmpty
+                          ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
+                        child: const Text('No users found'),
+                      )
+                          : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: viewModel.filteredUsers.length,
+                        itemBuilder: (context, index) {
+                          final user = viewModel.filteredUsers[index];
+                          final imageUrl = user.image != null && user.image!.isNotEmpty
+                              ? 'https://theemaeducation.com/${user.image}'
+                              : null;
+                          return Card(
+                            margin: EdgeInsets.symmetric(
+                              vertical: getPadding(6, 12),
+                              horizontal: getPadding(0, 0),
                             ),
-                          ),
-                          onSubmitted: (_) => _searchUsersAndAdmins(),
-                        ),
-                        SizedBox(height: getPadding(16, 32)),
-                        // Users Section
-                        Text(
-                          "Users:",
-                          style: TextStyle(
-                            fontSize: getFontSize(20, 28),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        _filteredUsers.isEmpty
-                            ? Padding(
-                                padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
-                                child: const Text('No users found'),
+                            child: ListTile(
+                              leading: imageUrl != null
+                                  ? ClipOval(
+                                child: Image.network(
+                                  imageUrl,
+                                  width: getFontSize(40, 60),
+                                  height: getFontSize(40, 60),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(Icons.person, size: getFontSize(40, 60));
+                                  },
+                                ),
                               )
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _filteredUsers.length,
-                                itemBuilder: (context, index) {
-                                  final user = _filteredUsers[index];
-                                  final imageUrl = user['image'] != null && user['image'].isNotEmpty
-                                      ? 'https://theemaeducation.com/${user['image']}'
-                                      : null;
-                                  return Card(
-                                    margin: EdgeInsets.symmetric(
-                                      vertical: getPadding(6, 12),
-                                      horizontal: getPadding(0, 0),
-                                    ),
-                                    child: ListTile(
-                                      leading: imageUrl != null
-                                          ? ClipOval(
-                                              child: Image.network(
-                                                imageUrl,
-                                                width: getFontSize(40, 60),
-                                                height: getFontSize(40, 60),
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) {
-                                                  return Icon(Icons.person, size: getFontSize(40, 60));
-                                                },
-                                              ),
-                                            )
-                                          : Icon(Icons.person, size: getFontSize(40, 60)),
-                                      title: Text(
-                                        user['full_name'] ?? 'No Name',
-                                        style: TextStyle(fontSize: getFontSize(16, 22)),
-                                      ),
-                                      subtitle: Text(
-                                        user['email'] ?? 'No Email',
-                                        style: TextStyle(fontSize: getFontSize(13, 18)),
-                                      ),
-                                      trailing: ElevatedButton(
-                                        onPressed: _isActionLoading
-                                            ? null
-                                            : () => _grantAdminAccess(
-                                                  user['id'].toString(),
-                                                  user['full_name'],
-                                                  user['email'],
-                                                ),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: getPadding(12, 24),
-                                            vertical: getPadding(8, 14),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "Make Admin",
-                                          style: TextStyle(fontSize: getFontSize(13, 18)),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
+                                  : Icon(Icons.person, size: getFontSize(40, 60)),
+                              title: Text(
+                                user.fullName ?? 'No Name',
+                                style: TextStyle(fontSize: getFontSize(16, 22)),
                               ),
-                        const Divider(),
-                        // Admins Section
-                        Text(
-                          "Admins:",
-                          style: TextStyle(
-                            fontSize: getFontSize(20, 28),
-                            fontWeight: FontWeight.bold,
-                          ),
+                              subtitle: Text(
+                                user.email ?? 'No Email',
+                                style: TextStyle(fontSize: getFontSize(13, 18)),
+                              ),
+                              trailing: ElevatedButton(
+                                onPressed: viewModel.isActionLoading
+                                    ? null
+                                    : () async {
+                                  final confirm = await _showConfirmationDialog(
+                                    context,
+                                    'Grant',
+                                    user.fullName ?? 'No Name',
+                                  );
+                                  if (confirm == true) {
+                                     _showLoadingDialog(
+                                      context,
+                                      viewModel.grantAdminAccess(context, user),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: getPadding(12, 24),
+                                    vertical: getPadding(8, 14),
+                                  ),
+                                ),
+                                child: viewModel.isActionLoading
+                                    ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                )
+                                    : Text(
+                                  "Make Admin",
+                                  style: TextStyle(fontSize: getFontSize(13, 18)),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(),
+                      // Admins Section
+                      Text(
+                        "Admins:",
+                        style: TextStyle(
+                          fontSize: getFontSize(20, 28),
+                          fontWeight: FontWeight.bold,
                         ),
-                        _filteredAdmins.isEmpty
-                            ? Padding(
-                                padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
-                                child: const Text('No admins found'),
-                              )
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _filteredAdmins.length,
-                                itemBuilder: (context, index) {
-                                  final admin = _filteredAdmins[index];
-                                  return Card(
-                                    margin: EdgeInsets.symmetric(
-                                      vertical: getPadding(6, 12),
-                                      horizontal: getPadding(0, 0),
-                                    ),
-                                    child: ListTile(
-                                      leading: Icon(
-                                        Icons.admin_panel_settings,
-                                        size: getFontSize(40, 60),
-                                      ),
-                                      title: Text(
-                                        admin['full_name'] ?? 'No Name',
-                                        style: TextStyle(fontSize: getFontSize(16, 22)),
-                                      ),
-                                      subtitle: Text(
-                                        admin['email'] ?? 'No Email',
-                                        style: TextStyle(fontSize: getFontSize(13, 18)),
-                                      ),
-                                      trailing: ElevatedButton(
-                                        onPressed: _isActionLoading
-                                            ? null
-                                            : () => _removeAdminAccess(
-                                                  admin['user_id'].toString(),
-                                                  admin['full_name'],
-                                                ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.redAccent,
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: getPadding(12, 24),
-                                            vertical: getPadding(8, 14),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "Remove",
-                                          style: TextStyle(
-                                            fontSize: getFontSize(13, 18),
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
+                      ),
+                      viewModel.filteredAdmins.isEmpty
+                          ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
+                        child: const Text('No admins found'),
+                      )
+                          : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: viewModel.filteredAdmins.length,
+                        itemBuilder: (context, index) {
+                          final admin = viewModel.filteredAdmins[index];
+                          return Card(
+                            margin: EdgeInsets.symmetric(
+                              vertical: getPadding(6, 12),
+                              horizontal: getPadding(0, 0),
+                            ),
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.admin_panel_settings,
+                                size: getFontSize(40, 60),
                               ),
-                        SizedBox(height: getPadding(20, 40)),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                              title: Text(
+                                admin.fullName ?? 'No Name',
+                                style: TextStyle(fontSize: getFontSize(16, 22)),
+                              ),
+                              subtitle: Text(
+                                admin.email ?? 'No Email',
+                                style: TextStyle(fontSize: getFontSize(13, 18)),
+                              ),
+                              trailing: ElevatedButton(
+                                onPressed: viewModel.isActionLoading
+                                    ? null
+                                    : () async {
+                                  final confirm = await _showConfirmationDialog(
+                                    context,
+                                    'Remove',
+                                    admin.fullName ?? 'No Name',
+                                  );
+                                  if (confirm == true) {
+                                     _showLoadingDialog(
+                                      context,
+                                      viewModel.removeAdminAccess(context, admin),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: getPadding(12, 24),
+                                    vertical: getPadding(8, 14),
+                                  ),
+                                ),
+                                child: viewModel.isActionLoading
+                                    ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                )
+                                    : Text(
+                                  "Remove",
+                                  style: TextStyle(
+                                    fontSize: getFontSize(13, 18),
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      SizedBox(height: getPadding(20, 40)),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

@@ -28,6 +28,8 @@ class FilesViewModel extends ChangeNotifier {
   /// Fetch files for a folder
   Future<void> fetchFiles(String folderId) async {
     isLoading = true;
+    files.clear();
+
     notifyListeners();
     try {
       final url =

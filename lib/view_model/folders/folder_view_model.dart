@@ -29,6 +29,7 @@ class FolderViewModel extends ChangeNotifier {
   Future<void> fetchFolders() async {
     isLoading = true;
     notifyListeners();
+    folders.clear();
     try {
       final response = await _apiService
           .getApiResponse("${BaseUrl.baseUrl}folders.php")

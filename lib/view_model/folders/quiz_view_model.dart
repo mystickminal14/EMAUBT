@@ -28,6 +28,7 @@ class QuizSetsViewModel extends ChangeNotifier {
   Future<void> fetchQuizSets(String folderId) async {
     isLoading = true;
     notifyListeners();
+    quizSets.clear();
     try {
       final url =
           "${BaseUrl.baseUrl}folder_details_page.php?action=get_quiz_sets&folder_id=$folderId";

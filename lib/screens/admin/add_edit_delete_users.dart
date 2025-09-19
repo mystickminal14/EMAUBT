@@ -1,8 +1,8 @@
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
+import 'package:ema_app/view_model/folders/user_management_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/model/user_data_model.dart';
 import 'package:image_picker/image_picker.dart';
 
 class AddEditDeleteUsersPage extends StatefulWidget {
@@ -13,363 +13,248 @@ class AddEditDeleteUsersPage extends StatefulWidget {
 }
 
 class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
-  List<Map<String, dynamic>> _users = [];
-  List<Map<String, dynamic>> _filteredUsers = [];
-  bool _isLoading = true;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
-  File? _selectedImage;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
-    _fetchUsers();
+    final viewModel = context.read<UserManagementViewModel>();
+    viewModel.fetchUsers(context);
+    _searchController.addListener(() {
+      viewModel.searchUsers(_searchController.text);
+    });
   }
 
-  Future<void> _fetchUsers() async {
-    setState(() => _isLoading = true);
-    try {
-      final response = await http.get(Uri.parse('https://theemaeducation.com/register.php'));
-      print('GET Status: ${response.statusCode}, Body: ${response.body}');
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success']) {
-          setState(() {
-            _users = List<Map<String, dynamic>>.from(data['users'].map((user) => {
-                  'id': int.parse(user['id'].toString()),
-                  'full_name': user['full_name'],
-                  'email': user['email'],
-                  'phone': user['phone'],
-                  'image': user['image'],
-                }));
-            _filteredUsers = _users;
-            _isLoading = false;
-          });
-        } else {
-          _showSnackBar(data['message'] ?? 'No users found');
-          setState(() {
-            _users = [];
-            _filteredUsers = [];
-            _isLoading = false;
-          });
-        }
-      } else {
-        _showSnackBar('Failed to fetch users: ${response.statusCode}');
-        setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      _showSnackBar('Error fetching users: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
-  }
-
-  Future<void> _addUser() async {
-    final email = _emailController.text.trim();
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
-    final password = _passwordController.text;
-
-    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
-      _showSnackBar('Full Name, Email, Phone, and Password are required to add a user');
-      return;
-    }
-
-    if (_users.any((user) => user['email'].toLowerCase() == email.toLowerCase())) {
-      _showSnackBar('Email already exists');
-      return;
-    }
-
-    var request = http.MultipartRequest('POST', Uri.parse('https://theemaeducation.com/register.php'));
-    request.fields['full_name'] = name;
-    request.fields['email'] = email;
-    request.fields['phone'] = phone;
-    request.fields['password'] = password;
-
-    if (_selectedImage != null) {
-      request.files.add(await http.MultipartFile.fromPath('image', _selectedImage!.path));
-    }
-
-    try {
-      print('POST Request Fields: ${request.fields}');
-      final response = await request.send();
-      final responseData = await http.Response.fromStream(response);
-      print('POST Status: ${response.statusCode}, Body: ${responseData.body}');
-      final data = jsonDecode(responseData.body);
-      if (response.statusCode == 201 && data['success']) {
-        _showSnackBar('User added successfully');
-        _clearFields();
-        _fetchUsers();
-      } else {
-        _showSnackBar(data['message'] ?? 'Failed to add user');
-      }
-    } catch (e) {
-      print('POST Error: $e');
-      _showSnackBar('Error adding user: $e');
-    }
-  }
-
- Future<void> _editUser(int index) async {
-  // Check index bounds
-  if (index < 0 || index >= _filteredUsers.length) { // Use _filteredUsers
-    _showSnackBar('Invalid user index');
-    return;
-  }
-  final user = _filteredUsers[index]; // Use _filteredUsers
-  _nameController.text = user['full_name'];
-  _emailController.text = user['email'];
-  _phoneController.text = user['phone'];
-  _passwordController.text = '';
-  // Reset the selected image when opening the dialog
-  setState(() {
-    _selectedImage = null; 
-  });
-
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("Edit User"),
-      content: SingleChildScrollView(
-        child: StatefulBuilder(
-          builder: (BuildContext context, StateSet) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Full Name")),
-                TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Email")),
-                TextField(controller: _phoneController, decoration: const InputDecoration(labelText: "Phone")),
-                TextField(controller: _passwordController, decoration: const InputDecoration(labelText: "New Password (optional)"), obscureText: true),
-                const SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: () async {
-                    final picker = ImagePicker();
-                    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                    if (pickedFile != null) {
-                      setState(() { // This setState is for the dialog's content
-                        _selectedImage = File(pickedFile.path);
-                      });
-                    }
-                  },
-                  child: const Text("Pick New Image"),
-                ),
-                const SizedBox(height: 10),
-                // Display logic for the image
-                if (_selectedImage != null)
-                  Image.file(_selectedImage!, height: 100, width: 100, fit: BoxFit.cover)
-                else if (user['image'] != null && user['image'].isNotEmpty)
-                  Image.network('https://theemaeducation.com/${user['image']}', height: 100, width: 100, fit: BoxFit.cover, errorBuilder: (c, o, s) => Icon(Icons.person, size: 50)),
-              ],
-            );
-          },
+  void _showLoadingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 16),
+            Text(
+              "Processing...",
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        TextButton(
-          onPressed: () async {
-            // --- CORE LOGIC CHANGE IS HERE ---
-            // 1. Use POST instead of PUT
-            var request = http.MultipartRequest('POST', Uri.parse('https://theemaeducation.com/register.php'));
-            
-            // 2. Add the "_method" field to "tunnel" the PUT request
-            request.fields['_method'] = 'PUT';
+    );
+  }
 
-            // 3. Add the ID and other fields
-            request.fields['id'] = '${user['id']}';
-            request.fields['full_name'] = _nameController.text.trim();
-            request.fields['email'] = _emailController.text.trim();
-            request.fields['phone'] = _phoneController.text.trim();
-
-            final updatedPassword = _passwordController.text;
-            if (updatedPassword.isNotEmpty) {
-              request.fields['password'] = updatedPassword;
-            }
-
-            if (_selectedImage != null) {
-              request.files.add(await http.MultipartFile.fromPath('image', _selectedImage!.path));
-            }
-
-            try {
-              print('UPDATE (via POST) Request Fields: ${request.fields}');
-              final response = await request.send();
-              final responseData = await http.Response.fromStream(response);
-              print('UPDATE Status: ${response.statusCode}, Body: ${responseData.body}');
-              final data = jsonDecode(responseData.body);
-
-              if (response.statusCode == 200 && data['success']) {
-                _showSnackBar('User updated successfully');
-                Navigator.pop(context); // Close dialog first
-                _clearFields();
-                _fetchUsers(); // Then refresh
-              } else {
-                _showSnackBar(data['message'] ?? 'Failed to update user');
-              }
-            } catch (e) {
-              print('UPDATE Error: $e');
-              _showSnackBar('Error updating user: $e');
-            }
-          },
-          child: const Text("Save"),
+  Future<bool?> _showConfirmationDialog(BuildContext context, String action, String name) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text('Confirm $action', style: Theme.of(context).textTheme.titleLarge),
+        content: Text(
+          '$action user $name?',
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
-      ],
-    ),
-  );
-}
-
-/// Deletes a user by their index in the _filteredUsers list.
-Future<void> _deleteUser(int index) async {
-  // 1. Basic validation of the index provided.
-  if (index < 0 || index >= _filteredUsers.length) {
-    _showSnackBar('Invalid action: User index is out of bounds.');
-    return;
-  }
-
-  // 2. Safely get the user's ID. It might be a String or int from the API.
-  final dynamic rawUserId = _filteredUsers[index]['id'];
-  int? userId;
-
-  if (rawUserId is int) {
-    userId = rawUserId;
-  } else if (rawUserId is String) {
-    userId = int.tryParse(rawUserId);
-  }
-
-  // 3. Validate the parsed user ID.
-  if (userId == null || userId <= 0) {
-    _showSnackBar('Cannot delete user: Invalid User ID found ($rawUserId).');
-    return;
-  }
-
-  // 4. Show confirmation dialog
-  final bool? confirmDelete = await showDialog<bool>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete ${_filteredUsers[index]['full_name']}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
           ),
         ],
-      );
-    },
-  );
-
-  if (confirmDelete != true) return;
-
-  // 5. Construct the URL with the ID as a query parameter.
-  final url = Uri.parse('https://theemaeducation.com/register.php?id=$userId');
-
-  print('Attempting to delete user. Request URL: $url');
-
-  try {
-    // 6. Send the DELETE request with timeout
-    final response = await http.delete(
-      url,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    ).timeout(const Duration(seconds: 30));
-
-    print('DELETE Response Status: ${response.statusCode}');
-    print('DELETE Response Body: ${response.body}');
-
-    // 7. Handle the response from the server.
-    if (response.statusCode == 200) {
-      if (response.body.isNotEmpty) {
-        try {
-          final data = jsonDecode(response.body);
-          if (data['success'] == true) {
-            _showSnackBar('User deleted successfully!');
-            _fetchUsers(); // Refresh the list
-          } else {
-            _showSnackBar(data['message'] ?? 'Server returned a failure response.');
-          }
-        } catch (e) {
-          print('JSON decode error: $e');
-          _showSnackBar('Server returned invalid response format.');
-        }
-      } else {
-        _showSnackBar('Server returned empty response.');
-      }
-    } else {
-      // Handle non-200 status codes
-      String errorMessage = 'Failed to delete user. Status: ${response.statusCode}';
-      
-      if (response.body.isNotEmpty) {
-        try {
-          final data = jsonDecode(response.body);
-          errorMessage = data['message'] ?? errorMessage;
-        } catch (_) {
-          errorMessage = response.body.length > 100 
-              ? '${response.body.substring(0, 100)}...' 
-              : response.body;
-        }
-      }
-      
-      _showSnackBar(errorMessage);
-    }
-  } on SocketException {
-    _showSnackBar('Network error: Please check your internet connection.');
-  } on HttpException {
-    _showSnackBar('HTTP error occurred while trying to delete the user.');
-  } on TimeoutException {
-    _showSnackBar('Request timeout. Please try again.');
-  } on FormatException catch (e) {
-    _showSnackBar('Server returned invalid response format: $e');
-  } catch (e) {
-    print('An unexpected error occurred during delete: $e');
-    _showSnackBar('An unexpected error occurred. Please try again.');
-  }
-}
-  void _searchUsers() {
-    final query = _searchController.text.trim().toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredUsers = _users;
-      } else {
-        _filteredUsers = _users.where((user) {
-          final name = user['full_name'].toLowerCase();
-          final email = user['email'].toLowerCase();
-          return name.contains(query) || email.contains(query);
-        }).toList();
-      }
-    });
+      ),
+    );
   }
 
-  void _clearFields() {
-    _nameController.clear();
-    _emailController.clear();
-    _phoneController.clear();
-    _passwordController.clear();
-    _searchController.clear();
-    setState(() {
-      _selectedImage = null;
-      _filteredUsers = _users;
-    });
-  }
+  Future<void> _editUser(BuildContext context, Users user, UserManagementViewModel viewModel) async {
+    viewModel.setFields(
+      name: user.fullName,
+      email: user.email,
+      phone: user.phone,
+      password: '',
+      image: null,
+    );
+    _nameController.text = user.fullName ?? '';
+    _emailController.text = user.email ?? '';
+    _phoneController.text = user.phone ?? '';
+    _passwordController.text = '';
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          "Edit User",
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Consumer<UserManagementViewModel>(
+                builder: (context, vm, _) => Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: "Full Name",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                        ),
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
+                        onChanged: (value) => vm.setFields(
+                          name: value,
+                          email: vm.email,
+                          phone: vm.phone,
+                          password: vm.password,
+                          image: vm.selectedImage,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          labelText: "Email",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Email is required';
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
+                          return null;
+                        },
+                        onChanged: (value) => vm.setFields(
+                          name: vm.name,
+                          email: value,
+                          phone: vm.phone,
+                          password: vm.password,
+                          image: vm.selectedImage,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _phoneController,
+                        decoration: InputDecoration(
+                          labelText: "Phone",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                        ),
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Phone is required' : null,
+                        onChanged: (value) => vm.setFields(
+                          name: vm.name,
+                          email: vm.email,
+                          phone: value,
+                          password: vm.password,
+                          image: vm.selectedImage,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: InputDecoration(
+                          labelText: "New Password (optional)",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                        ),
+                        obscureText: true,
+                        onChanged: (value) => vm.setFields(
+                          name: vm.name,
+                          email: vm.email,
+                          phone: vm.phone,
+                          password: value,
+                          image: vm.selectedImage,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                          foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onPressed: () async {
+                          await vm.pickImage();
+                        },
+                        child: const Text("Pick New Image"),
+                      ),
+                      const SizedBox(height: 16),
+                      if (vm.selectedImage != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(vm.selectedImage!, height: 120, width: 120, fit: BoxFit.cover),
+                        )
+                      else if (user.image != null && user.image!.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            '${BaseUrl.baseUrl}${user.image}',
+                            height: 120,
+                            width: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, o, s) => const Icon(Icons.person, size: 60),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              if (_formKey.currentState!.validate()) {
+                final confirm = await _showConfirmationDialog(context, 'Edit', user.fullName ?? 'No Name');
+                if (confirm == true) {
+                  _showLoadingDialog(context);
+                  await viewModel.editUser(context, user);
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop(); // Close loading dialog
+                  }
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop(); // Close edit dialog
+                  }
+                }
+              }
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -384,120 +269,348 @@ Future<void> _deleteUser(int index) async {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<UserManagementViewModel>();
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width > 600;
+    double getFontSize(double mobile, double tablet) => isWide ? tablet : mobile;
+    double getPadding(double mobile, double tablet) => isWide ? tablet : mobile;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add/Edit/Delete Users"),
+        title: Text(
+          "Manage Users",
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue, Colors.purple],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 4,
       ),
-      body: _isLoading
+      body: viewModel.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: "Search by Name or Email",
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: _searchUsers,
+          : LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: EdgeInsets.all(getPadding(16, 24)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Add New User",
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: getFontSize(18, 22),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            labelText: "Search by Name or Email",
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.search),
+                              onPressed: () => viewModel.searchUsers(_searchController.text),
+                            ),
+                          ),
+                          style: TextStyle(fontSize: getFontSize(14, 16)),
+                          onFieldSubmitted: (value) => viewModel.searchUsers(value), // Changed from onSubmitted to onFieldSubmitted
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: "Full Name (required)",
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                          ),
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
+                          style: TextStyle(fontSize: getFontSize(14, 16)),
+                          onChanged: (value) => viewModel.setFields(
+                            name: value,
+                            email: viewModel.email,
+                            phone: viewModel.phone,
+                            password: viewModel.password,
+                            image: viewModel.selectedImage,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            labelText: "Email (required)",
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) return 'Email is required';
+                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
+                            return null;
+                          },
+                          style: TextStyle(fontSize: getFontSize(14, 16)),
+                          onChanged: (value) => viewModel.setFields(
+                            name: viewModel.name,
+                            email: value,
+                            phone: viewModel.phone,
+                            password: viewModel.password,
+                            image: viewModel.selectedImage,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _phoneController,
+                          decoration: InputDecoration(
+                            labelText: "Phone (required)",
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                          ),
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Phone is required' : null,
+                          style: TextStyle(fontSize: getFontSize(14, 16)),
+                          onChanged: (value) => viewModel.setFields(
+                            name: viewModel.name,
+                            email: viewModel.email,
+                            phone: value,
+                            password: viewModel.password,
+                            image: viewModel.selectedImage,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: InputDecoration(
+                            labelText: "Password (required)",
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                          ),
+                          obscureText: true,
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Password is required' : null,
+                          style: TextStyle(fontSize: getFontSize(14, 16)),
+                          onChanged: (value) => viewModel.setFields(
+                            name: viewModel.name,
+                            email: viewModel.email,
+                            phone: viewModel.phone,
+                            password: value,
+                            image: viewModel.selectedImage,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                            foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: getPadding(16, 24),
+                              vertical: getPadding(12, 16),
+                            ),
+                          ),
+                          onPressed: viewModel.isActionLoading
+                              ? null
+                              : () async {
+                            await viewModel.pickImage();
+                          },
+                          child: Text(
+                            "Pick Image (optional)",
+                            style: TextStyle(fontSize: getFontSize(14, 16)),
+                          ),
+                        ),
+                        if (viewModel.selectedImage != null) ...[
+                          const SizedBox(height: 16),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              viewModel.selectedImage!,
+                              height: getFontSize(100, 120),
+                              width: getFontSize(100, 120),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: getPadding(16, 24),
+                                vertical: getPadding(12, 16),
+                              ),
+                            ),
+                            onPressed: viewModel.isActionLoading
+                                ? null
+                                : () async {
+                              if (_formKey.currentState!.validate()) {
+                                final confirm = await _showConfirmationDialog(
+                                  context,
+                                  'Add',
+                                  _nameController.text.isEmpty ? 'this user' : _nameController.text,
+                                );
+                                if (confirm == true) {
+                                  _showLoadingDialog(context);
+                                  await viewModel.addUser(context);
+                                  if (Navigator.of(context).canPop()) {
+                                    Navigator.of(context).pop(); // Close loading dialog
+                                  }
+                                  _formKey.currentState!.reset();
+                                  _nameController.clear();
+                                  _emailController.clear();
+                                  _phoneController.clear();
+                                  _passwordController.clear();
+                                }
+                              }
+                            },
+                            child: viewModel.isActionLoading
+                                ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(Theme.of(context).colorScheme.onPrimary),
+                              ),
+                            )
+                                : Text(
+                              "Add User",
+                              style: TextStyle(fontSize: getFontSize(14, 16)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                "Users",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: getFontSize(20, 24),
+                ),
+              ),
+              const SizedBox(height: 12),
+              viewModel.filteredUsers.isEmpty
+                  ? Padding(
+                padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
+                child: Text(
+                  'No users found',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: getFontSize(14, 16),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              )
+                  : ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: viewModel.filteredUsers.length,
+                itemBuilder: (context, index) {
+                  final user = viewModel.filteredUsers[index];
+                  final imageUrl = user.image != null && user.image!.isNotEmpty
+                      ? '${BaseUrl.baseUrl}${user.image}'
+                      : null;
+                  return Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: EdgeInsets.symmetric(vertical: getPadding(6, 8)),
+                    child: ListTile(
+                      leading: ClipOval(
+                        child: imageUrl != null
+                            ? Image.network(
+                          imageUrl,
+                          width: getFontSize(50, 60),
+                          height: getFontSize(50, 60),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.person,
+                            size: getFontSize(50, 60),
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        )
+                            : Icon(
+                          Icons.person,
+                          size: getFontSize(50, 60),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      title: Text(
+                        user.fullName ?? 'No Name',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: getFontSize(16, 18),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${user.email ?? 'No Email'} - ${user.phone ?? 'No Phone'}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: getFontSize(14, 16),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
+                            onPressed: viewModel.isActionLoading
+                                ? null
+                                : () => _editUser(context, user, viewModel),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                            onPressed: viewModel.isActionLoading
+                                ? null
+                                : () async {
+                              final confirm = await _showConfirmationDialog(
+                                context,
+                                'Delete',
+                                user.fullName ?? 'No Name',
+                              );
+                              if (confirm == true) {
+                                _showLoadingDialog(context);
+                                await viewModel.deleteUser(context, user);
+                                if (Navigator.of(context).canPop()) {
+                                  Navigator.of(context).pop(); // Close loading dialog
+                                }
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                    onSubmitted: (_) => _searchUsers(),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: "Full Name (required)",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: "Email (required)",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(
-                      labelText: "Phone (required)",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: "Password (required)",
-                      border: OutlineInputBorder(),
-                    ),
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: _pickImage,
-                    child: const Text("Pick Image (optional)"),
-                  ),
-                  if (_selectedImage != null) ...[
-                    const SizedBox(height: 10),
-                    Image.file(_selectedImage!, height: 100, width: 100, fit: BoxFit.cover),
-                  ],
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: _addUser,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text("Add User"),
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _filteredUsers.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          leading: _filteredUsers[index]['image'] != null && _filteredUsers[index]['image'].isNotEmpty
-                              ? Image.network(
-                                  'https://theemaeducation.com/${_filteredUsers[index]['image']}',
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, size: 50),
-                                )
-                              : const Icon(Icons.person, size: 50),
-                          title: Text(_filteredUsers[index]['full_name']),
-                          subtitle: Text('${_filteredUsers[index]['email']} - ${_filteredUsers[index]['phone']}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _editUser(index),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteUser(index),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
-}
-
-void main() {
-  runApp(const MaterialApp(home: AddEditDeleteUsersPage()));
 }

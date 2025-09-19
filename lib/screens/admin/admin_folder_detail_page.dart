@@ -35,9 +35,11 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
     fetch();
   }
 
-  void fetch() {
-    context.read<FilesViewModel>().fetchFiles(widget.folderId);
-    context.read<QuizSetsViewModel>().fetchQuizSets(widget.folderId);
+  void fetch() async {
+    // Fetch files
+    await  Provider.of<FilesViewModel>(context, listen: false).fetchFiles(widget.folderId);
+    // Fetch quiz sets
+      await  Provider.of<QuizSetsViewModel>(context, listen: false).fetchQuizSets(widget.folderId);
   }
 
   Future<XFile?> _compressImage(File file) async {

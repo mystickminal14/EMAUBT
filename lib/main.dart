@@ -1,8 +1,12 @@
 import 'package:ema_app/screens/admin/admin_quiz_set_detail_page.dart';
 import 'package:ema_app/screens/users/home_page.dart';
+import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
 import 'package:ema_app/view_model/folders/files_view_model.dart';
 import 'package:ema_app/view_model/folders/folder_view_model.dart';
+import 'package:ema_app/view_model/folders/notice_view_model.dart';
+import 'package:ema_app/view_model/folders/quiz_detail_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_view_model.dart';
+import 'package:ema_app/view_model/folders/user_management_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/auth_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
@@ -57,10 +61,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => UserManagementViewModel()),
+    ChangeNotifierProvider(create: (_) => NoticeManagementViewModel()),
+
         ChangeNotifierProvider(create: (_) => FolderViewModel()),
         ChangeNotifierProvider(create: (_) => UserViewModel()),
         ChangeNotifierProvider(create: (_) => FilesViewModel()),
         ChangeNotifierProvider(create: (_) => QuizSetsViewModel()),
+        ChangeNotifierProvider(create: (_) => AdminManagementViewModel()),
+
+        ChangeNotifierProvider(create: (_) => QuizSetDetailViewModel()),
 
         ChangeNotifierProvider(create: (_) => UserViewModel()),
         
