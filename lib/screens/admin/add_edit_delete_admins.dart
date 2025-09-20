@@ -1,18 +1,19 @@
 import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:logger/logger.dart'; // Added for debugging
+import 'package:logger/logger.dart';
 
 class AddEditDeleteAdminsPage extends StatefulWidget {
   const AddEditDeleteAdminsPage({super.key});
 
   @override
-  _AddEditDeleteAdminsPageState createState() => _AddEditDeleteAdminsPageState();
+  _AddEditDeleteAdminsPageState createState() =>
+      _AddEditDeleteAdminsPageState();
 }
 
 class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
   final TextEditingController _searchController = TextEditingController();
-  final Logger _logger = Logger(); // Added for debugging
+  final Logger _logger = Logger();
 
   @override
   void initState() {
@@ -25,14 +26,19 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
     });
   }
 
-  void _showLoadingDialog(BuildContext context, Future<void> operation) async {
-    _logger.i('Showing loading dialog'); // Debug log
-    final dialogFuture = showDialog(
-      context: context,
+  /// Show loading dialog that is safe even if widget gets disposed
+  Future<void> _showLoadingDialog(
+      BuildContext context, Future<void> operation) async {
+    _logger.i('Showing loading dialog');
+
+    final dialogContext = Navigator.of(context).overlay!.context;
+
+    showDialog(
+      context: dialogContext,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (context) => const AlertDialog(
         content: Row(
-          children: const [
+          children: [
             CircularProgressIndicator(),
             SizedBox(width: 16),
             Text("Processing..."),
@@ -41,17 +47,17 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
       ),
     );
 
-    // Ensure dialog is shown for at least 500ms
+    // Ensure at least 500ms visible
     await Future.wait([
       operation,
       Future.delayed(const Duration(milliseconds: 500)),
     ]);
 
-    if (context.mounted) {
-      _logger.i('Dismissing loading dialog'); // Debug log
-      Navigator.of(context).pop();
+    if (mounted) {
+      _logger.i('Dismissing loading dialog');
+      Navigator.of(dialogContext, rootNavigator: true).pop();
     } else {
-      _logger.w('Context not mounted, cannot dismiss dialog'); // Debug log
+      _logger.w('Widget already disposed, cannot dismiss dialog safely');
     }
   }
 
@@ -86,8 +92,10 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final isWide = width > 600;
-    double getFontSize(double mobile, double tablet) => isWide ? tablet : mobile;
-    double getPadding(double mobile, double tablet) => isWide ? tablet : mobile;
+    double getFontSize(double mobile, double tablet) =>
+        isWide ? tablet : mobile;
+    double getPadding(double mobile, double tablet) =>
+        isWide ? tablet : mobile;
 
     return Scaffold(
       appBar: AppBar(
@@ -123,12 +131,15 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.search),
-                            onPressed: () => viewModel.searchUsersAndAdmins(_searchController.text),
+                            onPressed: () => viewModel.searchUsersAndAdmins(
+                                _searchController.text),
                           ),
                         ),
-                        onSubmitted: (value) => viewModel.searchUsersAndAdmins(value),
+                        onSubmitted: (value) =>
+                            viewModel.searchUsersAndAdmins(value),
                       ),
                       SizedBox(height: getPadding(16, 32)),
+
                       // Users Section
                       Text(
                         "Users:",
@@ -139,7 +150,8 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                       ),
                       viewModel.filteredUsers.isEmpty
                           ? Padding(
-                        padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
+                        padding: EdgeInsets.symmetric(
+                            vertical: getPadding(8, 16)),
                         child: const Text('No users found'),
                       )
                           : ListView.builder(
@@ -148,13 +160,13 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                         itemCount: viewModel.filteredUsers.length,
                         itemBuilder: (context, index) {
                           final user = viewModel.filteredUsers[index];
-                          final imageUrl = user.image != null && user.image!.isNotEmpty
+                          final imageUrl = user.image != null &&
+                              user.image!.isNotEmpty
                               ? 'https://theemaeducation.com/${user.image}'
                               : null;
                           return Card(
                             margin: EdgeInsets.symmetric(
                               vertical: getPadding(6, 12),
-                              horizontal: getPadding(0, 0),
                             ),
                             child: ListTile(
                               leading: imageUrl != null
@@ -164,33 +176,38 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                                   width: getFontSize(40, 60),
                                   height: getFontSize(40, 60),
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(Icons.person, size: getFontSize(40, 60));
-                                  },
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                      Icon(Icons.person,
+                                          size: getFontSize(
+                                              40, 60)),
                                 ),
                               )
-                                  : Icon(Icons.person, size: getFontSize(40, 60)),
+                                  : Icon(Icons.person,
+                                  size: getFontSize(40, 60)),
                               title: Text(
                                 user.fullName ?? 'No Name',
-                                style: TextStyle(fontSize: getFontSize(16, 22)),
+                                style: TextStyle(
+                                    fontSize: getFontSize(16, 22)),
                               ),
                               subtitle: Text(
                                 user.email ?? 'No Email',
-                                style: TextStyle(fontSize: getFontSize(13, 18)),
+                                style: TextStyle(
+                                    fontSize: getFontSize(13, 18)),
                               ),
                               trailing: ElevatedButton(
-                                onPressed: viewModel.isActionLoading
-                                    ? null
-                                    : () async {
-                                  final confirm = await _showConfirmationDialog(
+                                onPressed: () async {
+                                  final confirm =
+                                  await _showConfirmationDialog(
                                     context,
                                     'Grant',
                                     user.fullName ?? 'No Name',
                                   );
                                   if (confirm == true) {
-                                     _showLoadingDialog(
+                                    await _showLoadingDialog(
                                       context,
-                                      viewModel.grantAdminAccess(context, user),
+                                      viewModel.grantAdminAccess(
+                                          context, user),
                                     );
                                   }
                                 },
@@ -200,18 +217,10 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                                     vertical: getPadding(8, 14),
                                   ),
                                 ),
-                                child: viewModel.isActionLoading
-                                    ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                                  ),
-                                )
-                                    : Text(
+                                child: Text(
                                   "Make Admin",
-                                  style: TextStyle(fontSize: getFontSize(13, 18)),
+                                  style: TextStyle(
+                                      fontSize: getFontSize(13, 18)),
                                 ),
                               ),
                             ),
@@ -219,6 +228,7 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                         },
                       ),
                       const Divider(),
+
                       // Admins Section
                       Text(
                         "Admins:",
@@ -229,7 +239,8 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                       ),
                       viewModel.filteredAdmins.isEmpty
                           ? Padding(
-                        padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
+                        padding: EdgeInsets.symmetric(
+                            vertical: getPadding(8, 16)),
                         child: const Text('No admins found'),
                       )
                           : ListView.builder(
@@ -241,7 +252,6 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                           return Card(
                             margin: EdgeInsets.symmetric(
                               vertical: getPadding(6, 12),
-                              horizontal: getPadding(0, 0),
                             ),
                             child: ListTile(
                               leading: Icon(
@@ -250,25 +260,27 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                               ),
                               title: Text(
                                 admin.fullName ?? 'No Name',
-                                style: TextStyle(fontSize: getFontSize(16, 22)),
+                                style: TextStyle(
+                                    fontSize: getFontSize(16, 22)),
                               ),
                               subtitle: Text(
                                 admin.email ?? 'No Email',
-                                style: TextStyle(fontSize: getFontSize(13, 18)),
+                                style: TextStyle(
+                                    fontSize: getFontSize(13, 18)),
                               ),
                               trailing: ElevatedButton(
-                                onPressed: viewModel.isActionLoading
-                                    ? null
-                                    : () async {
-                                  final confirm = await _showConfirmationDialog(
+                                onPressed: () async {
+                                  final confirm =
+                                  await _showConfirmationDialog(
                                     context,
                                     'Remove',
                                     admin.fullName ?? 'No Name',
                                   );
                                   if (confirm == true) {
-                                     _showLoadingDialog(
+                                    await _showLoadingDialog(
                                       context,
-                                      viewModel.removeAdminAccess(context, admin),
+                                      viewModel.removeAdminAccess(
+                                          context, admin),
                                     );
                                   }
                                 },
@@ -279,21 +291,9 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                                     vertical: getPadding(8, 14),
                                   ),
                                 ),
-                                child: viewModel.isActionLoading
-                                    ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                                  ),
-                                )
-                                    : Text(
+                                child: const Text(
                                   "Remove",
-                                  style: TextStyle(
-                                    fontSize: getFontSize(13, 18),
-                                    color: Colors.white,
-                                  ),
+                                  style: TextStyle(color: Colors.white),
                                 ),
                               ),
                             ),
