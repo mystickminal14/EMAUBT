@@ -1,6 +1,6 @@
+import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path/path.dart' as path;
@@ -9,156 +9,116 @@ class UserNoticesPage extends StatefulWidget {
   const UserNoticesPage({super.key});
 
   @override
-  _UserNoticesPageState createState() => _UserNoticesPageState();
+  State<UserNoticesPage> createState() => _UserNoticesPageState();
 }
 
 class _UserNoticesPageState extends State<UserNoticesPage> {
-  List<Notice> notices = [];
-  final String apiUrl = 'https://theemaeducation.com/notices.php';
-  bool isLoading = true;
-
   @override
   void initState() {
     super.initState();
-    _fetchNotices();
-  }
-
-  Future<void> _fetchNotices() async {
-    try {
-      final response = await http.get(Uri.parse(apiUrl));
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          notices = data.map((json) => Notice.fromJson(json)).toList();
-          isLoading = false;
-        });
-      } else {
-        setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching notices: ${response.statusCode}')),
-        );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<NoticeManagementViewModel>(context, listen: false)
+            .fetchNotices(context);
       }
-    } catch (e) {
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching notices: $e')),
-      );
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Important Information",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: Colors.deepPurple[700],
-        elevation: 0,
-        centerTitle: true,
-        foregroundColor: Colors.white,
-      ),
-      body: isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple[700]!),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading notices...',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+    return Consumer<NoticeManagementViewModel>(
+      builder: (context, noticeVM, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text(
+              "Important Information",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
               ),
-            )
-          : notices.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 48,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "No Important Information available",
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: notices.length,
-                  itemBuilder: (context, index) {
-                    return UserNoticeWidget(notice: notices[index]);
-                  },
-                ),
+            ),
+            backgroundColor: Colors.deepPurple[700],
+            elevation: 0,
+            centerTitle: true,
+            foregroundColor: Colors.white,
+          ),
+          body: noticeVM.isLoading
+              ? _buildLoading()
+              : noticeVM.filteredNotices.isEmpty
+                  ? _buildEmpty()
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: noticeVM.filteredNotices.length,
+                      itemBuilder: (context, index) {
+                        return UserNoticeWidget(
+                          notice: noticeVM.filteredNotices[index],
+                        );
+                      },
+                    ),
+        );
+      },
     );
   }
-}
 
-class Notice {
-  final String id;
-  final String title;
-  final String? textContent;
-  final List<dynamic> files;
+  Widget _buildLoading() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple[700]!),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading notices...',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Notice({
-    required this.id,
-    required this.title,
-    this.textContent,
-    required this.files,
-  });
-
-  factory Notice.fromJson(Map<String, dynamic> json) {
-    return Notice(
-      id: json['id'],
-      title: json['title'],
-      textContent: json['text_content'],
-      files: json['files'] as List<dynamic>? ?? [],
+  Widget _buildEmpty() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.info_outline, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            "No Important Information available",
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class UserNoticeWidget extends StatelessWidget {
-  final Notice notice;
+  final dynamic notice; // using NoticeModel
 
   const UserNoticeWidget({super.key, required this.notice});
 
   Future<void> _openFile(BuildContext context, dynamic file) async {
-    if (file['file_path'] == null) {
+    if (file.filePath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('File path is missing')),
       );
       return;
     }
 
-    final String fileName = file['file_name'].toLowerCase();
-    String filePath = file['file_path'];
-
-    // Normalize file path
-    filePath = path.normalize(filePath);
-    
-    // Ensure proper file URI format
+    final String fileName = file.fileName.toLowerCase();
+    String filePath = path.normalize(file.filePath);
     final File fileObject = File(filePath);
-    
+
     if (!await fileObject.exists()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('File does not exist at: $filePath')),
@@ -167,27 +127,19 @@ class UserNoticeWidget extends StatelessWidget {
     }
 
     try {
-      if (fileName.endsWith('.jpg') || 
-          fileName.endsWith('.jpeg') || 
+      if (fileName.endsWith('.jpg') ||
+          fileName.endsWith('.jpeg') ||
           fileName.endsWith('.png')) {
-        // Show images in app for all platforms
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ImageViewerScreen(filePath: filePath),
           ),
         );
-      } else if (Platform.isWindows) {
-        // For non-image files on Windows
-        final Uri fileUri = Uri.parse('file:///$filePath');
-        if (await canLaunchUrl(fileUri)) {
-          await launchUrl(fileUri);
-        } else {
-          throw 'Could not launch $fileUri';
-        }
       } else {
-        // For non-image files on mobile
-        final Uri fileUri = Uri.file(filePath);
+        final Uri fileUri = Platform.isWindows
+            ? Uri.parse('file:///$filePath')
+            : Uri.file(filePath);
         if (await canLaunchUrl(fileUri)) {
           await launchUrl(fileUri);
         } else {
@@ -222,9 +174,7 @@ class UserNoticeWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 4.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       margin: const EdgeInsets.only(bottom: 16.0),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -232,14 +182,15 @@ class UserNoticeWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              notice.title,
+              notice.title ?? '',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Colors.deepPurple[800],
                     fontWeight: FontWeight.w600,
                   ),
             ),
             const SizedBox(height: 12.0),
-            if (notice.textContent != null) ...[
+            if (notice.textContent != null &&
+                notice.textContent!.isNotEmpty) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12.0),
@@ -259,7 +210,7 @@ class UserNoticeWidget extends StatelessWidget {
               ),
               const SizedBox(height: 12.0),
             ],
-            if (notice.files.isNotEmpty) ...[
+            if (notice.files != null && notice.files!.isNotEmpty) ...[
               Text(
                 'Attachments',
                 style: TextStyle(
@@ -269,7 +220,7 @@ class UserNoticeWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8.0),
-              ...notice.files.map((file) => InkWell(
+              ...notice.files!.map((file) => InkWell(
                     onTap: () => _openFile(context, file),
                     borderRadius: BorderRadius.circular(8.0),
                     child: Container(
@@ -285,14 +236,14 @@ class UserNoticeWidget extends StatelessWidget {
                       child: Row(
                         children: [
                           Icon(
-                            _getFileIcon(file['file_name']),
+                            _getFileIcon(file.fileName),
                             size: 24,
                             color: Colors.deepPurple[600],
                           ),
                           const SizedBox(width: 12.0),
                           Expanded(
                             child: Text(
-                              file['file_name'],
+                              file.fileName,
                               style: TextStyle(
                                 color: Colors.deepPurple[700],
                                 fontSize: 15,
@@ -322,9 +273,7 @@ class ImageViewerScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'View Image',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.deepPurple[700],
         foregroundColor: Colors.white,
@@ -338,7 +287,8 @@ class ImageViewerScreen extends StatelessWidget {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple[700]!),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.deepPurple[700]!),
                 );
               }
               if (snapshot.hasData && snapshot.data == true) {
@@ -349,30 +299,12 @@ class ImageViewerScreen extends StatelessWidget {
                   child: Image.file(
                     File(filePath),
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          'Error loading image',
-                          style: TextStyle(
-                            color: Colors.red[300],
-                            fontSize: 16,
-                          ),
-                        ),
-                      );
-                    },
                   ),
                 );
               }
-              return Container(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Image file not found',
-                  style: TextStyle(
-                    color: Colors.red[300],
-                    fontSize: 16,
-                  ),
-                ),
+              return const Text(
+                'Image file not found',
+                style: TextStyle(color: Colors.redAccent, fontSize: 16),
               );
             },
           ),
@@ -380,23 +312,4 @@ class ImageViewerScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-void main() {
-  runApp(MaterialApp(
-    home: const UserNoticesPage(),
-    theme: ThemeData(
-      primarySwatch: Colors.deepPurple,
-      cardTheme: CardThemeData(
-        elevation: 4.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-      ),
-      textTheme: const TextTheme(
-        titleLarge: TextStyle(fontSize: 20.0, fontWeight: FontWeight.w600),
-        bodyMedium: TextStyle(fontSize: 15.0),
-      ),
-    ),
-  ));
 }
