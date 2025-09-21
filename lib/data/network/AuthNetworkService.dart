@@ -49,7 +49,7 @@ class AuthNetworkApiService {
 
       if (file != null) {
         request.files.add(await http.MultipartFile.fromPath(
-          'image', // backend must accept "image"
+          'image',
           file.path,
           contentType: MediaType('image', 'jpeg'),
         ));

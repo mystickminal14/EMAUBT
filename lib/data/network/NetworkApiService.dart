@@ -76,6 +76,7 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future postMultipartResponse(String url, Map<String, dynamic> fields, File? file) async {
     try {
+      _logger.d(fields);
       var request = http.MultipartRequest('POST', Uri.parse(url));
       request.headers.addAll(_getHeaders());
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));

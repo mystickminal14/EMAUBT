@@ -65,6 +65,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     ChangeNotifierProvider(create: (_) => NoticeManagementViewModel()),
 
         ChangeNotifierProvider(create: (_) => FolderViewModel()),
+
+        ChangeNotifierProvider(create: (_) => FolderViewModel()),
         ChangeNotifierProvider(create: (_) => UserViewModel()),
         ChangeNotifierProvider(create: (_) => FilesViewModel()),
         ChangeNotifierProvider(create: (_) => QuizSetsViewModel()),

@@ -1,4 +1,4 @@
 class BaseUrl {
-  static const String baseUrl = 'https://theemaeducation.com/';
+  static const String baseUrl = 'https://testing.education.mssn.org.np/';
 
 }

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/model/user_data_model.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-import 'package:ema_app/utils/utils.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart'; // Add this import
 
 class UserManagementViewModel extends ChangeNotifier {
   final Logger _logger = Logger();
@@ -23,23 +24,27 @@ class UserManagementViewModel extends ChangeNotifier {
   String? password;
 
   void _showSuccessMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _showErrorMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   Future<void> fetchUsers(BuildContext context) async {
@@ -61,6 +66,7 @@ class UserManagementViewModel extends ChangeNotifier {
       users = [];
       _filterLists();
       _showErrorMessage(context, 'Error fetching users: $e');
+      _logger.e('Error fetching users: $e');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -68,11 +74,34 @@ class UserManagementViewModel extends ChangeNotifier {
   }
 
   Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      selectedImage = File(pickedFile.path);
-      notifyListeners();
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        // Compress the image
+        final compressedBytes = await FlutterImageCompress.compressWithFile(
+          pickedFile.path,
+          quality: 85, // 85% quality
+          minWidth: 1024,
+          minHeight: 1024,
+          format: CompressFormat.jpeg,
+        );
+        if (compressedBytes != null) {
+          // Create a temporary file for the compressed bytes
+          final tempDir = await Directory.systemTemp.createTemp();
+          final compressedFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+          await compressedFile.writeAsBytes(compressedBytes);
+          selectedImage = compressedFile;
+          _logger.i('Image picked and compressed: ${compressedFile.path} (original: ${pickedFile.path})');
+        } else {
+          // Fallback to original if compression fails
+          selectedImage = File(pickedFile.path);
+          _logger.w('Compression failed, using original image');
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      _logger.e('Error picking/compressing image: $e');
     }
   }
 
@@ -90,6 +119,7 @@ class UserManagementViewModel extends ChangeNotifier {
     try {
       isActionLoading = true;
       notifyListeners();
+      _logger.i('Adding user: $name, $email, $phone');
       final fields = {
         'full_name': name!,
         'email': email!,
@@ -103,13 +133,17 @@ class UserManagementViewModel extends ChangeNotifier {
       );
       if (response['success'] == true) {
         _showSuccessMessage(context, 'User added successfully');
+        _logger.i('User added successfully');
         clearFields();
+        await Future.delayed(const Duration(milliseconds: 100)); // Delay to avoid disposal race
         await fetchUsers(context);
       } else {
         _showErrorMessage(context, 'Failed to add user: ${response['message'] ?? 'Unknown error'}');
+        _logger.w('Failed to add user: ${response['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       _showErrorMessage(context, 'Error adding user: $e');
+      _logger.e('Error adding user: $e');
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -125,6 +159,7 @@ class UserManagementViewModel extends ChangeNotifier {
     try {
       isActionLoading = true;
       notifyListeners();
+      _logger.i('Editing user: ${user.id}, $name, $email, $phone');
       final fields = {
         '_method': 'PUT',
         'id': user.id ?? '',
@@ -140,13 +175,17 @@ class UserManagementViewModel extends ChangeNotifier {
       );
       if (response['success'] == true) {
         _showSuccessMessage(context, 'User updated successfully');
+        _logger.i('User updated successfully');
         clearFields();
+        await Future.delayed(const Duration(milliseconds: 100)); // Delay to avoid disposal race
         await fetchUsers(context);
       } else {
         _showErrorMessage(context, 'Failed to update user: ${response['message'] ?? 'Unknown error'}');
+        _logger.w('Failed to update user: ${response['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       _showErrorMessage(context, 'Error updating user: $e');
+      _logger.e('Error updating user: $e');
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -157,15 +196,20 @@ class UserManagementViewModel extends ChangeNotifier {
     try {
       isActionLoading = true;
       notifyListeners();
+      _logger.i('Deleting user: ${user.id}, ${user.fullName}');
       final response = await _apiService.getDeleteApiResponse('${BaseUrl.baseUrl}register.php?id=${user.id}');
       if (response['success'] == true) {
         _showSuccessMessage(context, 'User deleted successfully');
+        _logger.i('User deleted successfully');
+        await Future.delayed(const Duration(milliseconds: 100)); // Delay to avoid disposal race
         await fetchUsers(context);
       } else {
         _showErrorMessage(context, 'Failed to delete user: ${response['message'] ?? 'Unknown error'}');
+        _logger.w('Failed to delete user: ${response['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       _showErrorMessage(context, 'Error deleting user: $e');
+      _logger.e('Error deleting user: $e');
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -176,6 +220,7 @@ class UserManagementViewModel extends ChangeNotifier {
     _searchQuery = query.trim().toLowerCase();
     _filterLists();
     notifyListeners();
+    _logger.i('Searching users with query: $_searchQuery');
   }
 
   void _filterLists() {
@@ -188,6 +233,7 @@ class UserManagementViewModel extends ChangeNotifier {
         return name.contains(_searchQuery) || email.contains(_searchQuery);
       }).toList();
     }
+    _logger.i('Filtered users: ${filteredUsers.length}');
   }
 
   void setFields({String? name, String? email, String? phone, String? password, File? image}) {
@@ -197,6 +243,7 @@ class UserManagementViewModel extends ChangeNotifier {
     this.password = password;
     selectedImage = image;
     notifyListeners();
+    _logger.i('Fields updated: name=$name, email=$email, phone=$phone, image=${image?.path}');
   }
 
   void clearFields() {
@@ -204,9 +251,11 @@ class UserManagementViewModel extends ChangeNotifier {
     email = null;
     phone = null;
     password = null;
+    selectedImage?.deleteSync(); // Clean up compressed temp file
     selectedImage = null;
     _searchQuery = '';
-    filteredUsers = List.from(users);
+    _filterLists();
     notifyListeners();
+    _logger.i('Fields cleared');
   }
 }
