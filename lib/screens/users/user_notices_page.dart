@@ -1,3 +1,4 @@
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -116,15 +117,15 @@ class UserNoticeWidget extends StatelessWidget {
     }
 
     final String fileName = file.fileName.toLowerCase();
-    String filePath = path.normalize(file.filePath);
+    String filePath = BaseUrl.baseUrl + file.filePath;
     final File fileObject = File(filePath);
 
-    if (!await fileObject.exists()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('File does not exist at: $filePath')),
-      );
-      return;
-    }
+    // if (!await fileObject.exists()) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(content: Text('File does not exist at: $filePath')),
+    //   );
+    //   return;
+    // }
 
     try {
       if (fileName.endsWith('.jpg') ||
@@ -296,8 +297,8 @@ class ImageViewerScreen extends StatelessWidget {
                   boundaryMargin: const EdgeInsets.all(20.0),
                   minScale: 0.1,
                   maxScale: 4.0,
-                  child: Image.file(
-                    File(filePath),
+                  child: Image.network(
+                    filePath,
                     fit: BoxFit.contain,
                   ),
                 );

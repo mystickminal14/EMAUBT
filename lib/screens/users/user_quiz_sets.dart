@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform, File;
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/users/user_folder_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -87,28 +88,29 @@ class UserQuizSetsPage extends StatefulWidget {
   final String userName;
   final String userEmail;
   final String role;
-  final int folderId;
+  final String folderId;
   final String folderName;
   final bool isAdmin;
   final String userIdentifier;
   final bool preStart;
   final Map<String, String> cachedFiles; // New parameter
 
- const UserQuizSetsPage({
-  super.key,
-  required this.quizSetId,
-  required this.quizSetName,
-  required this.userId,
-  required this.userName,
-  required this.userEmail,
-  required this.role,
-  required this.folderId,
-  required this.folderName,
-  required this.isAdmin,
-  required this.userIdentifier,
-  required this.preStart,
-  required this.cachedFiles, required quizData,
-});
+  const UserQuizSetsPage({
+    super.key,
+    required this.quizSetId,
+    required this.quizSetName,
+    required this.userId,
+    required this.userName,
+    required this.userEmail,
+    required this.role,
+    required this.folderId,
+    required this.folderName,
+    required this.isAdmin,
+    required this.userIdentifier,
+    required this.preStart,
+    required this.cachedFiles,
+    required quizData,
+  });
 
   @override
   _UserQuizSetsPageState createState() => _UserQuizSetsPageState();
@@ -148,18 +150,18 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
   void dispose() {
     _timerManager.removeListener(_updateTimer);
     _timerManager.resetTimer();
-_cleanUpTempFiles();
+    _cleanUpTempFiles();
+
     // Restore all orientations on dispose for Android and iOS
-   if (Platform.isAndroid || Platform.isIOS) {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
-   else if (Platform.isIOS) {
+    if (Platform.isAndroid || Platform.isIOS) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else if (Platform.isIOS) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
@@ -176,37 +178,39 @@ _cleanUpTempFiles();
       setState(() {});
     }
   }
-Future<void> _cleanUpTempFiles() async {
-  try {
-    for (var filePath in widget.cachedFiles.values) {
-      final file = File(filePath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    }
-  } catch (e) {
-    if (kDebugMode) print('Error cleaning up temp files: $e');
-  }
-}
-Future<Map<String, dynamic>> fetchQuizData() async {
-  try {
-    final response = await http
-        .get(
-          Uri.parse(
-              'https://theemaeducation.com/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
-        )
-        .timeout(const Duration(seconds: 10));
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return _processQuizData(data);
-    } else {
-      throw Exception('Failed to load quiz data: ${response.statusCode}');
+  Future<void> _cleanUpTempFiles() async {
+    try {
+      for (var filePath in widget.cachedFiles.values) {
+        final file = File(filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error cleaning up temp files: $e');
     }
-  } catch (e) {
-    throw Exception('Network error: $e');
   }
-}
+
+  Future<Map<String, dynamic>> fetchQuizData() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+                '${BaseUrl.baseUrl}//quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _processQuizData(data);
+      } else {
+        throw Exception('Failed to load quiz data: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
 
   Map<String, dynamic> _processQuizData(Map<String, dynamic> data) {
     List<Map<String, dynamic>> questions = data['questions'] != null
@@ -262,7 +266,7 @@ Future<Map<String, dynamic>> fetchQuizData() async {
     }
     try {
       final response = await http.post(
-        Uri.parse('https://theemaeducation.com/increment_access.php'),
+        Uri.parse('${BaseUrl.baseUrl}//increment_access.php'),
         body: {
           'identifier': widget.userId,
           'is_admin': widget.isAdmin.toString(),
@@ -332,7 +336,7 @@ Future<Map<String, dynamic>> fetchQuizData() async {
     try {
       final response = await http.get(
         Uri.parse(
-            'https://theemaeducation.com/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
+            '${BaseUrl.baseUrl}//quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -379,7 +383,8 @@ Future<Map<String, dynamic>> fetchQuizData() async {
                 userIdentifier:
                     widget.isAdmin ? widget.userEmail : widget.userId,
                 isAdmin: widget.isAdmin,
-                timePerQuestion: {}, cachedFiles: {},
+                timePerQuestion: {},
+                cachedFiles: {},
               ),
             ),
           );
@@ -396,29 +401,75 @@ Future<Map<String, dynamic>> fetchQuizData() async {
     }
   }
 
-void _startQuiz(BuildContext context) async {
-  if (!_hasStarted) {
-    bool incremented = true;
-    if (!widget.isAdmin && widget.userId.isNotEmpty) {
-      incremented = await _incrementAccessCount();
-    }
-    if (incremented) {
-      setState(() {
-        _hasStarted = true;
-      });
-      _timerManager.startTimer(
-        onTick: () {
-          setState(() {});
-        },
-        onTimeUp: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Time is up!')),
-          );
-        },
-        onSubmit: () {
-          _submitQuiz(context);
-        },
-      );
+  void _startQuiz(BuildContext context) async {
+    if (!_hasStarted) {
+      bool incremented = true;
+      if (!widget.isAdmin && widget.userId.isNotEmpty) {
+        incremented = await _incrementAccessCount();
+      }
+      if (incremented) {
+        setState(() {
+          _hasStarted = true;
+        });
+        _timerManager.startTimer(
+          onTick: () {
+            setState(() {});
+          },
+          onTimeUp: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Time is up!')),
+            );
+          },
+          onSubmit: () {
+            _submitQuiz(context);
+          },
+        );
+        final quizData = await _quizDataFuture; // Wait for quiz data
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => QuizQuestionPage(
+              questionNumber: 1,
+              quizSetId: widget.quizSetId,
+              quizSetName: widget.quizSetName,
+              folderId: widget.folderId,
+              folderName: widget.folderName,
+              userIdentifier: widget.isAdmin ? widget.userEmail : widget.userId,
+              isAdmin: widget.isAdmin,
+              selectedAnswers: _selectedAnswers,
+              cachedFiles: widget.cachedFiles,
+              quizData: quizData, // Pass fetched quiz data
+              onQuestionAttended: (displayNumber) {
+                setState(() {
+                  _attendedQuestions[displayNumber] = true;
+                });
+              },
+              onAnswerSelected: (originalIndex, choice) {
+                setState(() {
+                  _selectedAnswers[originalIndex] = choice;
+                  final question = [
+                    ...quizData['readingQuestions'],
+                    ...quizData['listeningQuestions'],
+                  ].firstWhere(
+                    (q) => q['originalIndex'] == originalIndex,
+                    orElse: () => null,
+                  );
+                  if (question != null) {
+                    int displayNumber = question['displayNumber'];
+                    _attendedQuestions[displayNumber] = true;
+                  }
+                });
+              },
+              Function: (questionIndex, choice) {},
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update access count')),
+        );
+      }
+    } else {
       final quizData = await _quizDataFuture; // Wait for quiz data
       Navigator.push(
         context,
@@ -459,18 +510,45 @@ void _startQuiz(BuildContext context) async {
           ),
         ),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update access count')),
-      );
     }
-  } else {
+  }
+
+  void _navigateToQuestion(int displayNumber, BuildContext context) async {
+    if (!_hasStarted) {
+      bool incremented = true;
+      if (!widget.isAdmin && widget.userId.isNotEmpty) {
+        incremented = await _incrementAccessCount();
+      }
+      if (incremented) {
+        setState(() {
+          _hasStarted = true;
+        });
+        _timerManager.startTimer(
+          onTick: () {
+            setState(() {});
+          },
+          onTimeUp: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Time is up!')),
+            );
+          },
+          onSubmit: () {
+            _submitQuiz(context);
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update access count')),
+        );
+        return;
+      }
+    }
     final quizData = await _quizDataFuture; // Wait for quiz data
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => QuizQuestionPage(
-          questionNumber: 1,
+          questionNumber: displayNumber,
           quizSetId: widget.quizSetId,
           quizSetName: widget.quizSetName,
           folderId: widget.folderId,
@@ -506,79 +584,6 @@ void _startQuiz(BuildContext context) async {
       ),
     );
   }
-}
-
-void _navigateToQuestion(int displayNumber, BuildContext context) async {
-  if (!_hasStarted) {
-    bool incremented = true;
-    if (!widget.isAdmin && widget.userId.isNotEmpty) {
-      incremented = await _incrementAccessCount();
-    }
-    if (incremented) {
-      setState(() {
-        _hasStarted = true;
-      });
-      _timerManager.startTimer(
-        onTick: () {
-          setState(() {});
-        },
-        onTimeUp: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Time is up!')),
-          );
-        },
-        onSubmit: () {
-          _submitQuiz(context);
-        },
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update access count')),
-      );
-      return;
-    }
-  }
-  final quizData = await _quizDataFuture; // Wait for quiz data
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => QuizQuestionPage(
-        questionNumber: displayNumber,
-        quizSetId: widget.quizSetId,
-        quizSetName: widget.quizSetName,
-        folderId: widget.folderId,
-        folderName: widget.folderName,
-        userIdentifier: widget.isAdmin ? widget.userEmail : widget.userId,
-        isAdmin: widget.isAdmin,
-        selectedAnswers: _selectedAnswers,
-        cachedFiles: widget.cachedFiles,
-        quizData: quizData, // Pass fetched quiz data
-        onQuestionAttended: (displayNumber) {
-          setState(() {
-            _attendedQuestions[displayNumber] = true;
-          });
-        },
-        onAnswerSelected: (originalIndex, choice) {
-          setState(() {
-            _selectedAnswers[originalIndex] = choice;
-            final question = [
-              ...quizData['readingQuestions'],
-              ...quizData['listeningQuestions'],
-            ].firstWhere(
-              (q) => q['originalIndex'] == originalIndex,
-              orElse: () => null,
-            );
-            if (question != null) {
-              int displayNumber = question['displayNumber'];
-              _attendedQuestions[displayNumber] = true;
-            }
-          });
-        },
-        Function: (questionIndex, choice) {},
-      ),
-    ),
-  );
-}
 
   @override
   Widget build(BuildContext context) {
@@ -965,12 +970,11 @@ void _navigateToQuestion(int displayNumber, BuildContext context) async {
   }
 }
 
-
 class QuizQuestionPage extends StatefulWidget {
   final int questionNumber;
   final int quizSetId;
   final String quizSetName;
-  final int folderId;
+  final String folderId;
   final String folderName;
   final String userIdentifier;
   final bool isAdmin;
@@ -1016,7 +1020,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
   final List<Offset?> _mainPoints = [];
   final List<Offset?> _audioPoints = [];
   final List<Offset?> _choicePoints = [];
-  static const String baseUrl = 'https://theemaeducation.com/';
+  static const String baseUrl = '${BaseUrl.baseUrl}//';
   String? _currentAudioFile;
   List<int> displayNumbers = [];
   Map<int, int> displayNumberToIndex = {};
@@ -1073,6 +1077,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
     _audioPlayer.stop();
     _audioPlayer.dispose();
     _videoController?.dispose();
+    _questionStopwatch.stop();
+
     _stopQuestionTimer();
     super.dispose();
   }
@@ -1234,7 +1240,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
   }
 
   Future<void> _playAudio(String filePath) async {
-    final isLocal = widget.cachedFiles.containsKey(filePath) || !filePath.startsWith('http');
+    final isLocal = widget.cachedFiles.containsKey(filePath) ||
+        !filePath.startsWith('http');
     final source = isLocal
         ? DeviceFileSource(widget.cachedFiles[filePath] ?? filePath)
         : UrlSource(filePath);
@@ -1333,7 +1340,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 
   Widget _buildFileBox(String filePath) {
     if (filePath.isEmpty) return const SizedBox.shrink();
-    final fullUrl = filePath.startsWith('http') ? filePath : '$baseUrl$filePath';
+    final fullUrl =
+        filePath.startsWith('http') ? filePath : '$baseUrl$filePath';
     final localPath = widget.cachedFiles[fullUrl] ?? '';
     final fileExtension = filePath.split('.').last.toLowerCase();
     final fileName = filePath.split('/').last;
@@ -1383,13 +1391,16 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               icon: Icon(
                 _playedMedia.contains(filePath)
                     ? Icons.check
-                    : (_isAudioPlaying ? Icons.play_circle_filled : Icons.play_arrow),
+                    : (_isAudioPlaying
+                        ? Icons.play_circle_filled
+                        : Icons.play_arrow),
                 color: _isAudioPlaying ? Colors.grey : Colors.black54,
                 size: 20,
               ),
               onPressed: _playedMedia.contains(filePath) || _isAudioPlaying
                   ? null
-                  : () => _playAudio(localPath.isNotEmpty ? localPath : fullUrl),
+                  : () =>
+                      _playAudio(localPath.isNotEmpty ? localPath : fullUrl),
             ),
             Text(
               fileName,
@@ -1402,7 +1413,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           ] else ...[
             IconButton(
               icon: Icon(
-                _isAudioPlaying && _currentAudioFile == filePath ? Icons.pause : Icons.play_arrow,
+                _isAudioPlaying && _currentAudioFile == filePath
+                    ? Icons.pause
+                    : Icons.play_arrow,
                 color: Colors.black54,
                 size: 20,
               ),
@@ -1415,12 +1428,18 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.fast_rewind, color: Colors.black54, size: 20),
-              onPressed: _isAudioPlaying && _currentAudioFile == filePath ? _rewindAudio : null,
+              icon: const Icon(Icons.fast_rewind,
+                  color: Colors.black54, size: 20),
+              onPressed: _isAudioPlaying && _currentAudioFile == filePath
+                  ? _rewindAudio
+                  : null,
             ),
             IconButton(
-              icon: const Icon(Icons.fast_forward, color: Colors.black54, size: 20),
-              onPressed: _isAudioPlaying && _currentAudioFile == filePath ? _fastForwardAudio : null,
+              icon: const Icon(Icons.fast_forward,
+                  color: Colors.black54, size: 20),
+              onPressed: _isAudioPlaying && _currentAudioFile == filePath
+                  ? _fastForwardAudio
+                  : null,
             ),
             Text(
               fileName,
@@ -1471,9 +1490,12 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(4),
-            color: _playedMedia.contains(filePath) && !widget.isAdmin ? Colors.grey[400] : Colors.grey[200],
+            color: _playedMedia.contains(filePath) && !widget.isAdmin
+                ? Colors.grey[400]
+                : Colors.grey[200],
             boxShadow: const [
-              BoxShadow(color: Colors.black26, offset: Offset(0, 1), blurRadius: 1)
+              BoxShadow(
+                  color: Colors.black26, offset: Offset(0, 1), blurRadius: 1)
             ],
           ),
           child: Wrap(
@@ -1482,8 +1504,12 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
             alignment: WrapAlignment.start,
             children: [
               Icon(
-                _playedMedia.contains(filePath) && !widget.isAdmin ? Icons.check : Icons.play_circle_filled,
-                color: _playedMedia.contains(filePath) && !widget.isAdmin ? Colors.grey : Colors.black54,
+                _playedMedia.contains(filePath) && !widget.isAdmin
+                    ? Icons.check
+                    : Icons.play_circle_filled,
+                color: _playedMedia.contains(filePath) && !widget.isAdmin
+                    ? Colors.grey
+                    : Colors.black54,
                 size: 14,
               ),
               Flexible(
@@ -1491,7 +1517,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   fileName,
                   style: TextStyle(
                     fontSize: fontSize * 0.7,
-                    color: _playedMedia.contains(filePath) && !widget.isAdmin ? Colors.grey : Colors.black87,
+                    color: _playedMedia.contains(filePath) && !widget.isAdmin
+                        ? Colors.grey
+                        : Colors.black87,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1509,7 +1537,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           borderRadius: BorderRadius.circular(4),
           color: Colors.grey[200],
           boxShadow: const [
-            BoxShadow(color: Colors.black26, offset: Offset(0, 1), blurRadius: 1)
+            BoxShadow(
+                color: Colors.black26, offset: Offset(0, 1), blurRadius: 1)
           ],
         ),
         child: Wrap(
@@ -1521,7 +1550,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
             Flexible(
               child: Text(
                 fileName,
-                style: TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
+                style:
+                    TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1537,7 +1567,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           borderRadius: BorderRadius.circular(4),
           color: Colors.grey[200],
           boxShadow: const [
-            BoxShadow(color: Colors.black26, offset: Offset(0, 1), blurRadius: 1)
+            BoxShadow(
+                color: Colors.black26, offset: Offset(0, 1), blurRadius: 1)
           ],
         ),
         child: Wrap(
@@ -1549,7 +1580,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
             Flexible(
               child: Text(
                 fileName,
-                style: TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
+                style:
+                    TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1643,7 +1675,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                             ),
                           if (isLandscape) const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.red.shade700,
                               borderRadius: BorderRadius.circular(4),
@@ -1699,18 +1732,21 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                         offset: const Offset(0, -1))
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ElevatedButton(
-                      onPressed: isFirstQuestion || (!widget.isAdmin && _isAudioPlaying)
+                      onPressed: isFirstQuestion ||
+                              (!widget.isAdmin && _isAudioPlaying)
                           ? null
                           : _goToPreviousQuestion,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         disabledBackgroundColor: Colors.grey,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         minimumSize: Size(screenSize.width * 0.12, 34),
                       ),
                       child: Text(
@@ -1725,7 +1761,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
                         disabledBackgroundColor: Colors.grey,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         minimumSize: Size(screenSize.width * 0.15, 34),
                       ),
                       child: Text(
@@ -1734,13 +1771,16 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: isLastQuestion || (!widget.isAdmin && _isAudioPlaying)
-                          ? null
-                          : _goToNextQuestion,
+                      onPressed:
+                          isLastQuestion || (!widget.isAdmin && _isAudioPlaying)
+                              ? null
+                              : _goToNextQuestion,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isLastQuestion ? Colors.grey : Colors.blue,
+                        backgroundColor:
+                            isLastQuestion ? Colors.grey : Colors.blue,
                         disabledBackgroundColor: Colors.grey,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         minimumSize: Size(screenSize.width * 0.12, 34),
                       ),
                       child: Text(
@@ -1766,7 +1806,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                               }
                             });
                           },
-                          tooltip: _isDrawingMode ? 'Exit Drawing' : 'Enter Drawing',
+                          tooltip:
+                              _isDrawingMode ? 'Exit Drawing' : 'Enter Drawing',
                           child: Icon(
                               _isDrawingMode ? Icons.edit_off : Icons.edit,
                               size: 20),
@@ -1824,49 +1865,53 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
         : content;
   }
 
-Widget _buildFormattedText(String text, List<Map<String, dynamic>> formatting) {
-  final screenSize = MediaQuery.of(context).size;
-  final baseFontSize = screenSize.width < 1200 ? 14.0 : 16.0;
-  final adjustedFontSize = baseFontSize; // Changed from baseFontSize * 2
+  Widget _buildFormattedText(
+      String text, List<Map<String, dynamic>> formatting) {
+    final screenSize = MediaQuery.of(context).size;
+    final baseFontSize = screenSize.width < 1200 ? 14.0 : 16.0;
+    final adjustedFontSize = baseFontSize; // Changed from baseFontSize * 2
 
-  if (text.isEmpty) {
-    return const SizedBox.shrink();
-  }
+    if (text.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  if (formatting.isEmpty) {
-    return SelectableText(
-      text,
-      style: TextStyle(
-        fontSize: adjustedFontSize,
-        height: 1.3,
-        color: Colors.black87,
-      ),
+    if (formatting.isEmpty) {
+      return SelectableText(
+        text,
+        style: TextStyle(
+          fontSize: adjustedFontSize,
+          height: 1.3,
+          color: Colors.black87,
+        ),
+      );
+    }
+
+    List<TextSpan> spans = [];
+    List<String> words = text.split(' ');
+
+    for (int i = 0; i < words.length; i++) {
+      bool isBold =
+          i < formatting.length ? formatting[i]['bold'] ?? false : false;
+      bool isUnderline =
+          i < formatting.length ? formatting[i]['underline'] ?? false : false;
+
+      spans.add(TextSpan(
+        text: words[i] + (i < words.length - 1 ? ' ' : ''),
+        style: TextStyle(
+          fontSize: adjustedFontSize,
+          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          decoration:
+              isUnderline ? TextDecoration.underline : TextDecoration.none,
+          color: Colors.black87,
+          height: 1.3,
+        ),
+      ));
+    }
+
+    return SelectableText.rich(
+      TextSpan(children: spans),
     );
   }
-
-  List<TextSpan> spans = [];
-  List<String> words = text.split(' ');
-
-  for (int i = 0; i < words.length; i++) {
-    bool isBold = i < formatting.length ? formatting[i]['bold'] ?? false : false;
-    bool isUnderline = i < formatting.length ? formatting[i]['underline'] ?? false : false;
-
-    spans.add(TextSpan(
-      text: words[i] + (i < words.length - 1 ? ' ' : ''),
-      style: TextStyle(
-        fontSize: adjustedFontSize,
-        fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-        decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
-        color: Colors.black87,
-        height: 1.3,
-      ),
-    ));
-  }
-
-  return SelectableText.rich(
-    TextSpan(children: spans),
-  );
-}
 
   Widget _buildLeftSide() {
     final questionData = questions[currentQuestionIndex];
@@ -1988,18 +2033,25 @@ Widget _buildFormattedText(String text, List<Map<String, dynamic>> formatting) {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (var choice in ['A', 'B', 'C', 'D'])
-                    if (questions[currentQuestionIndex]['choices'][choice] != null)
+                    if (questions[currentQuestionIndex]['choices'][choice] !=
+                        null)
                       Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: widget.selectedAnswers[questions[currentQuestionIndex]['originalIndex']] == choice
+                            color: widget.selectedAnswers[
+                                        questions[currentQuestionIndex]
+                                            ['originalIndex']] ==
+                                    choice
                                 ? Colors.blue.shade400
                                 : Colors.grey.shade300,
                             width: 2,
                           ),
                           borderRadius: BorderRadius.circular(8),
-                          color: widget.selectedAnswers[questions[currentQuestionIndex]['originalIndex']] == choice
+                          color: widget.selectedAnswers[
+                                      questions[currentQuestionIndex]
+                                          ['originalIndex']] ==
+                                  choice
                               ? Colors.blue.shade50
                               : Colors.white,
                           boxShadow: [
@@ -2020,13 +2072,20 @@ Widget _buildFormattedText(String text, List<Map<String, dynamic>> formatting) {
                               children: [
                                 _buildChoiceBox(
                                   choice,
-                                  widget.selectedAnswers[questions[currentQuestionIndex]['originalIndex']] == choice,
+                                  widget.selectedAnswers[
+                                          questions[currentQuestionIndex]
+                                              ['originalIndex']] ==
+                                      choice,
                                 ),
-                                if (questions[currentQuestionIndex]['choices'][choice]['choice_file']?.isNotEmpty == true)
+                                if (questions[currentQuestionIndex]['choices']
+                                            [choice]['choice_file']
+                                        ?.isNotEmpty ==
+                                    true)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8),
                                     child: _buildFileBox(
-                                      questions[currentQuestionIndex]['choices'][choice]['choice_file'],
+                                      questions[currentQuestionIndex]['choices']
+                                          [choice]['choice_file'],
                                     ),
                                   ),
                               ],
@@ -2065,115 +2124,119 @@ Widget _buildFormattedText(String text, List<Map<String, dynamic>> formatting) {
     );
   }
 
-void _showFullImage(String imageUrl) {
-  List<Offset?> imagePoints = [];
-  bool isDrawingMode = _isDrawingMode;
-  setState(() {
-    _isDialogOpen = true;
-  });
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setDialogState) => Dialog.fullscreen(
-        child: Stack(
-          children: [
-            InteractiveViewer(
-              boundaryMargin: const EdgeInsets.all(20),
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: Center(
-                child: imageUrl.startsWith('http')
-                    ? Image.network(
-                        imageUrl,
-                        fit: BoxFit.contain,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(child: CircularProgressIndicator());
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          if (kDebugMode) print('Full image load error: $error');
-                          return const Icon(Icons.broken_image, size: 50);
-                        },
-                      )
-                    : Image.file(
-                        File(imageUrl),
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          if (kDebugMode) print('Full image load error: $error');
-                          return const Icon(Icons.broken_image, size: 50);
-                        },
-                      ),
-              ),
-            ),
-            if (widget.isAdmin && isDrawingMode)
-              GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (details) {
-                  setDialogState(() {
-                    imagePoints.add(details.localPosition);
-                  });
-                },
-                onPanUpdate: (details) {
-                  setDialogState(() {
-                    imagePoints.add(details.localPosition);
-                  });
-                },
-                onPanEnd: (details) {
-                  setDialogState(() {
-                    imagePoints.add(null);
-                  });
-                },
-                child: CustomPaint(painter: DrawingPainter(imagePoints)),
-              ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.black, size: 24),
-                onPressed: () {
-                  setState(() {
-                    _isDialogOpen = false;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-            if (widget.isAdmin)
-              Positioned(
-                bottom: 8,
-                right: 48,
-                child: IconButton(
-                  icon: Icon(isDrawingMode ? Icons.edit_off : Icons.edit,
-                      color: Colors.black, size: 24),
-                  onPressed: () {
-                    setDialogState(() {
-                      isDrawingMode = !isDrawingMode;
-                      if (!isDrawingMode) imagePoints.clear();
-                    });
-                  },
+  void _showFullImage(String imageUrl) {
+    List<Offset?> imagePoints = [];
+    bool isDrawingMode = _isDrawingMode;
+    setState(() {
+      _isDialogOpen = true;
+    });
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog.fullscreen(
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                boundaryMargin: const EdgeInsets.all(20),
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: imageUrl.startsWith('http')
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            if (kDebugMode)
+                              print('Full image load error: $error');
+                            return const Icon(Icons.broken_image, size: 50);
+                          },
+                        )
+                      : Image.file(
+                          File(imageUrl),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            if (kDebugMode)
+                              print('Full image load error: $error');
+                            return const Icon(Icons.broken_image, size: 50);
+                          },
+                        ),
                 ),
               ),
-            if (widget.isAdmin && isDrawingMode)
+              if (widget.isAdmin && isDrawingMode)
+                GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanStart: (details) {
+                    setDialogState(() {
+                      imagePoints.add(details.localPosition);
+                    });
+                  },
+                  onPanUpdate: (details) {
+                    setDialogState(() {
+                      imagePoints.add(details.localPosition);
+                    });
+                  },
+                  onPanEnd: (details) {
+                    setDialogState(() {
+                      imagePoints.add(null);
+                    });
+                  },
+                  child: CustomPaint(painter: DrawingPainter(imagePoints)),
+                ),
               Positioned(
-                bottom: 8,
+                top: 8,
                 right: 8,
                 child: IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.black, size: 24),
+                  icon: const Icon(Icons.close, color: Colors.black, size: 24),
                   onPressed: () {
-                    setDialogState(() {
-                      imagePoints.clear();
+                    setState(() {
+                      _isDialogOpen = false;
                     });
+                    Navigator.pop(context);
                   },
                 ),
               ),
-          ],
+              if (widget.isAdmin)
+                Positioned(
+                  bottom: 8,
+                  right: 48,
+                  child: IconButton(
+                    icon: Icon(isDrawingMode ? Icons.edit_off : Icons.edit,
+                        color: Colors.black, size: 24),
+                    onPressed: () {
+                      setDialogState(() {
+                        isDrawingMode = !isDrawingMode;
+                        if (!isDrawingMode) imagePoints.clear();
+                      });
+                    },
+                  ),
+                ),
+              if (widget.isAdmin && isDrawingMode)
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: IconButton(
+                    icon:
+                        const Icon(Icons.clear, color: Colors.black, size: 24),
+                    onPressed: () {
+                      setDialogState(() {
+                        imagePoints.clear();
+                      });
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-Widget _buildChoiceBox(String choice, bool isSelected) {
+  Widget _buildChoiceBox(String choice, bool isSelected) {
     final choiceNumber = {'A': 1, 'B': 2, 'C': 3, 'D': 4}[choice]!;
     final choiceData = questions[currentQuestionIndex]['choices'][choice];
     final screenSize = MediaQuery.of(context).size;
@@ -2197,7 +2260,8 @@ Widget _buildChoiceBox(String choice, bool isSelected) {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: (isSelected ? Colors.blue : Colors.grey).withOpacity(0.3),
+                  color:
+                      (isSelected ? Colors.blue : Colors.grey).withOpacity(0.3),
                   spreadRadius: 1,
                   blurRadius: 3,
                   offset: const Offset(0, 1),
@@ -2542,7 +2606,6 @@ class DrawingPainter extends CustomPainter {
   bool shouldRepaint(DrawingPainter oldDelegate) => true;
 }
 
-
 class SubmitPage extends StatelessWidget {
   final Map<int, String> selectedAnswers;
   final int quizSetId;
@@ -2551,7 +2614,7 @@ class SubmitPage extends StatelessWidget {
   final int totalQuestions;
   final int totalCorrect;
   final List<Map<String, String>> correctAnswersList;
-  final int folderId;
+  final String folderId;
   final String folderName;
   final String userIdentifier;
   final bool isAdmin;

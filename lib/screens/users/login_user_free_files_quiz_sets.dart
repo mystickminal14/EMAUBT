@@ -1,9 +1,12 @@
 import 'dart:io';
 
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/users/user_quiz_sets.dart';
+import 'package:ema_app/view_model/folders/folder_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_file/open_file.dart';
@@ -42,7 +45,11 @@ class _LoginUserFreeFilesQuizSetsState
   void initState() {
     super.initState();
     _initSharedPreferences();
-    _fetchFolders();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<FolderViewModel>(context, listen: false).fetchFolders();
+      }
+    });
   }
 
   Future<void> _initSharedPreferences() async {
@@ -53,40 +60,7 @@ class _LoginUserFreeFilesQuizSetsState
     });
   }
 
-  Future<void> _fetchFolders() async {
-    try {
-      final response =
-          await http.get(Uri.parse("https://theemaeducation.com/folders.php"));
-      if (response.statusCode == 200) {
-        List<Map<String, dynamic>> fetchedFolders =
-            List<Map<String, dynamic>>.from(json.decode(response.body));
-        setState(() {
-          folders = fetchedFolders.map((folder) {
-            return {
-              "id": int.tryParse(folder["id"].toString()) ?? 0,
-              "name": folder["name"],
-              "icon_path": folder["icon_path"],
-            };
-          }).toList();
-          _isLoading = false;
-          _errorMessage = null;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              "Failed to load folders: Server error (${response.statusCode})";
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = "Error loading folders: $e";
-      });
-    }
-  }
-
-  void _openFolder(int folderId, String folderName) {
+  void _openFolder(String folderId, String folderName) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -113,7 +87,7 @@ class _LoginUserFreeFilesQuizSetsState
           borderRadius: BorderRadius.circular(8),
           child: folder["icon_path"] != null
               ? Image.network(
-                  "https://theemaeducation.com/${folder["icon_path"]}",
+                  "${BaseUrl.baseUrl}/${folder["icon_path"]}",
                   width: 48,
                   height: 48,
                   fit: BoxFit.cover,
@@ -146,35 +120,50 @@ class _LoginUserFreeFilesQuizSetsState
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error_outline,
-                              size: 48, color: Colors.red),
-                          const SizedBox(height: 16),
-                          Text(_errorMessage!,
-                              style: const TextStyle(fontSize: 16)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _fetchFolders,
-                            child: const Text("Retry"),
-                          ),
-                        ],
+          child: Consumer<FolderViewModel>(
+            builder: (context, provider, child) {
+              if (provider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (provider.folders.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text('Something went wrong. No folders found.',
+                          style: const TextStyle(fontSize: 16)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          provider.fetchFolders(); // retry
+                        },
+                        child: const Text("Retry"),
                       ),
-                    )
-                  : folders.isEmpty
-                      ? const Center(
-                          child: Text("No folders available",
-                              style: TextStyle(fontSize: 18)))
-                      : ListView.builder(
-                          itemCount: folders.length,
-                          itemBuilder: (context, index) =>
-                              _buildFolderCard(folders[index]),
-                        ),
+                    ],
+                  ),
+                );
+              }
+
+              // if (provider.folders.isEmpty) {
+              //   return const Center(
+              //     child: Text("No folders available",
+              //         style: TextStyle(fontSize: 18)),
+              //   );
+              // }
+
+              return ListView.builder(
+                itemCount: provider.folders.length,
+                itemBuilder: (context, index) {
+                  final folder = provider.folders[index];
+                  return _buildFolderCard(folder.toJson());
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -182,7 +171,7 @@ class _LoginUserFreeFilesQuizSetsState
 }
 
 class FreeForLoginPage extends StatefulWidget {
-  final int folderId;
+  final String folderId;
   final String folderName;
   final String userIdentifier;
   final bool isAdmin;
@@ -220,7 +209,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Future<void> _fetchContent() async {
     try {
       final response = await http.get(Uri.parse(
-          'https://theemaeducation.com/give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}/give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
       final decodedResponse = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
@@ -416,7 +405,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   }
 
   Future<void> _handleFileTap(Map<String, dynamic> file) async {
-    final fileUrl = 'https://theemaeducation.com/${file['file_path']}';
+    final fileUrl = '${BaseUrl.baseUrl}/${file['file_path']}';
     final fileName = file['name'].toString();
     final fileType = _getFileType(fileName);
 
@@ -478,12 +467,11 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
       }
     }
   }
-  
 
   Widget _buildItemIcon(Map<String, dynamic> item, IconData defaultIcon) {
     if (item['icon_path'] != null && item['icon_path'].isNotEmpty) {
       return Image.network(
-        'https://theemaeducation.com/${item['icon_path']}',
+        '${BaseUrl.baseUrl}/${item['icon_path']}',
         width: 40,
         height: 40,
         fit: BoxFit.cover,
@@ -647,7 +635,9 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
                                               isAdmin: widget.isAdmin,
                                               userIdentifier:
                                                   widget.userIdentifier,
-                                              preStart: true, cachedFiles: {}, quizData: {},
+                                              preStart: true,
+                                              cachedFiles: {},
+                                              quizData: {},
                                             ),
                                           ),
                                         ).then((_) => _fetchContent());
@@ -729,4 +719,3 @@ class TextViewerPage extends StatelessWidget {
     );
   }
 }
-

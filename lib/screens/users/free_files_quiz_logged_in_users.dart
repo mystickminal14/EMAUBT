@@ -1,13 +1,15 @@
 // import 'package:ema_app/admin_folder_detail_page.dart'; // This import might not be needed anymore if FolderDetailPage is replaced everywhere
 import 'dart:async';
 
+import 'package:ema_app/constants/base_url.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_file/open_file.dart';
-import 'package:flutter/foundation.dart' show kIsWeb; // Keep kIsWeb for file opening logic
+import 'package:flutter/foundation.dart'
+    show kIsWeb; // Keep kIsWeb for file opening logic
 import 'dart:io' show File, Platform;
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 
@@ -15,10 +17,12 @@ class FreeFilesQuizLoggedInUsersPage extends StatefulWidget {
   const FreeFilesQuizLoggedInUsersPage({super.key});
 
   @override
-  _FreeFilesQuizLoggedInUsersPageState createState() => _FreeFilesQuizLoggedInUsersPageState();
+  _FreeFilesQuizLoggedInUsersPageState createState() =>
+      _FreeFilesQuizLoggedInUsersPageState();
 }
 
-class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUsersPage> {
+class _FreeFilesQuizLoggedInUsersPageState
+    extends State<FreeFilesQuizLoggedInUsersPage> {
   List<Map<String, dynamic>> folders = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -31,9 +35,11 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
 
   Future<void> _fetchFolders() async {
     try {
-      final response = await http.get(Uri.parse("https://theemaeducation.com/folders.php"));
+      final response =
+          await http.get(Uri.parse("${BaseUrl.baseUrl}//folders.php"));
       if (response.statusCode == 200) {
-        List<Map<String, dynamic>> fetchedFolders = List<Map<String, dynamic>>.from(json.decode(response.body));
+        List<Map<String, dynamic>> fetchedFolders =
+            List<Map<String, dynamic>>.from(json.decode(response.body));
         setState(() {
           folders = fetchedFolders.map((folder) {
             return {
@@ -48,7 +54,8 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage = "Failed to load folders: Server error (${response.statusCode})";
+          _errorMessage =
+              "Failed to load folders: Server error (${response.statusCode})";
         });
       }
     } catch (e) {
@@ -59,15 +66,16 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
     }
   }
 
-  void _openFolder(int folderId, String folderName) {
+  void _openFolder(String folderId, String folderName) {
     // Navigate to FreeForLoginPage
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FreeForLoginPage( // <--- Still navigating to FreeForLoginPage
-           folderId: folderId, // Pass data to the new page
-           folderName: folderName, // Pass data to the new page
-         ),
+        builder: (context) => FreeForLoginPage(
+          // <--- Still navigating to FreeForLoginPage
+          folderId: folderId, // Pass data to the new page
+          folderName: folderName, // Pass data to the new page
+        ),
       ),
     );
   }
@@ -94,12 +102,13 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
             ),
             child: folder["icon_path"] != null
                 ? Image.network(
-                    "https://theemaeducation.com/${folder["icon_path"]}",
+                    "${BaseUrl.baseUrl}//${folder["icon_path"]}",
                     width: 48,
                     height: 48,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.folder, size: 48, color: Colors.blue);
+                      return const Icon(Icons.folder,
+                          size: 48, color: Colors.blue);
                     },
                   )
                 : const Icon(Icons.folder, size: 48, color: Colors.blue),
@@ -115,7 +124,8 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
             ),
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        trailing:
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         onTap: () => _openFolder(folder["id"], folder["name"]),
       ),
     );
@@ -130,7 +140,8 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
         backgroundColor: Colors.blue[700],
         title: const Text(
           "Free Files & Quiz for Logged-in Users",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
       ),
@@ -140,9 +151,11 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
+                    CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
                     SizedBox(height: 16),
-                    Text("Loading folders...", style: TextStyle(fontSize: 16, color: Colors.black54)),
+                    Text("Loading folders...",
+                        style: TextStyle(fontSize: 16, color: Colors.black54)),
                   ],
                 ),
               )
@@ -151,21 +164,25 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const Icon(Icons.error_outline,
+                            size: 48, color: Colors.red),
                         const SizedBox(height: 16),
                         Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16, color: Colors.black54),
+                          style: const TextStyle(
+                              fontSize: 16, color: Colors.black54),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _fetchFolders,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue[600],
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text("Retry", style: TextStyle(color: Colors.white)),
+                          child: const Text("Retry",
+                              style: TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
@@ -185,10 +202,14 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
                             children: [
                               const Text(
                                 "Folders",
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87),
                               ),
                               const SizedBox(height: 8),
-                              ...folders.map((folder) => _buildFolderCard(folder)),
+                              ...folders
+                                  .map((folder) => _buildFolderCard(folder)),
                             ],
                           ),
                         ),
@@ -199,10 +220,11 @@ class _FreeFilesQuizLoggedInUsersPageState extends State<FreeFilesQuizLoggedInUs
 }
 
 class FreeForLoginPage extends StatefulWidget {
-  final int folderId;
+  final String folderId;
   final String folderName;
 
-  const FreeForLoginPage({super.key, required this.folderId, required this.folderName});
+  const FreeForLoginPage(
+      {super.key, required this.folderId, required this.folderName});
 
   @override
   _FreeForLoginPageState createState() => _FreeForLoginPageState();
@@ -251,10 +273,11 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Future<void> _fetchFiles() async {
     try {
       var response = await http.get(Uri.parse(
-          'https://theemaeducation.com/folder_details_page.php?action=get_files&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}/folder_details_page.php?action=get_files&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && decodedResponse['status'] == 'success') {
+      if (response.statusCode == 200 &&
+          decodedResponse['status'] == 'success') {
         setState(() {
           files = List<Map<String, dynamic>>.from(decodedResponse['data'])
               .map((file) => {...file, 'id': int.parse(file['id'].toString())})
@@ -265,65 +288,71 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
         // Optionally set an error message specific to this fetch if needed
       }
     } catch (e) {
-       print('Error fetching files: $e');
+      print('Error fetching files: $e');
     }
   }
 
   Future<void> _fetchQuizSets() async {
     try {
       var response = await http.get(Uri.parse(
-          'https://theemaeducation.com/folder_details_page.php?action=get_quiz_sets&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}//folder_details_page.php?action=get_quiz_sets&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && decodedResponse['status'] == 'success') {
+      if (response.statusCode == 200 &&
+          decodedResponse['status'] == 'success') {
         setState(() {
           quizSets = List<Map<String, dynamic>>.from(decodedResponse['data'])
-              .map((quizSet) => {...quizSet, 'id': int.parse(quizSet['id'].toString())})
+              .map((quizSet) =>
+                  {...quizSet, 'id': int.parse(quizSet['id'].toString())})
               .toList();
         });
       } else {
         print('Failed to fetch quiz sets: ${decodedResponse['message']}');
       }
     } catch (e) {
-       print('Error fetching quiz sets: $e');
+      print('Error fetching quiz sets: $e');
     }
   }
 
   Future<void> _fetchGrantedAccessItems() async {
     try {
-       // *** Make sure this URL points to your give_access_to_login_users.php file ***
+      // *** Make sure this URL points to your give_access_to_login_users.php file ***
       var response = await http.get(Uri.parse(
-          'https://theemaeducation.com/give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}//give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && decodedResponse['status'] == 'success') {
+      if (response.statusCode == 200 &&
+          decodedResponse['status'] == 'success') {
         setState(() {
-          grantedAccessItems = List<Map<String, dynamic>>.from(decodedResponse['data'])
-               // Assuming your backend includes 'item_type' and 'id' for each item
+          grantedAccessItems = List<Map<String, dynamic>>.from(
+                  decodedResponse['data'])
+              // Assuming your backend includes 'item_type' and 'id' for each item
               .map((item) => {
-                ...item,
-                'id': int.parse(item['id'].toString()),
-                'item_type': item['item_type'] // Assuming item_type is returned by the backend
-              })
+                    ...item,
+                    'id': int.parse(item['id'].toString()),
+                    'item_type': item[
+                        'item_type'] // Assuming item_type is returned by the backend
+                  })
               .toList();
         });
       } else {
-        print('Failed to fetch granted access items: ${decodedResponse['message']}');
-         // setState(() { // Optionally handle the error message specifically for this fetch
-         //   _errorMessage = "Error fetching granted access items: ${decodedResponse['message']}";
-         // });
+        print(
+            'Failed to fetch granted access items: ${decodedResponse['message']}');
+        // setState(() { // Optionally handle the error message specifically for this fetch
+        //   _errorMessage = "Error fetching granted access items: ${decodedResponse['message']}";
+        // });
       }
     } catch (e) {
-       print('Error fetching granted access items: $e');
-       // Optionally set an error message specific to this fetch if needed
+      print('Error fetching granted access items: $e');
+      // Optionally set an error message specific to this fetch if needed
     }
   }
-
 
   // Function to call the backend to grant access to an item
   Future<void> _giveAccess(String itemType, int itemId) async {
     try {
-      var uri = Uri.parse('https://theemaeducation.com/give_access_to_login_users.php?action=give_access');
+      var uri = Uri.parse(
+          '${BaseUrl.baseUrl}//give_access_to_login_users.php?action=give_access');
       var response = await http.post(uri, body: {
         'item_type': itemType,
         'item_id': itemId.toString(),
@@ -341,8 +370,8 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Access granted successfully')),
         );
-         // Re-fetch content after granting access to update the lists
-         _fetchContent();
+        // Re-fetch content after granting access to update the lists
+        _fetchContent();
       } else {
         throw Exception(decodedResponse['message'] ?? 'Unknown error');
       }
@@ -356,7 +385,8 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
     } catch (e) {
       String errorMsg = 'Failed to grant access: $e';
       if (e.toString().contains('Failed to fetch')) {
-        errorMsg = 'Failed to connect to server. Please check your network or server status.';
+        errorMsg =
+            'Failed to connect to server. Please check your network or server status.';
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -367,10 +397,11 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
     }
   }
 
-   // *** NEW: Function to call the backend to revoke access to an item ***
+  // *** NEW: Function to call the backend to revoke access to an item ***
   Future<void> _revokeAccess(String itemType, int itemId) async {
     try {
-      var uri = Uri.parse('https://theemaeducation.com/give_access_to_login_users.php?action=revoke_access');
+      var uri = Uri.parse(
+          '${BaseUrl.baseUrl}//give_access_to_login_users.php?action=revoke_access');
       var response = await http.post(uri, body: {
         'item_type': itemType,
         'item_id': itemId.toString(),
@@ -388,8 +419,8 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Access revoked successfully')),
         );
-         // Re-fetch content after revoking access to update the lists
-         _fetchContent();
+        // Re-fetch content after revoking access to update the lists
+        _fetchContent();
       } else {
         throw Exception(decodedResponse['message'] ?? 'Unknown error');
       }
@@ -403,7 +434,8 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
     } catch (e) {
       String errorMsg = 'Failed to revoke access: $e';
       if (e.toString().contains('Failed to fetch')) {
-        errorMsg = 'Failed to connect to server. Please check your network or server status.';
+        errorMsg =
+            'Failed to connect to server. Please check your network or server status.';
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -414,107 +446,122 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
     }
   }
 
-
   // Helper to build item icons (remains the same)
   Widget _buildItemIcon(Map<String, dynamic> item, IconData defaultIcon) {
     if (item['icon_path'] != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.network(
-          'https://theemaeducation.com/${item['icon_path']}',
+          '${BaseUrl.baseUrl}//${item['icon_path']}',
           width: 40,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Icon(defaultIcon, size: 40, color: Colors.grey),
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(defaultIcon, size: 40, color: Colors.grey),
         ),
       );
     }
     return Icon(defaultIcon, size: 40, color: Colors.grey);
   }
 
- Future<void> _openFile(Map<String, dynamic> file) async {
-  final fileUrl = 'https://theemaeducation.com/${file['file_path']}';
-  final fileName = file['name'].toString().toLowerCase();
-  final isDocument = fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.txt');
+  Future<void> _openFile(Map<String, dynamic> file) async {
+    final fileUrl = '${BaseUrl.baseUrl}//${file['file_path']}';
+    final fileName = file['name'].toString().toLowerCase();
+    final isDocument = fileName.endsWith('.pdf') ||
+        fileName.endsWith('.docx') ||
+        fileName.endsWith('.txt');
 
-  if (isDocument) {
-    try {
-      // Download the file
-      final response = await http.get(Uri.parse(fileUrl));
-      if (response.statusCode != 200) {
-        throw Exception('Failed to download file');
-      }
+    if (isDocument) {
+      try {
+        // Download the file
+        final response = await http.get(Uri.parse(fileUrl));
+        if (response.statusCode != 200) {
+          throw Exception('Failed to download file');
+        }
 
-      // Save file temporarily
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/${file['name']}');
-      await tempFile.writeAsBytes(response.bodyBytes);
+        // Save file temporarily
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File('${tempDir.path}/${file['name']}');
+        await tempFile.writeAsBytes(response.bodyBytes);
 
-      if (fileName.endsWith('.pdf')) {
-        // Open PDF in-app using flutter_pdfview
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PDFViewerPage(filePath: tempFile.path, fileName: file['name']),
-          ),
-        );
-      } else if (fileName.endsWith('.txt')) {
-        // Handle TXT files by reading and displaying content
-        final content = await tempFile.readAsString();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TextViewerPage(content: content, fileName: file['name']),
-          ),
-        );
-      } else {
-        // Fallback for other document types (e.g., DOCX)
+        if (fileName.endsWith('.pdf')) {
+          // Open PDF in-app using flutter_pdfview
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PDFViewerPage(
+                  filePath: tempFile.path, fileName: file['name']),
+            ),
+          );
+        } else if (fileName.endsWith('.txt')) {
+          // Handle TXT files by reading and displaying content
+          final content = await tempFile.readAsString();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  TextViewerPage(content: content, fileName: file['name']),
+            ),
+          );
+        } else {
+          // Fallback for other document types (e.g., DOCX)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text('Cannot open ${file['name']} in-app, downloading...')),
+          );
+          await _openFileExternally(tempFile.path, file['name']);
+        }
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cannot open ${file['name']} in-app, downloading...')),
+          SnackBar(
+              content: Text('Error opening ${file['name']}: $e'),
+              backgroundColor: Colors.redAccent),
         );
-        await _openFileExternally(tempFile.path, file['name']);
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error opening ${file['name']}: $e'), backgroundColor: Colors.redAccent),
-      );
+    } else {
+      // Non-document files (e.g., images, videos) open externally
+      await _openFileExternally(fileUrl, file['name']);
     }
-  } else {
-    // Non-document files (e.g., images, videos) open externally
-    await _openFileExternally(fileUrl, file['name']);
   }
-}
 
-Future<void> _openFileExternally(String filePath, String fileName) async {
-  if (kIsWeb) {
-    final uri = Uri.parse(filePath);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _openFileExternally(String filePath, String fileName) async {
+    if (kIsWeb) {
+      final uri = Uri.parse(filePath);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Could not open file: $fileName'),
+              backgroundColor: Colors.redAccent),
+        );
+      }
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        final result = await OpenFile.open(filePath);
+        if (result.type != ResultType.done) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Could not open file: $fileName'),
+                backgroundColor: Colors.redAccent),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error opening file: $fileName'),
+              backgroundColor: Colors.redAccent),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open file: $fileName'), backgroundColor: Colors.redAccent),
+        SnackBar(
+            content: Text('File opening not supported on this platform'),
+            backgroundColor: Colors.redAccent),
       );
     }
-  } else if (Platform.isAndroid || Platform.isIOS) {
-    try {
-      final result = await OpenFile.open(filePath);
-      if (result.type != ResultType.done) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open file: $fileName'), backgroundColor: Colors.redAccent),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error opening file: $fileName'), backgroundColor: Colors.redAccent),
-      );
-    }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('File opening not supported on this platform'), backgroundColor: Colors.redAccent),
-    );
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -527,10 +574,10 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
         .where((item) => item['item_type'] == 'quiz_set')
         .toList();
 
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.folderName, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(widget.folderName,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.green,
       ),
       body: _isLoading
@@ -540,12 +587,14 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
                       const SizedBox(height: 16),
                       Text(
                         _errorMessage!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16, color: Colors.black54),
+                        style: const TextStyle(
+                            fontSize: 16, color: Colors.black54),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -555,8 +604,12 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                     ],
                   ),
                 )
-              : (files.isEmpty && quizSets.isEmpty && grantedAccessItems.isEmpty)
-                  ? const Center(child: Text("No content available in this folder.", style: TextStyle(color: Colors.grey, fontSize: 16)))
+              : (files.isEmpty &&
+                      quizSets.isEmpty &&
+                      grantedAccessItems.isEmpty)
+                  ? const Center(
+                      child: Text("No content available in this folder.",
+                          style: TextStyle(color: Colors.grey, fontSize: 16)))
                   : SingleChildScrollView(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -567,7 +620,8 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                             if (files.isNotEmpty) ...[
                               const Text(
                                 "All Files", // Changed title for clarity
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 8),
                               ListView.builder(
@@ -578,14 +632,20 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                                   final file = files[index];
                                   return Card(
                                     elevation: 1,
-                                    margin: const EdgeInsets.symmetric(vertical: 4.0),
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 4.0),
                                     child: ListTile(
-                                      leading: _buildItemIcon(file, Icons.insert_drive_file),
+                                      leading: _buildItemIcon(
+                                          file, Icons.insert_drive_file),
                                       title: Text(file['name']),
-                                      onTap: () => _openFile(file), // Tapping opens the file
-                                      trailing: IconButton( // Button to grant access
-                                        icon: const Icon(Icons.lock_open, color: Colors.green),
-                                        onPressed: () => _giveAccess('file', file['id']),
+                                      onTap: () => _openFile(
+                                          file), // Tapping opens the file
+                                      trailing: IconButton(
+                                        // Button to grant access
+                                        icon: const Icon(Icons.lock_open,
+                                            color: Colors.green),
+                                        onPressed: () =>
+                                            _giveAccess('file', file['id']),
                                         tooltip: 'Give access to login users',
                                       ),
                                     ),
@@ -599,7 +659,8 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                             if (quizSets.isNotEmpty) ...[
                               const Text(
                                 "All Quiz Sets", // Changed title for clarity
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 8),
                               ListView.builder(
@@ -610,18 +671,26 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                                   final quizSet = quizSets[index];
                                   return Card(
                                     elevation: 1,
-                                    margin: const EdgeInsets.symmetric(vertical: 4.0),
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 4.0),
                                     child: ListTile(
-                                      leading: _buildItemIcon(quizSet, Icons.quiz),
+                                      leading:
+                                          _buildItemIcon(quizSet, Icons.quiz),
                                       title: Text(quizSet['name']),
                                       onTap: () {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                           SnackBar(content: Text('Navigate to Quiz Set: ${quizSet['name']}')),
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Navigate to Quiz Set: ${quizSet['name']}')),
                                         );
                                       },
-                                      trailing: IconButton( // Button to grant access
-                                        icon: const Icon(Icons.lock_open, color: Colors.green),
-                                        onPressed: () => _giveAccess('quiz_set', quizSet['id']),
+                                      trailing: IconButton(
+                                        // Button to grant access
+                                        icon: const Icon(Icons.lock_open,
+                                            color: Colors.green),
+                                        onPressed: () => _giveAccess(
+                                            'quiz_set', quizSet['id']),
                                         tooltip: 'Give access to login users',
                                       ),
                                     ),
@@ -635,7 +704,8 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                             if (grantedAccessFiles.isNotEmpty) ...[
                               const Text(
                                 "Files (Granted Access)",
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 8),
                               ListView.builder(
@@ -646,14 +716,21 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                                   final file = grantedAccessFiles[index];
                                   return Card(
                                     elevation: 1,
-                                    margin: const EdgeInsets.symmetric(vertical: 4.0),
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 4.0),
                                     child: ListTile(
-                                      leading: _buildItemIcon(file, Icons.insert_drive_file),
+                                      leading: _buildItemIcon(
+                                          file, Icons.insert_drive_file),
                                       title: Text(file['name']),
-                                      onTap: () => _openFile(file), // Tapping opens the file
-                                      trailing: IconButton( // Button to revoke access
-                                        icon: const Icon(Icons.lock, color: Colors.red), // Use a lock/delete icon
-                                        onPressed: () => _revokeAccess('file', file['id']), // Call revoke function
+                                      onTap: () => _openFile(
+                                          file), // Tapping opens the file
+                                      trailing: IconButton(
+                                        // Button to revoke access
+                                        icon: const Icon(Icons.lock,
+                                            color: Colors
+                                                .red), // Use a lock/delete icon
+                                        onPressed: () => _revokeAccess('file',
+                                            file['id']), // Call revoke function
                                         tooltip: 'Revoke access',
                                       ),
                                     ),
@@ -663,11 +740,12 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                               const SizedBox(height: 20),
                             ],
 
-                             // --- Section for Granted Access Quiz Sets ---
+                            // --- Section for Granted Access Quiz Sets ---
                             if (grantedAccessQuizSets.isNotEmpty) ...[
                               const Text(
                                 "Quiz Sets (Granted Access)",
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 8),
                               ListView.builder(
@@ -678,18 +756,29 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
                                   final quizSet = grantedAccessQuizSets[index];
                                   return Card(
                                     elevation: 1,
-                                    margin: const EdgeInsets.symmetric(vertical: 4.0),
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 4.0),
                                     child: ListTile(
-                                      leading: _buildItemIcon(quizSet, Icons.quiz),
+                                      leading:
+                                          _buildItemIcon(quizSet, Icons.quiz),
                                       title: Text(quizSet['name']),
                                       onTap: () {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                           SnackBar(content: Text('Navigate to Quiz Set: ${quizSet['name']}')),
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Navigate to Quiz Set: ${quizSet['name']}')),
                                         );
                                       },
-                                       trailing: IconButton( // Button to revoke access
-                                        icon: const Icon(Icons.lock, color: Colors.red), // Use a lock/delete icon
-                                        onPressed: () => _revokeAccess('quiz_set', quizSet['id']), // Call revoke function
+                                      trailing: IconButton(
+                                        // Button to revoke access
+                                        icon: const Icon(Icons.lock,
+                                            color: Colors
+                                                .red), // Use a lock/delete icon
+                                        onPressed: () => _revokeAccess(
+                                            'quiz_set',
+                                            quizSet[
+                                                'id']), // Call revoke function
                                         tooltip: 'Revoke access',
                                       ),
                                     ),
@@ -705,12 +794,14 @@ Future<void> _openFileExternally(String filePath, String fileName) async {
     );
   }
 }
+
 // PDF Viewer Page
 class PDFViewerPage extends StatelessWidget {
   final String filePath;
   final String fileName;
 
-  const PDFViewerPage({super.key, required this.filePath, required this.fileName});
+  const PDFViewerPage(
+      {super.key, required this.filePath, required this.fileName});
 
   @override
   Widget build(BuildContext context) {
@@ -727,7 +818,9 @@ class PDFViewerPage extends StatelessWidget {
         pageFling: true,
         onError: (error) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error loading PDF: $error'), backgroundColor: Colors.redAccent),
+            SnackBar(
+                content: Text('Error loading PDF: $error'),
+                backgroundColor: Colors.redAccent),
           );
         },
       ),
@@ -740,7 +833,8 @@ class TextViewerPage extends StatelessWidget {
   final String content;
   final String fileName;
 
-  const TextViewerPage({super.key, required this.content, required this.fileName});
+  const TextViewerPage(
+      {super.key, required this.content, required this.fileName});
 
   @override
   Widget build(BuildContext context) {

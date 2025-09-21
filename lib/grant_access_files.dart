@@ -1,4 +1,4 @@
-
+import 'package:ema_app/constants/base_url.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -44,7 +44,8 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
-        Uri.parse('https://theemaeducation.com/folder_details_page.php?action=get_all_files'),
+        Uri.parse(
+            '${BaseUrl.baseUrl}folder_details_page.php?action=get_all_files'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
@@ -83,7 +84,8 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
-        Uri.parse('https://theemaeducation.com/folder_details_page.php?action=get_all_quiz_sets'),
+        Uri.parse(
+            '${BaseUrl.baseUrl}//folder_details_page.php?action=get_all_quiz_sets'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
@@ -97,7 +99,8 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
 
         final data = jsonDecode(response.body);
         if (data['status'] == "success") {
-          List<Map<String, dynamic>> allQuizSets = List<Map<String, dynamic>>.from(data['data']).map((quizSet) {
+          List<Map<String, dynamic>> allQuizSets =
+              List<Map<String, dynamic>>.from(data['data']).map((quizSet) {
             quizSet['id'] = int.parse(quizSet['id'].toString());
             return quizSet;
           }).toList();
@@ -133,7 +136,7 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
         return;
       }
 
-      final uri = Uri.parse('https://theemaeducation.com/grant_file_access.php')
+      final uri = Uri.parse('${BaseUrl.baseUrl}//grant_file_access.php')
           .replace(queryParameters: {
         'action': 'get_access_permissions',
         'identifier': email,
@@ -162,10 +165,12 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
           final data = jsonDecode(response.body);
           if (data['status'] == "success") {
             setState(() {
-              accessPermissions = List<Map<String, dynamic>>.from(data['data'] ?? []);
+              accessPermissions =
+                  List<Map<String, dynamic>>.from(data['data'] ?? []);
             });
           } else {
-            _showErrorSnackBar('Error fetching access permissions: ${data['message']}');
+            _showErrorSnackBar(
+                'Error fetching access permissions: ${data['message']}');
           }
         } catch (jsonError) {
           debugPrint('JSON decode error: $jsonError');
@@ -203,7 +208,9 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
     }
     for (var quizSet in quizSets) {
       if (_selectedQuizSets[quizSet['id']] == true) {
-        if (quizSet['folder_id'] == 1 && quizSets.isNotEmpty && quizSet['id'] == quizSets[0]['id']) {
+        if (quizSet['folder_id'] == 1 &&
+            quizSets.isNotEmpty &&
+            quizSet['id'] == quizSets[0]['id']) {
           continue;
         }
         selectedItems.add({'item_id': quizSet['id'], 'item_type': 'quiz_set'});
@@ -218,7 +225,7 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
 
     try {
       final response = await http.post(
-        Uri.parse("https://theemaeducation.com/grant_file_access.php"),
+        Uri.parse("${BaseUrl.baseUrl}//grant_file_access.php"),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
@@ -258,15 +265,17 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
     }
   }
 
-  Future<void> _deleteAccessPermission(int itemId, String itemType, String identifier) async {
+  Future<void> _deleteAccessPermission(
+      int itemId, String itemType, String identifier) async {
     if (_isLoading) return;
-    
+
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Deletion'),
-        content: Text('Are you sure you want to remove access to this $itemType?'),
+        content:
+            Text('Are you sure you want to remove access to this $itemType?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -287,7 +296,7 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
 
     try {
       final response = await http.post(
-        Uri.parse("https://theemaeducation.com/grant_file_access.php"),
+        Uri.parse("${BaseUrl.baseUrl}//grant_file_access.php"),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
@@ -355,11 +364,12 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
       return ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: Image.network(
-          'https://theemaeducation.com/${item['icon_path']}',
+          '${BaseUrl.baseUrl}//${item['icon_path']}',
           width: 40,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Icon(defaultIcon, size: 40, color: Colors.grey),
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(defaultIcon, size: 40, color: Colors.grey),
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return SizedBox(
@@ -368,7 +378,8 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
               child: Center(
                 child: CircularProgressIndicator(
                   value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
                       : null,
                   strokeWidth: 2,
                 ),
@@ -382,7 +393,9 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
   }
 
   bool _isFirstQuizSetInFirstFolder(Map<String, dynamic> quizSet) {
-    return quizSet['folder_id'] == 1 && quizSets.isNotEmpty && quizSet['id'] == quizSets[0]['id'];
+    return quizSet['folder_id'] == 1 &&
+        quizSets.isNotEmpty &&
+        quizSet['id'] == quizSets[0]['id'];
   }
 
   @override
@@ -410,10 +423,12 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                           children: [
                             Text(
                               '${widget.isAdmin ? 'Admin' : 'User'}: ${widget.entity['full_name'] ?? 'Unknown'}',
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
-                            Text('Email: ${widget.entity['email'] ?? 'No email provided'}'),
+                            Text(
+                                'Email: ${widget.entity['email'] ?? 'No email provided'}'),
                           ],
                         ),
                       ),
@@ -430,7 +445,9 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Files', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Files',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     files.isEmpty
                         ? const Card(
@@ -449,16 +466,20 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                                 child: CheckboxListTile(
                                   value: _selectedFiles[file['id']] ?? false,
                                   onChanged: (bool? value) {
-                                    setState(() => _selectedFiles[file['id']] = value ?? false);
+                                    setState(() => _selectedFiles[file['id']] =
+                                        value ?? false);
                                   },
                                   title: Text(file['name'] ?? 'Unnamed File'),
-                                  secondary: _buildItemIcon(file, Icons.insert_drive_file),
+                                  secondary: _buildItemIcon(
+                                      file, Icons.insert_drive_file),
                                 ),
                               );
                             },
                           ),
                     const Divider(),
-                    const Text('Quiz Sets', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Quiz Sets',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     quizSets.isEmpty
                         ? const Card(
@@ -473,14 +494,18 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                             itemCount: quizSets.length,
                             itemBuilder: (context, index) {
                               final quizSet = quizSets[index];
-                              final isFree = _isFirstQuizSetInFirstFolder(quizSet);
+                              final isFree =
+                                  _isFirstQuizSetInFirstFolder(quizSet);
                               return Card(
                                 child: CheckboxListTile(
-                                  value: _selectedQuizSets[quizSet['id']] ?? false,
+                                  value:
+                                      _selectedQuizSets[quizSet['id']] ?? false,
                                   onChanged: isFree
                                       ? null
                                       : (bool? value) {
-                                          setState(() => _selectedQuizSets[quizSet['id']] = value ?? false);
+                                          setState(() =>
+                                              _selectedQuizSets[quizSet['id']] =
+                                                  value ?? false);
                                         },
                                   title: Text(
                                     quizSet['name'] ?? 'Unnamed Quiz Set',
@@ -488,13 +513,15 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                                       color: isFree ? Colors.grey : null,
                                     ),
                                   ),
-                                  subtitle: isFree 
+                                  subtitle: isFree
                                       ? const Text(
                                           'Free for all (Folder 1, First Quiz)',
-                                          style: TextStyle(color: Colors.orange),
-                                        ) 
+                                          style:
+                                              TextStyle(color: Colors.orange),
+                                        )
                                       : null,
-                                  secondary: _buildItemIcon(quizSet, Icons.quiz),
+                                  secondary:
+                                      _buildItemIcon(quizSet, Icons.quiz),
                                   enabled: !isFree,
                                 ),
                               );
@@ -506,11 +533,13 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                       child: ElevatedButton.icon(
                         onPressed: _isLoading
                             ? null
-                            : () => _grantFileAccess(widget.entity['email'] ?? ''),
+                            : () =>
+                                _grantFileAccess(widget.entity['email'] ?? ''),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -536,7 +565,8 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                       children: [
                         const Text(
                           'Current Access Permissions',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         IconButton(
                           onPressed: _fetchAccessPermissions,
@@ -565,45 +595,58 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                             itemCount: accessPermissions.length,
                             itemBuilder: (context, index) {
                               final permission = accessPermissions[index];
-                              final itemType = permission['item_type'] == 'file' ? 'File' : 'Quiz Set';
-                              final itemName = permission['item_name'] ?? 'Unnamed $itemType';
-                              final accessTimes = permission['access_times'] == -1 
-                                  ? 'Unlimited' 
-                                  : permission['access_times'].toString();
-                              final timesAccessed = permission['times_accessed'].toString();
-                              final isDeletable = permission['access_times'] != -1;
-                              
+                              final itemType = permission['item_type'] == 'file'
+                                  ? 'File'
+                                  : 'Quiz Set';
+                              final itemName = permission['item_name'] ??
+                                  'Unnamed $itemType';
+                              final accessTimes =
+                                  permission['access_times'] == -1
+                                      ? 'Unlimited'
+                                      : permission['access_times'].toString();
+                              final timesAccessed =
+                                  permission['times_accessed'].toString();
+                              final isDeletable =
+                                  permission['access_times'] != -1;
+
                               return Card(
                                 margin: const EdgeInsets.symmetric(vertical: 4),
                                 child: ListTile(
                                   leading: CircleAvatar(
-                                    backgroundColor: permission['item_type'] == 'file' 
-                                        ? Colors.blue.withOpacity(0.1)
-                                        : Colors.green.withOpacity(0.1),
+                                    backgroundColor:
+                                        permission['item_type'] == 'file'
+                                            ? Colors.blue.withOpacity(0.1)
+                                            : Colors.green.withOpacity(0.1),
                                     child: Icon(
-                                      permission['item_type'] == 'file' 
-                                          ? Icons.insert_drive_file 
+                                      permission['item_type'] == 'file'
+                                          ? Icons.insert_drive_file
                                           : Icons.quiz,
-                                      color: permission['item_type'] == 'file' 
-                                          ? Colors.blue 
+                                      color: permission['item_type'] == 'file'
+                                          ? Colors.blue
                                           : Colors.green,
                                     ),
                                   ),
                                   title: Text(
                                     '$itemType: $itemName',
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500),
                                   ),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                                          Icon(Icons.access_time,
+                                              size: 16,
+                                              color: Colors.grey[600]),
                                           const SizedBox(width: 4),
                                           Text('Access: $accessTimes'),
                                           const SizedBox(width: 16),
-                                          Icon(Icons.bar_chart, size: 16, color: Colors.grey[600]),
+                                          Icon(Icons.bar_chart,
+                                              size: 16,
+                                              color: Colors.grey[600]),
                                           const SizedBox(width: 4),
                                           Text('Used: $timesAccessed'),
                                         ],
@@ -612,8 +655,10 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                                   ),
                                   trailing: isDeletable
                                       ? IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                          onPressed: () => _deleteAccessPermission(
+                                          icon: const Icon(Icons.delete_outline,
+                                              color: Colors.red),
+                                          onPressed: () =>
+                                              _deleteAccessPermission(
                                             permission['item_id'],
                                             permission['item_type'],
                                             widget.entity['email'] ?? '',
@@ -621,7 +666,8 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
                                           tooltip: 'Remove access',
                                         )
                                       : Chip(
-                                          label: const Text('System', style: TextStyle(fontSize: 12)),
+                                          label: const Text('System',
+                                              style: TextStyle(fontSize: 12)),
                                           backgroundColor: Colors.grey[200],
                                         ),
                                 ),

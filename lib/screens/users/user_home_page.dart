@@ -2,7 +2,7 @@ import 'package:ema_app/eps_section_page.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/user_notices_page.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
-import 'package:ema_app/screens/auth/login_user_free_files_quiz_sets.dart';
+import 'package:ema_app/screens/users/login_user_free_files_quiz_sets.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
