@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/data/api_exception.dart';
 import 'package:ema_app/data/network/BaseApiService.dart';
+import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/model/access/all_permission.dart';
 import 'package:ema_app/model/access/all_quiz_model.dart';
 import 'package:ema_app/model/access/alladminModel.dart';
@@ -11,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 
 class GiveAccessViewModel extends ChangeNotifier {
-  final BaseApiServices _apiService;
+  final BaseApiServices _apiService = NetworkApiService();
   final Logger _logger = Logger();
 
   final TextEditingController searchController = TextEditingController();
@@ -25,6 +27,7 @@ class GiveAccessViewModel extends ChangeNotifier {
   List<PermssionData> _grantedItems = [];
   List<ActivateData> _activatedItems = [];
   final List<int> _selectedItems = [];
+  Timer? _debounce;
 
   bool get isLoading => _isLoading;
   List<Users> get filteredUsers => _filteredUsers;
@@ -35,12 +38,20 @@ class GiveAccessViewModel extends ChangeNotifier {
   List<ActivateData> get activatedItems => _activatedItems;
   List<int> get selectedItems => _selectedItems;
 
-  GiveAccessViewModel(this._apiService) {
-    fetchData();
-    searchController.addListener(searchUsersAndAdmins);
+  GiveAccessViewModel() {
+    // Initialize without fetching data immediately
+    searchController.addListener(_debouncedSearch);
   }
 
-  Future<void> fetchData() async {
+  Future<void> fetchInitialData() async {
+    if (_users.isNotEmpty &&
+        _admins.isNotEmpty &&
+        _files.isNotEmpty &&
+        _quizSets.isNotEmpty &&
+        _grantedItems.isNotEmpty &&
+        _activatedItems.isNotEmpty) {
+      return; // Skip if data is already loaded
+    }
     _isLoading = true;
     notifyListeners();
     try {
@@ -52,7 +63,7 @@ class GiveAccessViewModel extends ChangeNotifier {
         fetchActivatedItems(),
       ]);
     } catch (e) {
-      _logger.e('Error fetching data: $e');
+      _logger.e('Error fetching all data: $e');
       throw FetchDataException('Error fetching data: $e');
     } finally {
       _isLoading = false;
@@ -90,18 +101,16 @@ class GiveAccessViewModel extends ChangeNotifier {
 
   Future<void> fetchFiles() async {
     try {
-      final response = await _apiService.getApiResponse(
-        '${BaseUrl.baseUrl}folder_details_page.php?action=get_all_files',
-      );
-      final quizModel = fetchallFilesModel.fromJson(response);
-      if (quizModel.status == "success" && quizModel.data != null) {
-        _files = quizModel.data!.map((file) {
+      final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}folder_details_page.php?action=get_all_files');
+      final filesModel = fetchallFilesModel.fromJson(response);
+      if (filesModel.status == "success" && filesModel.data != null) {
+        _files = filesModel.data!.map((file) {
           return FilesData(
             id: file.id,
             folderId: file.folderId,
             name: file.name,
             iconPath: file.iconPath,
-            // isActivated: file.isActivated ?? false,
+            isActivated: file.isActivated ?? false,
           );
         }).toList();
         notifyListeners();
@@ -113,9 +122,7 @@ class GiveAccessViewModel extends ChangeNotifier {
 
   Future<void> fetchQuizSets() async {
     try {
-      final response = await _apiService.getApiResponse(
-        '${BaseUrl.baseUrl}folder_details_page.php?action=get_all_quiz_sets',
-      );
+      final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}folder_details_page.php?action=get_all_quiz_sets');
       final quizModel = AllQuizModel.fromJson(response);
       if (quizModel.status == "success" && quizModel.data != null) {
         _quizSets = quizModel.data!.map((quizSet) {
@@ -124,7 +131,7 @@ class GiveAccessViewModel extends ChangeNotifier {
             folderId: quizSet.folderId,
             name: quizSet.name,
             iconPath: quizSet.iconPath,
-            // isActivated: quizSet.isActivated ?? false,
+            isActivated: quizSet.isActivated ?? false,
           );
         }).toList()
           ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
@@ -137,9 +144,7 @@ class GiveAccessViewModel extends ChangeNotifier {
 
   Future<void> fetchGrantedItems() async {
     try {
-      final response = await _apiService.getApiResponse(
-        '${BaseUrl.baseUrl}grant_file_access.php?action=get_all_permissions',
-      );
+      final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}grant_file_access.php?action=get_all_permissions');
       final permissionModel = GetAllPermissionModel.fromJson(response);
       if (permissionModel.status == "success" && permissionModel.data != null) {
         _grantedItems = permissionModel.data!;
@@ -152,12 +157,30 @@ class GiveAccessViewModel extends ChangeNotifier {
 
   Future<void> fetchActivatedItems() async {
     try {
-      final response = await _apiService.getApiResponse(
-        '${BaseUrl.baseUrl}grant_file_access.php?action=get_all_activations',
-      );
+      final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}grant_file_access.php?action=get_all_activations');
       final activationModel = GetAllActivation.fromJson(response);
       if (activationModel.status == "success" && activationModel.data != null) {
         _activatedItems = activationModel.data!;
+        _files = _files.map((file) {
+          final isActivated = _activatedItems.any((item) => item.itemId == file.id && item.itemType == 'file');
+          return FilesData(
+            id: file.id,
+            folderId: file.folderId,
+            name: file.name,
+            iconPath: file.iconPath,
+            isActivated: isActivated,
+          );
+        }).toList();
+        _quizSets = _quizSets.map((quizSet) {
+          final isActivated = _activatedItems.any((item) => item.itemId == quizSet.id && item.itemType == 'quiz_set');
+          return QuizData(
+            id: quizSet.id,
+            folderId: quizSet.folderId,
+            name: quizSet.name,
+            iconPath: quizSet.iconPath,
+            isActivated: isActivated,
+          );
+        }).toList();
         notifyListeners();
       }
     } catch (e) {
@@ -184,7 +207,7 @@ class GiveAccessViewModel extends ChangeNotifier {
               folderId: file.folderId,
               name: file.name,
               iconPath: file.iconPath,
-              // isActivated: !currentStatus,
+              isActivated: !currentStatus,
             );
           }
           return file;
@@ -219,7 +242,7 @@ class GiveAccessViewModel extends ChangeNotifier {
               folderId: quizSet.folderId,
               name: quizSet.name,
               iconPath: quizSet.iconPath,
-              // isActivated: !currentStatus,
+              isActivated: !currentStatus,
             );
           }
           return quizSet;
@@ -291,10 +314,7 @@ class GiveAccessViewModel extends ChangeNotifier {
     try {
       final itemsToDelete = _activatedItems
           .where((item) => _selectedItems.contains(item.itemId))
-          .map((item) => {
-        'item_id': item.itemId,
-        'item_type': item.itemType,
-      })
+          .map((item) => {'item_id': item.itemId, 'item_type': item.itemType})
           .toList();
 
       if (itemsToDelete.isEmpty) {
@@ -356,8 +376,7 @@ class GiveAccessViewModel extends ChangeNotifier {
       final itemsToActivate = [
         ..._files.map((file) => {'item_id': file.id, 'item_type': 'file'}),
         ..._quizSets
-            .where((quizSet) =>
-        !(quizSet.folderId == 1 && _quizSets.isNotEmpty && quizSet.id == _quizSets.first.id))
+            .where((quizSet) => !(quizSet.folderId == 1 && _quizSets.isNotEmpty && quizSet.id == _quizSets.first.id))
             .map((quizSet) => {'item_id': quizSet.id, 'item_type': 'quiz_set'}),
       ];
 
@@ -377,7 +396,7 @@ class GiveAccessViewModel extends ChangeNotifier {
             folderId: file.folderId,
             name: file.name,
             iconPath: file.iconPath,
-            // isActivated: true,
+            isActivated: true,
           );
         }).toList();
         _quizSets = _quizSets.map((quizSet) {
@@ -387,7 +406,7 @@ class GiveAccessViewModel extends ChangeNotifier {
             folderId: quizSet.folderId,
             name: quizSet.name,
             iconPath: quizSet.iconPath,
-            // isActivated: isFreeQuiz ? quizSet.isActivated : true,
+            isActivated: isFreeQuiz ? quizSet.isActivated : true,
           );
         }).toList();
         await fetchActivatedItems();
@@ -401,24 +420,27 @@ class GiveAccessViewModel extends ChangeNotifier {
     }
   }
 
-  void searchUsersAndAdmins() {
-    final query = searchController.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      _filteredUsers = _users;
-      _filteredAdmins = _admins;
-    } else {
-      _filteredUsers = _users.where((user) {
-        final name = (user.fullName ?? '').toLowerCase();
-        final email = (user.email ?? '').toLowerCase();
-        return name.contains(query) || email.contains(query);
-      }).toList();
-      _filteredAdmins = _admins.where((admin) {
-        final name = (admin.fullName ?? '').toLowerCase();
-        final email = (admin.email ?? '').toLowerCase();
-        return name.contains(query) || email.contains(query);
-      }).toList();
-    }
-    notifyListeners();
+  void _debouncedSearch() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final query = searchController.text.trim().toLowerCase();
+      if (query.isEmpty) {
+        _filteredUsers = _users;
+        _filteredAdmins = _admins;
+      } else {
+        _filteredUsers = _users.where((user) {
+          final name = (user.fullName ?? '').toLowerCase();
+          final email = (user.email ?? '').toLowerCase();
+          return name.contains(query) || email.contains(query);
+        }).toList();
+        _filteredAdmins = _admins.where((admin) {
+          final name = (admin.fullName ?? '').toLowerCase();
+          final email = (admin.email ?? '').toLowerCase();
+          return name.contains(query) || email.contains(query);
+        }).toList();
+      }
+      notifyListeners();
+    });
   }
 
   void clearSearch() {
@@ -439,14 +461,9 @@ class GiveAccessViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    searchController.removeListener(searchUsersAndAdmins);
+    searchController.removeListener(_debouncedSearch);
     searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
-}
-
-// Extend Data class to include isActivated for files and quiz sets
-extension DataExtension on ActivateData {
-  bool get isActivated => this.isActivated ?? false;
-  set isActivated(bool? value) => this.isActivated = value;
 }

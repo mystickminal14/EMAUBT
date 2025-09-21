@@ -295,6 +295,8 @@ class NetworkApiService extends BaseApiServices {
         throw BadRequestException(responseBody['message'] ?? 'Bad Request');
       case 401:
         throw UnAuthorizeException(responseBody['message'] ?? 'Unauthorized');
+      case 403:
+        throw NoDataException(responseBody['message'] ?? 'Not Found');
       case 404:
         throw NoDataException(responseBody['message'] ?? 'Not Found');
       case 500:
