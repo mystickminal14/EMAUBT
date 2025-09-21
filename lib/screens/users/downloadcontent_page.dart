@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/users/user_quiz_sets.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,7 +13,7 @@ class DownloadContentPage extends StatefulWidget {
   final String userName;
   final String userEmail;
   final String role;
-  final int folderId;
+  final String folderId;
   final String folderName;
   final bool isAdmin;
 
@@ -40,7 +41,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
   String _status = 'Fetching quiz data...';
   final Map<String, String> _cachedFiles = {};
   bool _hasError = false;
-  static const String baseUrl = 'https://theemaeducation.com';
+  static const String baseUrl = '${BaseUrl.baseUrl}/';
   int _completedDownloads = 0;
 
   @override
@@ -59,7 +60,8 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
       });
 
       final response = await http
-          .get(Uri.parse('$baseUrl/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'))
+          .get(Uri.parse(
+              '$baseUrl/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'))
           .timeout(const Duration(seconds: 30));
 
       debugPrint('Fetch response: ${response.statusCode}');
@@ -74,7 +76,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
       }
 
       final data = json.decode(response.body);
-      
+
       if (data['success'] != true) {
         setState(() {
           _status = 'Server error: ${data['error'] ?? 'Unknown error'}';
@@ -83,7 +85,8 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
         return;
       }
 
-      List<Map<String, dynamic>> questions = List<Map<String, dynamic>>.from(data['questions'] ?? []);
+      List<Map<String, dynamic>> questions =
+          List<Map<String, dynamic>>.from(data['questions'] ?? []);
 
       if (questions.isEmpty) {
         setState(() {
@@ -122,7 +125,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
           _status = 'No media files to download';
           _progress = 100.0;
         });
-        
+
         _navigateToQuizPage(data);
         return;
       }
@@ -134,7 +137,8 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
       List<Future<void>> downloadFutures = [];
 
       for (String url in mediaUrls) {
-        downloadFutures.add(_downloadWithRetry(url, tempDir.path).then((filePath) {
+        downloadFutures
+            .add(_downloadWithRetry(url, tempDir.path).then((filePath) {
           if (filePath != null) {
             _cachedFiles[url] = filePath;
             successfulDownloads++;
@@ -158,16 +162,17 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
       setState(() {
         _progress = 100.0;
         if (failedDownloads > 0) {
-          _status = 'Download completed with some errors ($successfulDownloads successful, $failedDownloads failed)';
+          _status =
+              'Download completed with some errors ($successfulDownloads successful, $failedDownloads failed)';
         } else {
-          _status = 'Download complete! ($successfulDownloads files downloaded)';
+          _status =
+              'Download complete! ($successfulDownloads files downloaded)';
         }
       });
 
       await Future.delayed(const Duration(milliseconds: 500));
-      
-      _navigateToQuizPage(data);
 
+      _navigateToQuizPage(data);
     } catch (e) {
       debugPrint('Error in _preloadContent: $e');
       setState(() {
@@ -188,13 +193,15 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
 
     for (int attempt = 0; attempt < 3; attempt++) {
       try {
-        final fileResponse = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+        final fileResponse =
+            await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
         if (fileResponse.statusCode == 200) {
           await file.writeAsBytes(fileResponse.bodyBytes);
           debugPrint('Successfully downloaded: $fileName');
           return filePath;
         } else {
-          debugPrint('Attempt $attempt failed for $fileName: HTTP ${fileResponse.statusCode}');
+          debugPrint(
+              'Attempt $attempt failed for $fileName: HTTP ${fileResponse.statusCode}');
         }
       } catch (e) {
         debugPrint('Attempt $attempt error for $fileName: $e');
@@ -272,16 +279,14 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                 Text(
                   _status,
                   style: const TextStyle(
-                    fontSize: 16, 
-                    fontWeight: FontWeight.w500
-                  ),
+                      fontSize: 16, fontWeight: FontWeight.w500),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   '${_progress.toStringAsFixed(0)}%',
                   style: const TextStyle(
-                    fontSize: 24, 
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue,
                   ),
@@ -308,10 +313,9 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                 Text(
                   _status,
                   style: const TextStyle(
-                    fontSize: 16, 
-                    fontWeight: FontWeight.w500, 
-                    color: Colors.red
-                  ),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.red),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -323,7 +327,8 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('Retry'),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -332,7 +337,8 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                       label: const Text('Cancel'),
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                       ),
                     ),
                   ],

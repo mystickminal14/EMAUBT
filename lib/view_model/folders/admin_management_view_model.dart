@@ -1,3 +1,4 @@
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/model/user_data_model.dart';
 import 'package:ema_app/model/admin_model.dart';
@@ -41,8 +42,8 @@ class AdminManagementViewModel extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
       _logger.i('Fetching users...');
-      final response = await _apiService
-          .getApiResponse('https://theemaeducation.com/register.php');
+      final response =
+          await _apiService.getApiResponse('${BaseUrl.baseUrl}register.php');
       final userData = UserModelData.fromJson(response);
       if (userData.success == true && userData.users != null) {
         users = userData.users!;
@@ -51,8 +52,8 @@ class AdminManagementViewModel extends ChangeNotifier {
       } else {
         users = [];
         _filterLists();
-        _showErrorMessage(
-            context, 'Failed to fetch users: ${response['message'] ?? 'Unknown error'}');
+        _showErrorMessage(context,
+            'Failed to fetch users: ${response['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       users = [];
@@ -71,7 +72,7 @@ class AdminManagementViewModel extends ChangeNotifier {
       notifyListeners();
       _logger.i('Fetching admins...');
       final response = await _apiService
-          .getApiResponse('https://theemaeducation.com/give_admin_access.php');
+          .getApiResponse('${BaseUrl.baseUrl}//give_admin_access.php');
       final adminData = AdminModel.fromJson(response);
       if (adminData.success == true && adminData.admins != null) {
         admins = adminData.admins!;
@@ -80,8 +81,8 @@ class AdminManagementViewModel extends ChangeNotifier {
       } else {
         admins = [];
         _filterLists();
-        _showErrorMessage(
-            context, 'Error fetching admins: ${response['message'] ?? 'Unknown error'}');
+        _showErrorMessage(context,
+            'Error fetching admins: ${response['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       admins = [];
@@ -99,7 +100,7 @@ class AdminManagementViewModel extends ChangeNotifier {
       _logger.i('Granting admin access to ${user.fullName}...');
 
       final response = await _apiService.postFormData(
-        'https://theemaeducation.com/give_admin_access.php',
+        '${BaseUrl.baseUrl}//give_admin_access.php',
         {
           'user_id': user.id ?? '',
           'full_name': user.fullName ?? 'No Name',
@@ -131,7 +132,7 @@ class AdminManagementViewModel extends ChangeNotifier {
       _logger.i('Removing admin access from ${admin.fullName}...');
 
       final response = await _apiService.postFormData(
-        'https://theemaeducation.com/give_admin_access.php',
+        '${BaseUrl.baseUrl}//give_admin_access.php',
         {
           'user_id': admin.userId ?? '',
           'action': 'remove',

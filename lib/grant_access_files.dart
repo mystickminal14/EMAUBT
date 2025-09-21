@@ -63,7 +63,8 @@ class _GrantAccessFilesPageContent extends StatelessWidget {
           width: 40,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Icon(defaultIcon, size: 40, color: Colors.grey),
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(defaultIcon, size: 40, color: Colors.grey),
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return SizedBox(
@@ -72,7 +73,8 @@ class _GrantAccessFilesPageContent extends StatelessWidget {
               child: Center(
                 child: CircularProgressIndicator(
                   value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
                       : null,
                   strokeWidth: 2,
                 ),

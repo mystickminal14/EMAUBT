@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/users/downloadcontent_page.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
@@ -19,7 +20,7 @@ import 'package:webview_windows/webview_windows.dart' as webview_windows;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 
 class UserFolderDetailsPage extends StatefulWidget {
-  final int folderId;
+  final String folderId;
   final String folderName;
   final String userIdentifier;
   final bool isAdmin;
@@ -174,7 +175,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
     setState(() => _isLoading = true);
     try {
       final url =
-          'https://theemaeducation.com/folder_details_page.php?action=get_files&folder_id=${widget.folderId}';
+          '${BaseUrl.baseUrl}folder_details_page.php?action=get_files&folder_id=${widget.folderId}';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -193,7 +194,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
             file['access_times'] = accessResult['access_times'];
             file['times_accessed'] = accessResult['times_accessed'];
             if (kDebugMode) {
-              print('File: ${file['name']}, can_access: ${file['can_access']}, has_permission: ${file['has_permission']}, is_active: ${file['is_active']}');
+              print(
+                  'File: ${file['name']}, can_access: ${file['can_access']}, has_permission: ${file['has_permission']}, is_active: ${file['is_active']}');
             }
           }
 
@@ -235,7 +237,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
     setState(() => _isLoading = true);
     try {
       final url =
-          'https://theemaeducation.com/folder_details_page.php?action=get_quiz_sets&folder_id=${widget.folderId}';
+          '${BaseUrl.baseUrl}folder_details_page.php?action=get_quiz_sets&folder_id=${widget.folderId}';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -256,7 +258,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
             quizSet['access_times'] = accessResult['access_times'];
             quizSet['times_accessed'] = accessResult['times_accessed'];
             if (kDebugMode) {
-              print('QuizSet: ${quizSet['name']}, can_access: ${quizSet['can_access']}, has_permission: ${quizSet['has_permission']}, is_active: ${quizSet['is_active']}');
+              print(
+                  'QuizSet: ${quizSet['name']}, can_access: ${quizSet['can_access']}, has_permission: ${quizSet['has_permission']}, is_active: ${quizSet['is_active']}');
             }
           }
 
@@ -299,7 +302,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            'https://theemaeducation.com/folder_details_page.php?action=get_file_by_id&file_id=$fileId'),
+            '${BaseUrl.baseUrl}folder_details_page.php?action=get_file_by_id&file_id=$fileId'),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -326,10 +329,11 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://theemaeducation.com/check_access.php'),
+        Uri.parse('${BaseUrl.baseUrl}check_access.php'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {
-          'identifier': widget.userIdentifier.isEmpty ? 'guest' : widget.userIdentifier,
+          'identifier':
+              widget.userIdentifier.isEmpty ? 'guest' : widget.userIdentifier,
           'is_admin': 'false',
           'item_id': itemId.toString(),
           'item_type': itemType,
@@ -339,7 +343,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (kDebugMode) {
-          print('CheckAccess Response for Item ID: $itemId, Type: $itemType - $data');
+          print(
+              'CheckAccess Response for Item ID: $itemId, Type: $itemType - $data');
         }
         if (data['success'] == true) {
           return {
@@ -359,7 +364,9 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
         'times_accessed': 0,
       };
     } catch (e) {
-      if (kDebugMode) print('Error checking access for Item ID: $itemId, Type: $itemType - $e');
+      if (kDebugMode)
+        print(
+            'Error checking access for Item ID: $itemId, Type: $itemType - $e');
       return {
         'can_access': false,
         'has_permission': false,
@@ -375,7 +382,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://theemaeducation.com/increment_access.php'),
+        Uri.parse('${BaseUrl.baseUrl}increment_access.php'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {
           'identifier': widget.userIdentifier,
@@ -386,7 +393,9 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (kDebugMode) print('Increment Access Response for Item ID: $itemId, Type: $itemType - $data');
+        if (kDebugMode)
+          print(
+              'Increment Access Response for Item ID: $itemId, Type: $itemType - $data');
         return data['success'] == true;
       }
     } catch (e) {
@@ -399,7 +408,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
   Widget _buildItemIcon(Map<String, dynamic> item, IconData defaultIcon) {
     if (item['icon_path'] != null && item['icon_path'].isNotEmpty) {
       return Image.network(
-        'https://theemaeducation.com/${item['icon_path']}',
+        '${BaseUrl.baseUrl}/${item['icon_path']}',
         width: 28,
         height: 28,
         fit: BoxFit.cover,
@@ -462,7 +471,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
               if (mounted) setDialogState(() => position = p);
             });
             _audioPlayer.onPlayerStateChanged.listen((state) {
-              if (mounted) setDialogState(() => isPlaying = state == PlayerState.playing);
+              if (mounted)
+                setDialogState(() => isPlaying = state == PlayerState.playing);
             });
 
             return AlertDialog(
@@ -476,13 +486,16 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                         children: [
                           CircularProgressIndicator(),
                           SizedBox(height: 8),
-                          Text('Loading Audio...', style: TextStyle(fontSize: 14)),
+                          Text('Loading Audio...',
+                              style: TextStyle(fontSize: 14)),
                         ],
                       )
                     else ...[
-                      Text('Position: ${position.inSeconds} s', style: const TextStyle(fontSize: 14)),
+                      Text('Position: ${position.inSeconds} s',
+                          style: const TextStyle(fontSize: 14)),
                       const SizedBox(height: 8),
-                      Text('State: ${isPlaying ? "Playing" : "Paused/Stopped"}', style: const TextStyle(fontSize: 14)),
+                      Text('State: ${isPlaying ? "Playing" : "Paused/Stopped"}',
+                          style: const TextStyle(fontSize: 14)),
                       const SizedBox(height: 16),
                       Wrap(
                         spacing: 8.0,
@@ -492,20 +505,26 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                           ElevatedButton(
                             onPressed: () async {
                               await _audioPlayer.play(
-                                kIsWeb ? UrlSource(url) : DeviceFileSource(localFilePath!),
+                                kIsWeb
+                                    ? UrlSource(url)
+                                    : DeviceFileSource(localFilePath!),
                               );
                               setDialogState(() => isPlaying = true);
                             },
-                            style: ElevatedButton.styleFrom(minimumSize: const Size(80, 36)),
-                            child: const Text('Play', style: TextStyle(fontSize: 12)),
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(80, 36)),
+                            child: const Text('Play',
+                                style: TextStyle(fontSize: 12)),
                           ),
                           ElevatedButton(
                             onPressed: () async {
                               await _audioPlayer.pause();
                               setDialogState(() => isPlaying = false);
                             },
-                            style: ElevatedButton.styleFrom(minimumSize: const Size(80, 36)),
-                            child: const Text('Pause', style: TextStyle(fontSize: 12)),
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(80, 36)),
+                            child: const Text('Pause',
+                                style: TextStyle(fontSize: 12)),
                           ),
                           ElevatedButton(
                             onPressed: () async {
@@ -515,8 +534,10 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                                 position = Duration.zero;
                               });
                             },
-                            style: ElevatedButton.styleFrom(minimumSize: const Size(80, 36)),
-                            child: const Text('Stop', style: TextStyle(fontSize: 12)),
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(80, 36)),
+                            child: const Text('Stop',
+                                style: TextStyle(fontSize: 12)),
                           ),
                         ],
                       ),
@@ -528,27 +549,48 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                         children: [
                           ElevatedButton(
                             onPressed: () async {
-                              final currentPosition = await _audioPlayer.getCurrentPosition();
+                              final currentPosition =
+                                  await _audioPlayer.getCurrentPosition();
                               if (currentPosition != null) {
-                                final newPosition = currentPosition - const Duration(seconds: 10);
-                                await _audioPlayer.seek(newPosition > Duration.zero ? newPosition : Duration.zero);
-                                setDialogState(() => position = newPosition > Duration.zero ? newPosition : Duration.zero);
+                                final newPosition = currentPosition -
+                                    const Duration(seconds: 10);
+                                await _audioPlayer.seek(
+                                    newPosition > Duration.zero
+                                        ? newPosition
+                                        : Duration.zero);
+                                setDialogState(() => position =
+                                    newPosition > Duration.zero
+                                        ? newPosition
+                                        : Duration.zero);
                               }
                             },
-                            style: ElevatedButton.styleFrom(minimumSize: const Size(100, 36)),
-                            child: const Text('← 10s', style: TextStyle(fontSize: 12)),
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(100, 36)),
+                            child: const Text('← 10s',
+                                style: TextStyle(fontSize: 12)),
                           ),
                           ElevatedButton(
                             onPressed: () async {
-                              final currentPosition = await _audioPlayer.getCurrentPosition();
-                              if (currentPosition != null && totalDuration != null) {
-                                final newPosition = currentPosition + const Duration(seconds: 10);
-                                await _audioPlayer.seek(newPosition < totalDuration! ? newPosition : totalDuration!);
-                                setDialogState(() => position = newPosition < totalDuration! ? newPosition : totalDuration!);
+                              final currentPosition =
+                                  await _audioPlayer.getCurrentPosition();
+                              if (currentPosition != null &&
+                                  totalDuration != null) {
+                                final newPosition = currentPosition +
+                                    const Duration(seconds: 10);
+                                await _audioPlayer.seek(
+                                    newPosition < totalDuration!
+                                        ? newPosition
+                                        : totalDuration!);
+                                setDialogState(() => position =
+                                    newPosition < totalDuration!
+                                        ? newPosition
+                                        : totalDuration!);
                               }
                             },
-                            style: ElevatedButton.styleFrom(minimumSize: const Size(100, 36)),
-                            child: const Text('10s →', style: TextStyle(fontSize: 12)),
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(100, 36)),
+                            child: const Text('10s →',
+                                style: TextStyle(fontSize: 12)),
                           ),
                         ],
                       ),
@@ -562,7 +604,9 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                     try {
                       await _audioPlayer.stop();
                       await _audioPlayer.release();
-                      if (!kIsWeb && localFilePath != null && await File(localFilePath).exists()) {
+                      if (!kIsWeb &&
+                          localFilePath != null &&
+                          await File(localFilePath).exists()) {
                         await File(localFilePath).delete();
                       }
                     } catch (e) {
@@ -585,7 +629,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
 
       if (!kIsWeb) {
         final tempDir = await getTemporaryDirectory();
-        final filePath = '${tempDir.path}/${fileName.replaceAll(RegExp(r'[^\w.]'), '_')}';
+        final filePath =
+            '${tempDir.path}/${fileName.replaceAll(RegExp(r'[^\w.]'), '_')}';
         final file = File(filePath);
         localFilePath = filePath;
 
@@ -630,7 +675,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
     } catch (e) {
       if (kDebugMode) print('Audio error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error playing audio: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error playing audio: $e')));
         Navigator.pop(context);
       }
     }
@@ -802,7 +848,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
       });
     }
 
-    final fileUrl = 'https://theemaeducation.com/${file['file_path']}';
+    final fileUrl = '${BaseUrl.baseUrl}/${file['file_path']}';
     final encodedFileUrl = Uri.encodeFull(fileUrl);
     final viewerUrl =
         'https://docs.google.com/viewer?url=$encodedFileUrl&embedded=true&_cache_bust=${DateTime.now().millisecondsSinceEpoch}';
@@ -931,10 +977,12 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
   ) {
     final hasPermission = item['has_permission'] == true;
     final isActive = item['is_active'] == 1;
-    final fileType = itemType == 'file' ? _getFileType(item['name'] ?? '') : null;
+    final fileType =
+        itemType == 'file' ? _getFileType(item['name'] ?? '') : null;
 
     if (kDebugMode) {
-      print('Building Tile for Item: ${item['name']}, has_permission: $hasPermission, is_active: $isActive');
+      print(
+          'Building Tile for Item: ${item['name']}, has_permission: $hasPermission, is_active: $isActive');
     }
 
     return GestureDetector(
@@ -960,8 +1008,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
             ),
             child: Row(
               children: [
-                _buildItemIcon(
-                    item,
+                _buildItemIcon(item,
                     itemType == 'file' ? Icons.insert_drive_file : Icons.quiz),
                 const SizedBox(width: 8),
                 Flexible(
@@ -985,9 +1032,12 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isActive ? Colors.green[600] : Colors.green[300],
+                          color:
+                              isActive ? Colors.green[600] : Colors.green[300],
                           border: Border.all(
-                            color: isActive ? Colors.green[600]! : Colors.green[300]!,
+                            color: isActive
+                                ? Colors.green[600]!
+                                : Colors.green[300]!,
                             width: 1,
                           ),
                           borderRadius: BorderRadius.circular(4),
@@ -1044,83 +1094,92 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
             itemBuilder: (context, index) {
               final item = items[index];
               return _buildItemTile(dimensions, item, itemType, () async {
-              if (itemType == 'quiz_set') {
-  if (item['can_access'] != true) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Access Denied'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item['has_permission'] == true
-                ? 'This quiz set is not activated by admin.'
-                : 'This quiz set requires admin activation.'),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => _makePhoneCall('+9779851213520', context),
-              child: const Text(
-                'Phone: +9779851213520',
-                style: TextStyle(color: Colors.blue),
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => _openFacebook(context),
-              child: const Text(
-                'Facebook: yogendra.wagle.12',
-                style: TextStyle(color: Colors.blue),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close')),
-        ],
-      ),
-    );
-    return;
-  }
+                if (itemType == 'quiz_set') {
+                  if (item['can_access'] != true) {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Access Denied'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item['has_permission'] == true
+                                ? 'This quiz set is not activated by admin.'
+                                : 'This quiz set requires admin activation.'),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () =>
+                                  _makePhoneCall('+9779851213520', context),
+                              child: const Text(
+                                'Phone: +9779851213520',
+                                style: TextStyle(color: Colors.blue),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () => _openFacebook(context),
+                              child: const Text(
+                                'Facebook: yogendra.wagle.12',
+                                style: TextStyle(color: Colors.blue),
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Close')),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
 
-  if (!widget.isAdmin && widget.userIdentifier.isNotEmpty) {
-    bool incremented = await _incrementAccessCount(item['id'], 'quiz_set');
-    if (!incremented && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update access count')),
-      );
-      return;
-    }
-  }
+                  if (!widget.isAdmin && widget.userIdentifier.isNotEmpty) {
+                    bool incremented =
+                        await _incrementAccessCount(item['id'], 'quiz_set');
+                    if (!incremented && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Failed to update access count')),
+                      );
+                      return;
+                    }
+                  }
 
-  if (mounted && !widget.isAdmin) {
-    setState(() {
-      item['times_accessed'] = (item['times_accessed'] ?? 0) + 1;
-    });
-  }
+                  if (mounted && !widget.isAdmin) {
+                    setState(() {
+                      item['times_accessed'] =
+                          (item['times_accessed'] ?? 0) + 1;
+                    });
+                  }
 
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => DownloadContentPage(
-        quizSetId: item['id'],
-        quizSetName: item['name'],
-        userIdentifier: widget.userIdentifier.isEmpty
-            ? 'guest'
-            : widget.userIdentifier,
-        isAdmin: widget.isAdmin,
-        fullName: _cachedFullName ?? '',
-        userEmail: widget.isAdmin ? widget.userIdentifier : _cachedUserEmail ?? '',
-        folderId: widget.folderId,
-        folderName: widget.folderName, userId: '', userName: '', role: '',
-      ),
-    ),
-  ).then((_) => _fetchQuizSets());
-} else {
-  _handleFileTap(item);
-}
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DownloadContentPage(
+                        quizSetId: item['id'],
+                        quizSetName: item['name'],
+                        userIdentifier: widget.userIdentifier.isEmpty
+                            ? 'guest'
+                            : widget.userIdentifier,
+                        isAdmin: widget.isAdmin,
+                        fullName: _cachedFullName ?? '',
+                        userEmail: widget.isAdmin
+                            ? widget.userIdentifier
+                            : _cachedUserEmail ?? '',
+                        folderId: widget.folderId,
+                        folderName: widget.folderName,
+                        userId: '',
+                        userName: '',
+                        role: '',
+                      ),
+                    ),
+                  ).then((_) => _fetchQuizSets());
+                } else {
+                  _handleFileTap(item);
+                }
               });
             },
           ),

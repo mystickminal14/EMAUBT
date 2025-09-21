@@ -1,3 +1,4 @@
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -94,8 +95,7 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
     final isWide = width > 600;
     double getFontSize(double mobile, double tablet) =>
         isWide ? tablet : mobile;
-    double getPadding(double mobile, double tablet) =>
-        isWide ? tablet : mobile;
+    double getPadding(double mobile, double tablet) => isWide ? tablet : mobile;
 
     return Scaffold(
       appBar: AppBar(
@@ -131,8 +131,8 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.search),
-                            onPressed: () => viewModel.searchUsersAndAdmins(
-                                _searchController.text),
+                            onPressed: () => viewModel
+                                .searchUsersAndAdmins(_searchController.text),
                           ),
                         ),
                         onSubmitted: (value) =>
@@ -150,83 +150,83 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                       ),
                       viewModel.filteredUsers.isEmpty
                           ? Padding(
-                        padding: EdgeInsets.symmetric(
-                            vertical: getPadding(8, 16)),
-                        child: const Text('No users found'),
-                      )
+                              padding: EdgeInsets.symmetric(
+                                  vertical: getPadding(8, 16)),
+                              child: const Text('No users found'),
+                            )
                           : ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: viewModel.filteredUsers.length,
-                        itemBuilder: (context, index) {
-                          final user = viewModel.filteredUsers[index];
-                          final imageUrl = user.image != null &&
-                              user.image!.isNotEmpty
-                              ? 'https://theemaeducation.com/${user.image}'
-                              : null;
-                          return Card(
-                            margin: EdgeInsets.symmetric(
-                              vertical: getPadding(6, 12),
-                            ),
-                            child: ListTile(
-                              leading: imageUrl != null
-                                  ? ClipOval(
-                                child: Image.network(
-                                  imageUrl,
-                                  width: getFontSize(40, 60),
-                                  height: getFontSize(40, 60),
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (context, error, stackTrace) =>
-                                      Icon(Icons.person,
-                                          size: getFontSize(
-                                              40, 60)),
-                                ),
-                              )
-                                  : Icon(Icons.person,
-                                  size: getFontSize(40, 60)),
-                              title: Text(
-                                user.fullName ?? 'No Name',
-                                style: TextStyle(
-                                    fontSize: getFontSize(16, 22)),
-                              ),
-                              subtitle: Text(
-                                user.email ?? 'No Email',
-                                style: TextStyle(
-                                    fontSize: getFontSize(13, 18)),
-                              ),
-                              trailing: ElevatedButton(
-                                onPressed: () async {
-                                  final confirm =
-                                  await _showConfirmationDialog(
-                                    context,
-                                    'Grant',
-                                    user.fullName ?? 'No Name',
-                                  );
-                                  if (confirm == true) {
-                                    await _showLoadingDialog(
-                                      context,
-                                      viewModel.grantAdminAccess(
-                                          context, user),
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: getPadding(12, 24),
-                                    vertical: getPadding(8, 14),
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: viewModel.filteredUsers.length,
+                              itemBuilder: (context, index) {
+                                final user = viewModel.filteredUsers[index];
+                                final imageUrl =
+                                    user.image != null && user.image!.isNotEmpty
+                                        ? '${BaseUrl.baseUrl}//${user.image}'
+                                        : null;
+                                return Card(
+                                  margin: EdgeInsets.symmetric(
+                                    vertical: getPadding(6, 12),
                                   ),
-                                ),
-                                child: Text(
-                                  "Make Admin",
-                                  style: TextStyle(
-                                      fontSize: getFontSize(13, 18)),
-                                ),
-                              ),
+                                  child: ListTile(
+                                    leading: imageUrl != null
+                                        ? ClipOval(
+                                            child: Image.network(
+                                              imageUrl,
+                                              width: getFontSize(40, 60),
+                                              height: getFontSize(40, 60),
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error,
+                                                      stackTrace) =>
+                                                  Icon(Icons.person,
+                                                      size:
+                                                          getFontSize(40, 60)),
+                                            ),
+                                          )
+                                        : Icon(Icons.person,
+                                            size: getFontSize(40, 60)),
+                                    title: Text(
+                                      user.fullName ?? 'No Name',
+                                      style: TextStyle(
+                                          fontSize: getFontSize(16, 22)),
+                                    ),
+                                    subtitle: Text(
+                                      user.email ?? 'No Email',
+                                      style: TextStyle(
+                                          fontSize: getFontSize(13, 18)),
+                                    ),
+                                    trailing: ElevatedButton(
+                                      onPressed: () async {
+                                        final confirm =
+                                            await _showConfirmationDialog(
+                                          context,
+                                          'Grant',
+                                          user.fullName ?? 'No Name',
+                                        );
+                                        if (confirm == true) {
+                                          await _showLoadingDialog(
+                                            context,
+                                            viewModel.grantAdminAccess(
+                                                context, user),
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: getPadding(12, 24),
+                                          vertical: getPadding(8, 14),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        "Make Admin",
+                                        style: TextStyle(
+                                            fontSize: getFontSize(13, 18)),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                       const Divider(),
 
                       // Admins Section
@@ -239,67 +239,67 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                       ),
                       viewModel.filteredAdmins.isEmpty
                           ? Padding(
-                        padding: EdgeInsets.symmetric(
-                            vertical: getPadding(8, 16)),
-                        child: const Text('No admins found'),
-                      )
+                              padding: EdgeInsets.symmetric(
+                                  vertical: getPadding(8, 16)),
+                              child: const Text('No admins found'),
+                            )
                           : ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: viewModel.filteredAdmins.length,
-                        itemBuilder: (context, index) {
-                          final admin = viewModel.filteredAdmins[index];
-                          return Card(
-                            margin: EdgeInsets.symmetric(
-                              vertical: getPadding(6, 12),
-                            ),
-                            child: ListTile(
-                              leading: Icon(
-                                Icons.admin_panel_settings,
-                                size: getFontSize(40, 60),
-                              ),
-                              title: Text(
-                                admin.fullName ?? 'No Name',
-                                style: TextStyle(
-                                    fontSize: getFontSize(16, 22)),
-                              ),
-                              subtitle: Text(
-                                admin.email ?? 'No Email',
-                                style: TextStyle(
-                                    fontSize: getFontSize(13, 18)),
-                              ),
-                              trailing: ElevatedButton(
-                                onPressed: () async {
-                                  final confirm =
-                                  await _showConfirmationDialog(
-                                    context,
-                                    'Remove',
-                                    admin.fullName ?? 'No Name',
-                                  );
-                                  if (confirm == true) {
-                                    await _showLoadingDialog(
-                                      context,
-                                      viewModel.removeAdminAccess(
-                                          context, admin),
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.redAccent,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: getPadding(12, 24),
-                                    vertical: getPadding(8, 14),
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: viewModel.filteredAdmins.length,
+                              itemBuilder: (context, index) {
+                                final admin = viewModel.filteredAdmins[index];
+                                return Card(
+                                  margin: EdgeInsets.symmetric(
+                                    vertical: getPadding(6, 12),
                                   ),
-                                ),
-                                child: const Text(
-                                  "Remove",
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.admin_panel_settings,
+                                      size: getFontSize(40, 60),
+                                    ),
+                                    title: Text(
+                                      admin.fullName ?? 'No Name',
+                                      style: TextStyle(
+                                          fontSize: getFontSize(16, 22)),
+                                    ),
+                                    subtitle: Text(
+                                      admin.email ?? 'No Email',
+                                      style: TextStyle(
+                                          fontSize: getFontSize(13, 18)),
+                                    ),
+                                    trailing: ElevatedButton(
+                                      onPressed: () async {
+                                        final confirm =
+                                            await _showConfirmationDialog(
+                                          context,
+                                          'Remove',
+                                          admin.fullName ?? 'No Name',
+                                        );
+                                        if (confirm == true) {
+                                          await _showLoadingDialog(
+                                            context,
+                                            viewModel.removeAdminAccess(
+                                                context, admin),
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.redAccent,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: getPadding(12, 24),
+                                          vertical: getPadding(8, 14),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Remove",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                       SizedBox(height: getPadding(20, 40)),
                     ],
                   ),

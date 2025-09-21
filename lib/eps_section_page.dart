@@ -1,3 +1,4 @@
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/users/user_folder_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -11,7 +12,12 @@ class EPSSectionPage extends StatefulWidget {
   const EPSSectionPage({
     super.key,
     required this.userIdentifier,
-    required this.isAdmin, required String fullName, required String profileImage, required String userEmail, required folderId, required String folderName,
+    required this.isAdmin,
+    required String fullName,
+    required String profileImage,
+    required String userEmail,
+    required folderId,
+    required String folderName,
   });
 
   @override
@@ -32,7 +38,7 @@ class _FreeFilesQuizSets extends State<EPSSectionPage> {
   Future<void> _fetchFolders() async {
     try {
       final response = await http
-          .get(Uri.parse("https://theemaeducation.com/folders.php"))
+          .get(Uri.parse("${BaseUrl.baseUrl}/folders.php"))
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -69,7 +75,7 @@ class _FreeFilesQuizSets extends State<EPSSectionPage> {
     }
   }
 
-  void _openFolder(int folderId, String folderName) {
+  void _openFolder(String folderId, String folderName) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -77,7 +83,10 @@ class _FreeFilesQuizSets extends State<EPSSectionPage> {
           folderId: folderId,
           folderName: folderName,
           userIdentifier: widget.userIdentifier,
-          isAdmin: widget.isAdmin, userId: '', userName: '', role: '',
+          isAdmin: widget.isAdmin,
+          userId: '',
+          userName: '',
+          role: '',
         ),
       ),
     );
@@ -87,7 +96,7 @@ class _FreeFilesQuizSets extends State<EPSSectionPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: InkWell(
-        onTap: () => _openFolder(folder["id"], folder["name"]),
+        onTap: () => _openFolder(folder["id"].toString(), folder["name"]),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -111,15 +120,14 @@ class _FreeFilesQuizSets extends State<EPSSectionPage> {
                 child: folder["icon_path"] != null &&
                         folder["icon_path"].toString().isNotEmpty
                     ? Image.network(
-                        "https://theemaeducation.com/${folder["icon_path"]}",
+                        "${BaseUrl.baseUrl}${folder["icon_path"]}",
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(Icons.folder,
                               color: Colors.blue, size: 48);
                         },
                       )
-                    : const Icon(Icons.folder,
-                        color: Colors.blue, size: 48),
+                    : const Icon(Icons.folder, color: Colors.blue, size: 48),
               ),
             ),
 
@@ -170,7 +178,7 @@ class _FreeFilesQuizSets extends State<EPSSectionPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
                     SizedBox(height: 16),
                     Text(
                       "Loading folders...",
