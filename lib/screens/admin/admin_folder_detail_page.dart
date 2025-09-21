@@ -34,12 +34,18 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
     super.initState();
     fetch();
   }
-
+ bool isLoading=false;
   void fetch() async {
     // Fetch files
+   setState(() {
+     isLoading=true;
+   });
     await  Provider.of<FilesViewModel>(context, listen: false).fetchFiles(widget.folderId);
     // Fetch quiz sets
       await  Provider.of<QuizSetsViewModel>(context, listen: false).fetchQuizSets(widget.folderId);
+   setState(() {
+     isLoading=false;
+   });
   }
 
   Future<XFile?> _compressImage(File file) async {
