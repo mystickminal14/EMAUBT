@@ -823,7 +823,7 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
         backgroundColor: Colors.blueAccent,
         child: const Icon(Icons.add),
       ),
-      body: Container(
+      body:isLoading? CircularProgressIndicator(): Container(
         color: Colors.grey[100],
         child: Consumer2<FilesViewModel, QuizSetsViewModel>(
           builder: (_, filesVM, quizSetsVM, __) {
