@@ -273,28 +273,6 @@ class _NoticesPageState extends State<NoticesPage> {
     );
   }
 
-  Future<void> _openFile(BuildContext context, Files file) async {
-    final url = getFullFileUrl(file.filePath);
-
-    if (url.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No URL available for file: ${file.fileName}')),
-      );
-      return;
-    }
-
-    try {
-      final dir = await getTemporaryDirectory();
-      final savePath = "${dir.path}/${file.fileName}";
-      await Dio().download(url, savePath);
-
-      await OpenFilex.open(savePath); // Opens in default app
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to open file: ${file.fileName}')),
-      );
-    }
-  }
 
   Future<void> _openFile(BuildContext context, Files file) async {
     final url = getFullFileUrl(file.filePath);

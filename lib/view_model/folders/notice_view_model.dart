@@ -94,6 +94,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
       notifyListeners();
 
       final fields = {
+        'action':'post',
         'title': title!,
         if (textContent != null && textContent!.isNotEmpty)
           'text_content': textContent!,
