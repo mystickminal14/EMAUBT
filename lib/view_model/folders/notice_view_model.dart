@@ -174,6 +174,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
       final response = await _apiService.getDeleteApiResponse(
           '${BaseUrl.baseUrl}notices.php?id=${Uri.encodeQueryComponent(notice.id!)}');
       if (response['success'] == true) {
+        isActionLoading = false;
         _showSuccessMessage(context, 'Notice deleted successfully');
         await fetchNotices(context);
       } else {

@@ -33,7 +33,8 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
   }
 
   /// Show loading dialog that is safe even if widget gets disposed
-  Future<void> _showLoadingDialog(BuildContext context, Future<void> operation) async {
+  Future<void> _showLoadingDialog(
+      BuildContext context, Future<void> operation) async {
     final viewModel = context.read<UserManagementViewModel>();
 
     final dialogContext = Navigator.of(context).overlay!.context;
@@ -49,7 +50,10 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
             const SizedBox(width: 16),
             Text(
               "Processing...",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -62,17 +66,20 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
       Future.delayed(const Duration(milliseconds: 500)),
     ]);
 
-    if (mounted && dialogContext.findAncestorStateOfType<NavigatorState>() != null) {
+    if (mounted &&
+        dialogContext.findAncestorStateOfType<NavigatorState>() != null) {
       Navigator.of(dialogContext, rootNavigator: true).pop();
     }
   }
 
-  Future<bool?> _showConfirmationDialog(BuildContext context, String action, String name) {
+  Future<bool?> _showConfirmationDialog(
+      BuildContext context, String action, String name) {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text('Confirm $action', style: Theme.of(context).textTheme.titleLarge),
+        title: Text('Confirm $action',
+            style: Theme.of(context).textTheme.titleLarge),
         content: Text(
           '$action user $name?',
           style: Theme.of(context).textTheme.bodyMedium,
@@ -80,13 +87,16 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
+            child: Text('Cancel',
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.secondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Confirm'),
@@ -96,7 +106,8 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
     );
   }
 
-  Future<void> _editUser(BuildContext context, Users user, UserManagementViewModel viewModel) async {
+  Future<void> _editUser(BuildContext context, Users user,
+      UserManagementViewModel viewModel) async {
     viewModel.setFields(
       name: user.fullName,
       email: user.email,
@@ -111,17 +122,23 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
 
     await showDialog(
       context: context,
-      builder: (context) => StatefulBuilder( // Wrap in StatefulBuilder to avoid rebuild issues
+      builder: (context) => StatefulBuilder(
+        // Wrap in StatefulBuilder to avoid rebuild issues
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Text(
             "Edit User",
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Consumer<UserManagementViewModel>(
@@ -134,11 +151,16 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
                           controller: _nameController,
                           decoration: InputDecoration(
                             labelText: "Full Name",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8)),
                             filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                            fillColor:
+                                Theme.of(context).colorScheme.surfaceContainer,
                           ),
-                          validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                                  ? 'Name is required'
+                                  : null,
                           onChanged: (value) => vm.setFields(
                             name: value,
                             email: vm.email,
@@ -152,13 +174,17 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
                           controller: _emailController,
                           decoration: InputDecoration(
                             labelText: "Email",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8)),
                             filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                            fillColor:
+                                Theme.of(context).colorScheme.surfaceContainer,
                           ),
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) return 'Email is required';
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
+                            if (value == null || value.trim().isEmpty)
+                              return 'Email is required';
+                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                              return 'Invalid email format';
                             return null;
                           },
                           onChanged: (value) => vm.setFields(
@@ -174,11 +200,16 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
                           controller: _phoneController,
                           decoration: InputDecoration(
                             labelText: "Phone",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8)),
                             filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                            fillColor:
+                                Theme.of(context).colorScheme.surfaceContainer,
                           ),
-                          validator: (value) => value == null || value.trim().isEmpty ? 'Phone is required' : null,
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                                  ? 'Phone is required'
+                                  : null,
                           onChanged: (value) => vm.setFields(
                             name: vm.name,
                             email: vm.email,
@@ -192,9 +223,11 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
                           controller: _passwordController,
                           decoration: InputDecoration(
                             labelText: "New Password (optional)",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8)),
                             filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                            fillColor:
+                                Theme.of(context).colorScheme.surfaceContainer,
                           ),
                           obscureText: true,
                           onChanged: (value) => vm.setFields(
@@ -208,10 +241,16 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
                         const SizedBox(height: 16),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                            foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSecondaryContainer,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                           ),
                           onPressed: () async {
                             await vm.pickImage();
@@ -223,7 +262,8 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
                         if (vm.selectedImage != null)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(vm.selectedImage!, height: 120, width: 120, fit: BoxFit.cover),
+                            child: Image.file(vm.selectedImage!,
+                                height: 120, width: 120, fit: BoxFit.cover),
                           )
                         else if (user.image != null && user.image!.isNotEmpty)
                           ClipRRect(
@@ -233,7 +273,8 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
                               height: 120,
                               width: 120,
                               fit: BoxFit.cover,
-                              errorBuilder: (c, o, s) => const Icon(Icons.person, size: 60),
+                              errorBuilder: (c, o, s) =>
+                                  const Icon(Icons.person, size: 60),
                             ),
                           ),
                       ],
@@ -246,17 +287,21 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
+              child: Text('Cancel',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () async {
                 if (_editFormKey.currentState!.validate()) {
-                  final confirm = await _showConfirmationDialog(context, 'Edit', user.fullName ?? 'No Name');
+                  final confirm = await _showConfirmationDialog(
+                      context, 'Edit', user.fullName ?? 'No Name');
                   if (confirm == true) {
                     await _showLoadingDialog(
                       context,
@@ -291,7 +336,8 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
     final viewModel = context.watch<UserManagementViewModel>();
     final width = MediaQuery.of(context).size.width;
     final isWide = width > 600;
-    double getFontSize(double mobile, double tablet) => isWide ? tablet : mobile;
+    double getFontSize(double mobile, double tablet) =>
+        isWide ? tablet : mobile;
     double getPadding(double mobile, double tablet) => isWide ? tablet : mobile;
 
     return Scaffold(
@@ -299,9 +345,9 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
         title: Text(
           "Manage Users",
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
         ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -317,319 +363,416 @@ class _AddEditDeleteUsersPageState extends State<AddEditDeleteUsersPage> {
       body: viewModel.isLoading
           ? const Center(child: CircularProgressIndicator())
           : LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          padding: EdgeInsets.all(getPadding(16, 24)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey, // Main form key
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Add New User",
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: getFontSize(18, 22),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            labelText: "Search by Name or Email",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.search),
-                              onPressed: () => viewModel.searchUsers(_searchController.text),
-                            ),
-                          ),
-                          style: TextStyle(fontSize: getFontSize(14, 16)),
-                          onFieldSubmitted: (value) => viewModel.searchUsers(value),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: InputDecoration(
-                            labelText: "Full Name (required)",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
-                          ),
-                          validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
-                          style: TextStyle(fontSize: getFontSize(14, 16)),
-                          onChanged: (value) => viewModel.setFields(
-                            name: value,
-                            email: viewModel.email,
-                            phone: viewModel.phone,
-                            password: viewModel.password,
-                            image: viewModel.selectedImage,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _emailController,
-                          decoration: InputDecoration(
-                            labelText: "Email (required)",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) return 'Email is required';
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email format';
-                            return null;
-                          },
-                          style: TextStyle(fontSize: getFontSize(14, 16)),
-                          onChanged: (value) => viewModel.setFields(
-                            name: viewModel.name,
-                            email: value,
-                            phone: viewModel.phone,
-                            password: viewModel.password,
-                            image: viewModel.selectedImage,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _phoneController,
-                          decoration: InputDecoration(
-                            labelText: "Phone (required)",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
-                          ),
-                          validator: (value) => value == null || value.trim().isEmpty ? 'Phone is required' : null,
-                          style: TextStyle(fontSize: getFontSize(14, 16)),
-                          onChanged: (value) => viewModel.setFields(
-                            name: viewModel.name,
-                            email: viewModel.email,
-                            phone: value,
-                            password: viewModel.password,
-                            image: viewModel.selectedImage,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _passwordController,
-                          decoration: InputDecoration(
-                            labelText: "Password (required)",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surfaceContainer,
-                          ),
-                          obscureText: true,
-                          validator: (value) => value == null || value.trim().isEmpty ? 'Password is required' : null,
-                          style: TextStyle(fontSize: getFontSize(14, 16)),
-                          onChanged: (value) => viewModel.setFields(
-                            name: viewModel.name,
-                            email: viewModel.email,
-                            phone: viewModel.phone,
-                            password: value, // Fixed: was using 'phone' instead of 'value'
-                            image: viewModel.selectedImage,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                            foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: getPadding(16, 24),
-                              vertical: getPadding(12, 16),
-                            ),
-                          ),
-                          onPressed: viewModel.isActionLoading
-                              ? null
-                              : () async {
-                            await viewModel.pickImage();
-                          },
-                          child: Text(
-                            "Pick Image (optional)",
-                            style: TextStyle(fontSize: getFontSize(14, 16)),
-                          ),
-                        ),
-                        if (viewModel.selectedImage != null) ...[
-                          const SizedBox(height: 16),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              viewModel.selectedImage!,
-                              height: getFontSize(100, 120),
-                              width: getFontSize(100, 120),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: getPadding(16, 24),
-                                vertical: getPadding(12, 16),
+              builder: (context, constraints) => SingleChildScrollView(
+                padding: EdgeInsets.all(getPadding(16, 24)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Form(
+                          key: _formKey, // Main form key
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Add New User",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: getFontSize(18, 22),
+                                    ),
                               ),
-                            ),
-                            onPressed: viewModel.isActionLoading
-                                ? null
-                                : () async {
-                              if (_formKey.currentState!.validate()) {
-                                final confirm = await _showConfirmationDialog(
-                                  context,
-                                  'Add',
-                                  _nameController.text.isEmpty ? 'this user' : _nameController.text,
-                                );
-                                if (confirm == true) {
-                                  await _showLoadingDialog(
-                                    context,
-                                    viewModel.addUser(context),
-                                  );
-                                  if (mounted) {
-                                    _formKey.currentState!.reset();
-                                    _nameController.clear();
-                                    _emailController.clear();
-                                    _phoneController.clear();
-                                    _passwordController.clear();
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  labelText: "Search by Name or Email",
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  filled: true,
+                                  fillColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainer,
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.search),
+                                    onPressed: () => viewModel
+                                        .searchUsers(_searchController.text),
+                                  ),
+                                ),
+                                style: TextStyle(fontSize: getFontSize(14, 16)),
+                                onFieldSubmitted: (value) =>
+                                    viewModel.searchUsers(value),
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _nameController,
+                                decoration: InputDecoration(
+                                  labelText: "Full Name (required)",
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  filled: true,
+                                  fillColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainer,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Full name is required';
                                   }
-                                }
-                              }
-                            },
-                            child: viewModel.isActionLoading
-                                ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(Theme.of(context).colorScheme.onPrimary),
+                                  // Check if there is at least one space (two words)
+                                  if (!value.trim().contains(' ')) {
+                                    return 'Please enter both first and last name';
+                                  }
+                                  return null;
+                                },
+                                style: TextStyle(fontSize: getFontSize(14, 16)),
+                                onChanged: (value) => viewModel.setFields(
+                                  name: value,
+                                  email: viewModel.email,
+                                  phone: viewModel.phone,
+                                  password: viewModel.password,
+                                  image: viewModel.selectedImage,
+                                ),
                               ),
-                            )
-                                : Text(
-                              "Add User",
-                              style: TextStyle(fontSize: getFontSize(14, 16)),
-                            ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _emailController,
+                                decoration: InputDecoration(
+                                  labelText: "Email (required)",
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  filled: true,
+                                  fillColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainer,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty)
+                                    return 'Email is required';
+                                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
+                                      .hasMatch(value))
+                                    return 'Invalid email format';
+                                  return null;
+                                },
+                                style: TextStyle(fontSize: getFontSize(14, 16)),
+                                onChanged: (value) => viewModel.setFields(
+                                  name: viewModel.name,
+                                  email: value,
+                                  phone: viewModel.phone,
+                                  password: viewModel.password,
+                                  image: viewModel.selectedImage,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _phoneController,
+                                decoration: InputDecoration(
+                                  labelText: "Phone (required)",
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  filled: true,
+                                  fillColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainer,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Phone is required';
+                                  }
+                                  if (!RegExp(r'^\d{10}$')
+                                      .hasMatch(value.trim())) {
+                                    return 'Phone number must be exactly 10 digits';
+                                  }
+                                  return null;
+                                },
+                                style: TextStyle(fontSize: getFontSize(14, 16)),
+                                onChanged: (value) => viewModel.setFields(
+                                  name: viewModel.name,
+                                  email: viewModel.email,
+                                  phone: value,
+                                  password: viewModel.password,
+                                  image: viewModel.selectedImage,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _passwordController,
+                                decoration: InputDecoration(
+                                  labelText: "Password (required)",
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  filled: true,
+                                  fillColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainer,
+                                ),
+                                obscureText: true,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty)
+                                    return 'Password is required';
+                                  if (value.length < 8)
+                                    return 'Password must be at least 8 characters';
+                                  return null;
+                                },
+                                style: TextStyle(fontSize: getFontSize(14, 16)),
+                                onChanged: (value) => viewModel.setFields(
+                                  name: viewModel.name,
+                                  email: viewModel.email,
+                                  phone: viewModel.phone,
+                                  password:
+                                      value, // Fixed: was using 'phone' instead of 'value'
+                                  image: viewModel.selectedImage,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .secondaryContainer,
+                                  foregroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSecondaryContainer,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: getPadding(16, 24),
+                                    vertical: getPadding(12, 16),
+                                  ),
+                                ),
+                                onPressed: viewModel.isActionLoading
+                                    ? null
+                                    : () async {
+                                        await viewModel.pickImage();
+                                      },
+                                child: Text(
+                                  "Pick Image (optional)",
+                                  style:
+                                      TextStyle(fontSize: getFontSize(14, 16)),
+                                ),
+                              ),
+                              if (viewModel.selectedImage != null) ...[
+                                const SizedBox(height: 16),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    viewModel.selectedImage!,
+                                    height: getFontSize(100, 120),
+                                    width: getFontSize(100, 120),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8)),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: getPadding(16, 24),
+                                      vertical: getPadding(12, 16),
+                                    ),
+                                  ),
+                                  onPressed: viewModel.isActionLoading
+                                      ? null
+                                      : () async {
+                                          if (_formKey.currentState!
+                                              .validate()) {
+                                            final confirm =
+                                                await _showConfirmationDialog(
+                                              context,
+                                              'Add',
+                                              _nameController.text.isEmpty
+                                                  ? 'this user'
+                                                  : _nameController.text,
+                                            );
+                                            if (confirm == true) {
+                                              await _showLoadingDialog(
+                                                context,
+                                                viewModel.addUser(context),
+                                              );
+                                              if (mounted) {
+                                                _formKey.currentState!.reset();
+                                                _nameController.clear();
+                                                _emailController.clear();
+                                                _phoneController.clear();
+                                                _passwordController.clear();
+                                              }
+                                            }
+                                          }
+                                        },
+                                  child: viewModel.isActionLoading
+                                      ? SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation(
+                                                Theme.of(context)
+                                                    .colorScheme
+                                                    .onPrimary),
+                                          ),
+                                        )
+                                      : Text(
+                                          "Add User",
+                                          style: TextStyle(
+                                              fontSize: getFontSize(14, 16)),
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                "Users",
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: getFontSize(20, 24),
-                ),
-              ),
-              const SizedBox(height: 12),
-              viewModel.filteredUsers.isEmpty
-                  ? Padding(
-                padding: EdgeInsets.symmetric(vertical: getPadding(8, 16)),
-                child: Text(
-                  'No users found',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: getFontSize(14, 16),
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              )
-                  : ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: viewModel.filteredUsers.length,
-                itemBuilder: (context, index) {
-                  final user = viewModel.filteredUsers[index];
-                  final imageUrl = user.image != null && user.image!.isNotEmpty
-                      ? '${BaseUrl.baseUrl}${user.image}'
-                      : null;
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    margin: EdgeInsets.symmetric(vertical: getPadding(6, 8)),
-                    child: ListTile(
-                      leading: ClipOval(
-                        child: imageUrl != null
-                            ? Image.network(
-                          imageUrl,
-                          width: getFontSize(50, 60),
-                          height: getFontSize(50, 60),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.person,
-                            size: getFontSize(50, 60),
-                            color: Theme.of(context).colorScheme.primary,
+                    const SizedBox(height: 24),
+                    Text(
+                      "Users",
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: getFontSize(20, 24),
                           ),
-                        )
-                            : Icon(
-                          Icons.person,
-                          size: getFontSize(50, 60),
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      title: Text(
-                        user.fullName ?? 'No Name',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: getFontSize(16, 18),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${user.email ?? 'No Email'} - ${user.phone ?? 'No Phone'}',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontSize: getFontSize(14, 16),
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
-                            onPressed: viewModel.isActionLoading
-                                ? null
-                                : () => _editUser(context, user, viewModel),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-                            onPressed: viewModel.isActionLoading
-                                ? null
-                                : () async {
-                              final confirm = await _showConfirmationDialog(
-                                context,
-                                'Delete',
-                                user.fullName ?? 'No Name',
+                    ),
+                    const SizedBox(height: 12),
+                    viewModel.filteredUsers.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.symmetric(
+                                vertical: getPadding(8, 16)),
+                            child: Text(
+                              'No users found',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    fontSize: getFontSize(14, 16),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: viewModel.filteredUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = viewModel.filteredUsers[index];
+                              final imageUrl =
+                                  user.image != null && user.image!.isNotEmpty
+                                      ? '${BaseUrl.baseUrl}${user.image}'
+                                      : null;
+                              return Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                margin: EdgeInsets.symmetric(
+                                    vertical: getPadding(6, 8)),
+                                child: ListTile(
+                                  leading: ClipOval(
+                                    child: imageUrl != null
+                                        ? Image.network(
+                                            imageUrl,
+                                            width: getFontSize(50, 60),
+                                            height: getFontSize(50, 60),
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Icon(
+                                              Icons.person,
+                                              size: getFontSize(50, 60),
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.person,
+                                            size: getFontSize(50, 60),
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                  ),
+                                  title: Text(
+                                    user.fullName ?? 'No Name',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontSize: getFontSize(16, 18),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                  subtitle: Text(
+                                    '${user.email ?? 'No Email'} - ${user.phone ?? 'No Phone'}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontSize: getFontSize(14, 16),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.edit,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary),
+                                        onPressed: viewModel.isActionLoading
+                                            ? null
+                                            : () => _editUser(
+                                                context, user, viewModel),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error),
+                                        onPressed: viewModel.isActionLoading
+                                            ? null
+                                            : () async {
+                                                final confirm =
+                                                    await _showConfirmationDialog(
+                                                  context,
+                                                  'Delete',
+                                                  user.fullName ?? 'No Name',
+                                                );
+                                                if (confirm == true) {
+                                                  await _showLoadingDialog(
+                                                    context,
+                                                    viewModel.deleteUser(
+                                                        context, user),
+                                                  );
+                                                }
+                                              },
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               );
-                              if (confirm == true) {
-                                await _showLoadingDialog(
-                                  context,
-                                  viewModel.deleteUser(context, user),
-                                );
-                              }
                             },
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
