@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:ema_app/model/notice_model.dart';
+import 'package:ema_app/screens/admin/preview_image.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:ema_app/constants/base_url.dart';
@@ -292,6 +292,59 @@ class _NoticesPageState extends State<NoticesPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to open file: ${file.fileName}')),
+      );
+    }
+  }
+
+  Future<void> _openFile(BuildContext context, Files file) async {
+    final url = getFullFileUrl(file.filePath);
+
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No URL available for file: ${file.fileName}')),
+      );
+      return;
+    }
+
+    // If it's an image, just preview inside a dialog
+    final isImage = file.fileName?.toLowerCase ().endsWith('.jpg') == true ||
+        file.fileName?.toLowerCase().endsWith('.jpeg') == true ||
+        file.fileName?.toLowerCase().endsWith('.png') == true;
+
+    if (isImage) {
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          child: InteractiveViewer(
+            child: Image.network(
+              url,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Text("Failed to load image"),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Example: If it's a PDF, preview with flutter_pdfview
+    if (file.fileName?.toLowerCase().endsWith('.pdf') == true) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PDFPreviewPage(url: url),
+        ),
+      );
+      return;
+    }
+
+    // Fallback: open link in browser
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not launch $url')),
       );
     }
   }
@@ -749,7 +802,6 @@ class _NoticesPageState extends State<NoticesPage> {
                                                     size: 20),
                                                 onPressed: () {
                                                   vm.selectedFiles.remove(file);
-                                                  vm.notifyListeners();
                                                   setState(() {});
                                                 },
                                               ),

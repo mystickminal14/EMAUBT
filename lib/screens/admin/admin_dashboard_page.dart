@@ -1,6 +1,7 @@
 import 'package:ema_app/screens/admin/add_edit_delete_admins.dart';
 import 'package:ema_app/give_access_page.dart';
 import 'package:ema_app/free_quiz_and_files_page.dart';
+import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import '../users/user_home_page.dart';
 import 'admin_folders_page.dart';
@@ -89,12 +90,43 @@ class AdminDashboardPage extends StatelessWidget {
                 MaterialPageRoute(builder: (context) => const FreeQuizAndFilesPage()),
               );
             }),
-            _buildDashboardButton(context, Icons.exit_to_app, "Logout", () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-              );
-            }),
+            _buildDashboardButton(
+              context,
+              Icons.exit_to_app,
+              "Logout",
+                  () async {
+                final shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Confirm Logout'),
+                    content: const Text('Are you sure you want to logout?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Logout'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (shouldLogout == true) {
+                  final userViewModel = UserViewModel();
+                  await userViewModel.removeUser(); // clear session
+
+                  // Navigate to LoginPage (or HomePage if that's your landing page)
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                        (route) => false,
+                  );
+                }
+              },
+            ),
+
           ],
         ),
       ),
