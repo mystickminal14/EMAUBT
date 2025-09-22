@@ -169,23 +169,21 @@ class NoticeManagementViewModel extends ChangeNotifier {
 
   Future<void> deleteNotice(BuildContext context, NoticeModel notice) async {
     try {
-      isActionLoading = true;
-      notifyListeners();
       final response = await _apiService.getDeleteApiResponse(
-          '${BaseUrl.baseUrl}notices.php?id=${Uri.encodeQueryComponent(notice.id!)}');
+        '${BaseUrl.baseUrl}notices.php?id=${Uri.encodeQueryComponent(notice.id!)}',
+      );
+
       if (response['success'] == true) {
-        isActionLoading = false;
         _showSuccessMessage(context, 'Notice deleted successfully');
         await fetchNotices(context);
       } else {
-        _showErrorMessage(context,
-            'Failed to delete notice: ${response['message'] ?? 'Unknown error'}');
+        _showErrorMessage(
+          context,
+          'Failed to delete notice: ${response['message'] ?? 'Unknown error'}',
+        );
       }
     } catch (e) {
       _showErrorMessage(context, 'Error deleting notice: $e');
-    } finally {
-      isActionLoading = false;
-      notifyListeners();
     }
   }
 

@@ -475,19 +475,10 @@ class _NoticesPageState extends State<NoticesPage> {
                                                                 );
                                                                 if (confirm ==
                                                                     true) {
-                                                                  _showLoadingDialog(
-                                                                      context);
                                                                   await viewModel
                                                                       .deleteNotice(
                                                                           context,
                                                                           notice);
-                                                                  if (Navigator.of(
-                                                                          context)
-                                                                      .canPop()) {
-                                                                    Navigator.of(
-                                                                            context)
-                                                                        .pop(); // Close loading dialog
-                                                                  }
                                                                 }
                                                               },
                                                       ),

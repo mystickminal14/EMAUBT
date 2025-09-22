@@ -117,32 +117,24 @@ class UserNoticeWidget extends StatelessWidget {
     }
 
     final String fileName = file.fileName.toLowerCase();
-    String filePath = BaseUrl.baseUrl + file.filePath;
-    final File fileObject = File(filePath);
-
-    // if (!await fileObject.exists()) {
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     SnackBar(content: Text('File does not exist at: $filePath')),
-    //   );
-    //   return;
-    // }
+    final String fileUrl = BaseUrl.baseUrl + file.filePath; // full URL
 
     try {
       if (fileName.endsWith('.jpg') ||
           fileName.endsWith('.jpeg') ||
           fileName.endsWith('.png')) {
+        // Open inside app in an image viewer screen
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ImageViewerScreen(filePath: filePath),
+            builder: (context) => ImageViewerScreen(filePath: fileUrl),
           ),
         );
       } else {
-        final Uri fileUri = Platform.isWindows
-            ? Uri.parse('file:///$filePath')
-            : Uri.file(filePath);
+        // Open with external app or browser
+        final Uri fileUri = Uri.parse(fileUrl);
         if (await canLaunchUrl(fileUri)) {
-          await launchUrl(fileUri);
+          await launchUrl(fileUri, mode: LaunchMode.externalApplication);
         } else {
           throw 'Could not launch $fileUri';
         }
@@ -265,7 +257,7 @@ class UserNoticeWidget extends StatelessWidget {
 }
 
 class ImageViewerScreen extends StatelessWidget {
-  final String filePath;
+  final String filePath; // this is actually a URL now
   const ImageViewerScreen({super.key, required this.filePath});
 
   @override
@@ -283,31 +275,27 @@ class ImageViewerScreen extends StatelessWidget {
       body: Container(
         color: Colors.black87,
         child: Center(
-          child: FutureBuilder<bool>(
-            future: File(filePath).exists(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          child: InteractiveViewer(
+            boundaryMargin: const EdgeInsets.all(20.0),
+            minScale: 0.1,
+            maxScale: 4.0,
+            child: Image.network(
+              filePath,
+              fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
                 return CircularProgressIndicator(
                   valueColor:
                       AlwaysStoppedAnimation<Color>(Colors.deepPurple[700]!),
                 );
-              }
-              if (snapshot.hasData && snapshot.data == true) {
-                return InteractiveViewer(
-                  boundaryMargin: const EdgeInsets.all(20.0),
-                  minScale: 0.1,
-                  maxScale: 4.0,
-                  child: Image.network(
-                    filePath,
-                    fit: BoxFit.contain,
-                  ),
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return const Text(
+                  'Failed to load image',
+                  style: TextStyle(color: Colors.redAccent, fontSize: 16),
                 );
-              }
-              return const Text(
-                'Image file not found',
-                style: TextStyle(color: Colors.redAccent, fontSize: 16),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
