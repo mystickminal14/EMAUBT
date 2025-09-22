@@ -3,10 +3,10 @@ import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/user_notices_page.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
 import 'package:ema_app/screens/users/login_user_free_files_quiz_sets.dart';
+import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../admin/admin_dashboard_page.dart';
 import 'dart:io' show Platform;
 
@@ -17,7 +17,7 @@ class UserHomePage extends StatefulWidget {
   final bool accessedFromAdminDashboard;
   final String userEmail;
   final String userIdentifier;
-  final int? folderId;
+  final String? folderId;
   final String folderName;
 
   const UserHomePage({
@@ -37,10 +37,7 @@ class UserHomePage extends StatefulWidget {
 }
 
 class _UserHomePageState extends State<UserHomePage> {
-  late SharedPreferences _prefs;
-  String? _cachedFullName;
-  String? _cachedProfileImage;
-  String? _cachedUserEmail;
+
 
   @override
   void initState() {
@@ -50,7 +47,6 @@ class _UserHomePageState extends State<UserHomePage> {
         DeviceOrientation.portraitUp,
       ]);
     }
-    _initSharedPreferences();
   }
 
   @override
@@ -66,20 +62,6 @@ class _UserHomePageState extends State<UserHomePage> {
     super.dispose();
   }
 
-  Future<void> _initSharedPreferences() async {
-    _prefs = await SharedPreferences.getInstance();
-    await _prefs.setString('fullName', widget.fullName);
-    await _prefs.setString('profileImage', widget.profileImage);
-    await _prefs.setString('userEmail', widget.userEmail);
-    await _prefs.setString('userIdentifier', widget.userIdentifier);
-    await _prefs.setBool('isAdmin', widget.isAdmin);
-
-    setState(() {
-      _cachedFullName = _prefs.getString('fullName') ?? widget.fullName;
-      _cachedProfileImage = _prefs.getString('profileImage') ?? widget.profileImage;
-      _cachedUserEmail = _prefs.getString('userEmail') ?? widget.userEmail;
-    });
-  }
 
   ScreenSize _getScreenSize(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -202,7 +184,7 @@ class _UserHomePageState extends State<UserHomePage> {
                   ),
                   SizedBox(height: screenHeight * 0.02),
                   Text(
-                    "Welcome to EMA UBT, ${_cachedFullName ?? widget.fullName}",
+                    "Welcome to EMA UBT, ${ widget.fullName}",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -265,7 +247,7 @@ class _UserHomePageState extends State<UserHomePage> {
           context,
           MaterialPageRoute(
             builder: (_) => LoginUserFreeFilesQuizSets(
-              userIdentifier: _cachedUserEmail ?? widget.userEmail,
+              userIdentifier: widget.userEmail,
               isAdmin: widget.isAdmin,
             ),
           ),
@@ -281,10 +263,10 @@ class _UserHomePageState extends State<UserHomePage> {
             context,
             MaterialPageRoute(
               builder: (_) => AdminDashboardPage(
-                fullName: _cachedFullName ?? widget.fullName,
-                profileImage: _cachedProfileImage ?? widget.profileImage,
+                fullName:  widget.fullName,
+                profileImage: widget.profileImage,
                 isAdmin: widget.isAdmin,
-                userEmail: _cachedUserEmail ?? widget.userEmail,
+                userEmail:widget.userEmail,
               ),
             ),
           ),
@@ -308,7 +290,7 @@ class _UserHomePageState extends State<UserHomePage> {
           context,
           MaterialPageRoute(
             builder: (_) => EPSSectionPage(
-              userIdentifier: _cachedUserEmail ?? widget.userEmail,
+              userIdentifier:widget.userEmail,
               isAdmin: widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
             ),
           ),
@@ -390,7 +372,7 @@ class _UserHomePageState extends State<UserHomePage> {
                   SizedBox(height: 4),
                   Flexible(
                     child: Text(
-                      _cachedUserEmail ?? widget.userEmail,
+                       widget.userEmail,
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: screenSize == ScreenSize.small 
@@ -437,7 +419,7 @@ class _UserHomePageState extends State<UserHomePage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => EPSSectionPage(
-                        userIdentifier: _cachedUserEmail ?? widget.userEmail,
+                        userIdentifier: widget.userEmail,
                         isAdmin: widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
                       ),
                     ),
@@ -452,7 +434,7 @@ class _UserHomePageState extends State<UserHomePage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => LoginUserFreeFilesQuizSets(
-                        userIdentifier: _cachedUserEmail ?? widget.userEmail,
+                        userIdentifier:widget.userEmail,
                         isAdmin: widget.isAdmin,
                       ),
                     ),
@@ -475,10 +457,10 @@ class _UserHomePageState extends State<UserHomePage> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => AdminDashboardPage(
-                          fullName: _cachedFullName ?? widget.fullName,
-                          profileImage: _cachedProfileImage ?? widget.profileImage,
+                          fullName: widget.fullName,
+                          profileImage: widget.profileImage,
                           isAdmin: widget.isAdmin,
-                          userEmail: _cachedUserEmail ?? widget.userEmail,
+                          userEmail:  widget.userEmail,
                         ),
                       ),
                     ),
@@ -518,7 +500,9 @@ class _UserHomePageState extends State<UserHomePage> {
     );
 
     if (shouldLogout == true) {
-      await _prefs.clear();
+      final userViewModel = UserViewModel();
+      await userViewModel.removeUser(); // clear SharedPreferences safely
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -528,10 +512,11 @@ class _UserHomePageState extends State<UserHomePage> {
             fullName: '',
           ),
         ),
-        (route) => false,
+            (route) => false,
       );
     }
   }
+
 
   Widget _buildLargeButton(
     ResponsiveDimensions dimensions,
