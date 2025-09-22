@@ -1,4 +1,5 @@
 import 'package:ema_app/screens/admin/admin_quiz_set_detail_page.dart';
+import 'package:ema_app/screens/flash_screen.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/view_model/access_view_model.dart';
 import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
@@ -88,11 +89,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           primarySwatch: Colors.blue,
           useMaterial3: false,
         ),
-        home: const HomePage(
-          userIdentifier: '',
-          isAdmin: false,
-          fullName: '',
-        ),
+        home: FlashScreen(),
         routes: {
           '/quizSetDetail': (context) {
             final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
