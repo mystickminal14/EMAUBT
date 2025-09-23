@@ -50,8 +50,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
     if (shouldLogout == true) {
       final userViewModel = UserViewModel();
-      await userViewModel.removeUser(); // clear SharedPreferences safely
-
+      await userViewModel.removeUser();
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -61,11 +60,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             fullName: '',
           ),
         ),
-            (route) => false,
+        (route) => false,
       );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,19 +102,25 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 MaterialPageRoute(builder: (context) => const FoldersPage()),
               );
             }),
-            _buildDashboardButton(context, Icons.admin_panel_settings, "Add/Edit/Delete Admins", () {
+            _buildDashboardButton(
+                context, Icons.admin_panel_settings, "Add/Edit/Delete Admins",
+                () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddEditDeleteAdminsPage()),
+                MaterialPageRoute(
+                    builder: (context) => const AddEditDeleteAdminsPage()),
               );
             }),
-            _buildDashboardButton(context, Icons.group, "Add/Edit/Delete Users", () {
+            _buildDashboardButton(context, Icons.group, "Add/Edit/Delete Users",
+                () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddEditDeleteUsersPage()),
+                MaterialPageRoute(
+                    builder: (context) => const AddEditDeleteUsersPage()),
               );
             }),
-            _buildDashboardButton(context, Icons.notifications, "Important Information", () {
+            _buildDashboardButton(
+                context, Icons.notifications, "Important Information", () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const NoticesPage()),
@@ -130,23 +135,26 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             _buildDashboardButton(context, Icons.quiz, "Free Quiz & Files", () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const FreeQuizAndFilesPage()),
+                MaterialPageRoute(
+                    builder: (context) => const FreeQuizAndFilesPage()),
               );
             }),
             _buildDashboardButton(
               context,
               Icons.exit_to_app,
               "Logout",
-              (){_handleLogout(context);},
+              () {
+                _handleLogout(context);
+              },
             ),
-
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDashboardButton(BuildContext context, IconData icon, String label, VoidCallback onPressed) {
+  Widget _buildDashboardButton(BuildContext context, IconData icon,
+      String label, VoidCallback onPressed) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
