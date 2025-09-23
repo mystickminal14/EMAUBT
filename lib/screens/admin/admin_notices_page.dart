@@ -98,12 +98,9 @@ class _NoticesPageState extends State<NoticesPage> {
     viewModel.setFields(
       title: notice.title,
       textContent: notice.textContent,
-      files: notice.files
-              ?.map((file) => PlatformFile(
-                  name: file.fileName ?? '', path: file.filePath, size: 0))
-              .toList() ??
-          [],
+      files: [], // 🚩 do NOT convert server files into PlatformFile
     );
+
     _titleController.text = notice.title ?? '';
     _textContentController.text = notice.textContent ?? '';
 
@@ -131,6 +128,7 @@ class _NoticesPageState extends State<NoticesPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // title field
                       TextFormField(
                         controller: _titleController,
                         decoration: InputDecoration(
@@ -151,6 +149,8 @@ class _NoticesPageState extends State<NoticesPage> {
                             files: vm.selectedFiles),
                       ),
                       const SizedBox(height: 12),
+
+                      // text field
                       TextFormField(
                         controller: _textContentController,
                         decoration: InputDecoration(
@@ -168,6 +168,8 @@ class _NoticesPageState extends State<NoticesPage> {
                             files: vm.selectedFiles),
                       ),
                       const SizedBox(height: 16),
+
+                      // file picker
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
@@ -190,6 +192,8 @@ class _NoticesPageState extends State<NoticesPage> {
                         },
                       ),
                       const SizedBox(height: 16),
+
+                      // show new files OR old files
                       if (vm.selectedFiles.isNotEmpty)
                         ...vm.selectedFiles.map((file) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -220,9 +224,9 @@ class _NoticesPageState extends State<NoticesPage> {
                                   const Icon(Icons.attach_file, size: 20),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                      child: Text(file.fileName ?? '',
-                                          style:
-                                              const TextStyle(fontSize: 14))),
+                                    child: Text(file.fileName ?? '',
+                                        style: const TextStyle(fontSize: 14)),
+                                  ),
                                 ],
                               ),
                             )),
@@ -506,10 +510,19 @@ class _NoticesPageState extends State<NoticesPage> {
                                                                 );
                                                                 if (confirm ==
                                                                     true) {
+                                                                  _showLoadingDialog(
+                                                                      context);
                                                                   await viewModel
                                                                       .deleteNotice(
                                                                           context,
                                                                           notice);
+                                                                  if (Navigator.of(
+                                                                          context)
+                                                                      .canPop()) {
+                                                                    Navigator.of(
+                                                                            context)
+                                                                        .pop(); // Close loading dialog
+                                                                  }
                                                                 }
                                                               },
                                                       ),
@@ -564,7 +577,6 @@ class _NoticesPageState extends State<NoticesPage> {
                                                               .endsWith(
                                                                   '.png') ??
                                                       false;
-
                                                   return GestureDetector(
                                                     onTap: () => _openFile(
                                                         context, file),
@@ -582,9 +594,7 @@ class _NoticesPageState extends State<NoticesPage> {
                                                                           8),
                                                               child:
                                                                   Image.network(
-                                                                BaseUrl.baseUrl +
-                                                                    (file.filePath ??
-                                                                        ''),
+                                                                file.filePath!,
                                                                 height:
                                                                     getFontSize(
                                                                         100,
@@ -780,6 +790,7 @@ class _NoticesPageState extends State<NoticesPage> {
                                                     size: 20),
                                                 onPressed: () {
                                                   vm.selectedFiles.remove(file);
+                                                  vm.notifyListeners();
                                                   setState(() {});
                                                 },
                                               ),

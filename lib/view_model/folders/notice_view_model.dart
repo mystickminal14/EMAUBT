@@ -136,13 +136,14 @@ class NoticeManagementViewModel extends ChangeNotifier {
       notifyListeners();
 
       final fields = {
-        '_method': 'PUT',
+        'action': 'update',
         'id': notice.id!,
         'title': title!,
         if (textContent != null && textContent!.isNotEmpty)
           'text_content': textContent!,
       };
 
+      // 🚩 If user picked new files, upload them
       final response = await _apiService.postMultipartNoticeFiles(
         '${BaseUrl.baseUrl}notices.php',
         fields,
