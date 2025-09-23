@@ -596,7 +596,7 @@ class _NoticesPageState extends State<NoticesPage> {
                                                                           8),
                                                               child:
                                                                   Image.network(
-                                                                file.filePath!,
+                                                               BaseUrl.baseUrl+ file.filePath!,
                                                                 height:
                                                                     getFontSize(
                                                                         100,
