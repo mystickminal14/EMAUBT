@@ -49,20 +49,17 @@ class NoticeManagementViewModel extends ChangeNotifier {
       notifyListeners();
 
       final response =
-          await _apiService.getApiResponse('${BaseUrl.baseUrl}notices.php');
+      await _apiService.getApiResponse('${BaseUrl.baseUrl}notices.php');
 
       if (response != null) {
-        final List<dynamic> data = response as List<dynamic>; // directly cast
+        final List<dynamic> data = response as List<dynamic>;
         notices = data.map((json) => NoticeModel.fromJson(json)).toList();
         _filterNotices();
         _logger.i('Fetched ${notices.length} notices');
       } else {
         notices = [];
         _filterNotices();
-        _showErrorMessage(
-          context,
-          'Failed to fetch notices',
-        );
+        _showErrorMessage(context, 'Failed to fetch notices');
       }
     } catch (e) {
       notices = [];
@@ -76,7 +73,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
 
   Future<void> pickFiles() async {
     FilePickerResult? result =
-        await FilePicker.platform.pickFiles(allowMultiple: true);
+    await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null) {
       selectedFiles = result.files;
       notifyListeners();
@@ -94,7 +91,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
       notifyListeners();
 
       final fields = {
-        'action':'create',
+        'action': 'create',
         'title': title!,
         if (textContent != null && textContent!.isNotEmpty)
           'text_content': textContent!,
@@ -143,7 +140,6 @@ class NoticeManagementViewModel extends ChangeNotifier {
           'text_content': textContent!,
       };
 
-      // 🚩 If user picked new files, upload them
       final response = await _apiService.postMultipartNoticeFiles(
         '${BaseUrl.baseUrl}notices.php',
         fields,
@@ -171,6 +167,9 @@ class NoticeManagementViewModel extends ChangeNotifier {
 
   Future<void> deleteNotice(BuildContext context, NoticeModel notice) async {
     try {
+      isActionLoading = true;
+      notifyListeners();
+
       final response = await _apiService.getDeleteApiResponse(
         '${BaseUrl.baseUrl}notices.php?id=${Uri.encodeQueryComponent(notice.id!)}',
       );
@@ -186,6 +185,9 @@ class NoticeManagementViewModel extends ChangeNotifier {
       }
     } catch (e) {
       _showErrorMessage(context, 'Error deleting notice: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
     }
   }
 
