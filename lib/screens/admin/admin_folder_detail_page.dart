@@ -32,9 +32,12 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
   @override
   void initState() {
     super.initState();
-    fetch();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetch();
+    });
   }
- bool isLoading=false;
+
+  bool isLoading=false;
   void fetch() async {
     // Fetch files
    setState(() {
