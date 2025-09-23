@@ -1,21 +1,21 @@
 import 'package:ema_app/screens/admin/admin_quiz_set_detail_page.dart';
 import 'package:ema_app/screens/flash_screen.dart';
-import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/view_model/access_view_model.dart';
 import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
 import 'package:ema_app/view_model/folders/files_view_model.dart';
 import 'package:ema_app/view_model/folders/folder_view_model.dart';
+import 'package:ema_app/view_model/folders/free_files_view_model.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_detail_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_view_model.dart';
 import 'package:ema_app/view_model/folders/user_management_view_model.dart';
 import 'package:ema_app/view_model/grant_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/auth_view_model.dart';
+import 'package:ema_app/view_model/user_view_model/user_folder_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-
 
 void main() {
   runApp(const MyApp());
@@ -65,12 +65,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => UserManagementViewModel()),
-    ChangeNotifierProvider(create: (_) => NoticeManagementViewModel()),
-        
+        ChangeNotifierProvider(create: (_) => NoticeManagementViewModel()),
+        ChangeNotifierProvider(create: (_) => FreeAccessViewModel()),
         ChangeNotifierProvider(create: (_) => FolderViewModel()),
         ChangeNotifierProvider(create: (_) => GiveAccessViewModel()),
-
         ChangeNotifierProvider(create: (_) => FolderViewModel()),
+        ChangeNotifierProvider(create: (_) => UserFolderViewModel()),
         ChangeNotifierProvider(create: (_) => UserViewModel()),
         ChangeNotifierProvider(create: (_) => FilesViewModel()),
         ChangeNotifierProvider(create: (_) => QuizSetsViewModel()),
@@ -78,8 +78,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => GrantAccessFilesViewModel()),
         ChangeNotifierProvider(create: (_) => QuizSetDetailViewModel()),
         ChangeNotifierProvider(create: (_) => UserViewModel()),
-        
-        
+
         // Add more providers here
       ],
       child: MaterialApp(
@@ -92,7 +91,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         home: FlashScreen(),
         routes: {
           '/quizSetDetail': (context) {
-            final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+            final args = ModalRoute.of(context)!.settings.arguments
+                as Map<String, dynamic>?;
             if (args == null) return const SizedBox.shrink();
             return QuizSetDetailPage(
               quizSetId: args['quizSetId'] ?? '',

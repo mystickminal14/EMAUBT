@@ -197,7 +197,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
       final response = await http
           .get(
             Uri.parse(
-                '${BaseUrl.baseUrl}//quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
+                '${BaseUrl.baseUrl}/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
           )
           .timeout(const Duration(seconds: 10));
 

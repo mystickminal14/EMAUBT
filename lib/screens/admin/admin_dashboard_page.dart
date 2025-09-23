@@ -1,6 +1,7 @@
 import 'package:ema_app/screens/admin/add_edit_delete_admins.dart';
 import 'package:ema_app/give_access_page.dart';
 import 'package:ema_app/free_quiz_and_files_page.dart';
+import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import '../users/user_home_page.dart';
@@ -9,7 +10,7 @@ import 'add_edit_delete_users.dart';
 import 'admin_notices_page.dart';
 import '../auth/login_page.dart';
 
-class AdminDashboardPage extends StatelessWidget {
+class AdminDashboardPage extends StatefulWidget {
   final String fullName;
   final String profileImage;
   final bool isAdmin;
@@ -23,6 +24,48 @@ class AdminDashboardPage extends StatelessWidget {
     required this.userEmail,
   });
 
+  @override
+  State<AdminDashboardPage> createState() => _AdminDashboardPageState();
+}
+
+class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  void _handleLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      final userViewModel = UserViewModel();
+      await userViewModel.removeUser(); // clear SharedPreferences safely
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HomePage(
+            userIdentifier: '',
+            isAdmin: false,
+            fullName: '',
+          ),
+        ),
+            (route) => false,
+      );
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,11 +85,11 @@ class AdminDashboardPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => UserHomePage(
-                    fullName: fullName,
-                    profileImage: profileImage,
-                    isAdmin: isAdmin,
+                    fullName: widget.fullName,
+                    profileImage: widget.profileImage,
+                    isAdmin: widget.isAdmin,
                     accessedFromAdminDashboard: true,
-                    userEmail: userEmail,
+                    userEmail: widget.userEmail,
                     userIdentifier: '',
                     folderId: null,
                     folderName: '',
@@ -94,37 +137,7 @@ class AdminDashboardPage extends StatelessWidget {
               context,
               Icons.exit_to_app,
               "Logout",
-                  () async {
-                final shouldLogout = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Confirm Logout'),
-                    content: const Text('Are you sure you want to logout?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Logout'),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (shouldLogout == true) {
-                  final userViewModel = UserViewModel();
-                  await userViewModel.removeUser(); // clear session
-
-                  // Navigate to LoginPage (or HomePage if that's your landing page)
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                        (route) => false,
-                  );
-                }
-              },
+              (){_handleLogout(context);},
             ),
 
           ],

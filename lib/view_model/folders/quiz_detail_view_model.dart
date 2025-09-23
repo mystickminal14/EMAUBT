@@ -9,6 +9,8 @@ import 'package:logger/logger.dart';
 import 'dart:convert';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/utils/utils.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 
 class QuizSetDetailViewModel extends ChangeNotifier {
   final Logger _logger = Logger();
@@ -81,19 +83,50 @@ class QuizSetDetailViewModel extends ChangeNotifier {
     BuildContext context,
     String fileKey,
     Function(double) onProgress,
+    int quizSetId,
   ) async {
     if (file == null) return null;
     try {
       if (!await file.exists()) {
         throw Exception('File does not exist: ${file.path}');
       }
+
+      // Compress if it's an image
+      String ext = file.path.toLowerCase().split('.').last;
+      List<String> imageExts = ['jpg', 'jpeg', 'png', 'gif'];
+      if (imageExts.contains(ext)) {
+        _logger.i('Compressing image: ${file.path}');
+        final tempDir = await getTemporaryDirectory();
+        final targetPath =
+            '${tempDir.path}/compressed_${file.path.split('/').last}';
+        final Uint8List? compressedBytes =
+            await FlutterImageCompress.compressWithFile(
+          file.path,
+          minWidth: 1024,
+          minHeight: 1024,
+          quality: 85,
+          format: ext == 'png' ? CompressFormat.png : CompressFormat.jpeg,
+        );
+        if (compressedBytes != null) {
+          await File(targetPath).writeAsBytes(compressedBytes);
+          file = File(targetPath);
+          _logger.i('Compressed image size: ${compressedBytes.length} bytes');
+        } else {
+          _logger.w('Compression failed, uploading original');
+        }
+      } else {
+        _logger.i('Non-image file, no compression applied: ${file.path}');
+      }
+
       var fileSize = await file.length();
       _logger.i('Uploading file: ${file.path}, Size: $fileSize bytes');
 
       var request = http.MultipartRequest(
           'POST', Uri.parse('${BaseUrl.baseUrl}/quiz_set_detail_page.php'));
-      request.fields['quiz_set_id'] = fileKey;
+      request.fields['quiz_set_id'] = quizSetId.toString();
       request.fields['action'] = 'upload';
+      request.fields['file_key'] =
+          fileKey; // Added to identify the file type on server
 
       var fileStream = file.openRead();
       var fileLength = fileSize;
@@ -157,11 +190,11 @@ class QuizSetDetailViewModel extends ChangeNotifier {
   }
 
   Future<void> addQuestion(
-      BuildContext context,
-      Map<String, dynamic> questionData,
-      File? questionFile,
-      List<File?> choiceFiles,
-      ) async {
+    BuildContext context,
+    Map<String, dynamic> questionData,
+    File? questionFile,
+    List<File?> choiceFiles,
+  ) async {
     final tempId = DateTime.now().millisecondsSinceEpoch;
 
     // Convert questionData['choices'] to Map<String, Choice>
@@ -205,13 +238,14 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       }
 
       final questionFileName = await uploadFile(
-        questionFile,
-        context,
-        'question',
+            questionFile,
+            context,
+            'question',
             (progress) {
-          notifyListeners();
-        },
-      ) ??
+              notifyListeners();
+            },
+            questionData['quiz_set_id'],
+          ) ??
           '';
 
       if (questionFile != null) {
@@ -224,14 +258,16 @@ class QuizSetDetailViewModel extends ChangeNotifier {
           final i = entry.key;
           final file = entry.value;
           final result = await uploadFile(
-            file,
-            context,
-            'choice_$i',
+                file,
+                context,
+                'choice_$i',
                 (progress) {
-              notifyListeners();
-            },
-          ) ??
-              questionData['choices'][String.fromCharCode(65 + i)]['choice_file'] ??
+                  notifyListeners();
+                },
+                questionData['quiz_set_id'],
+              ) ??
+              questionData['choices'][String.fromCharCode(65 + i)]
+                  ['choice_file'] ??
               '';
           if (file != null) {
             completedFiles++;
@@ -271,8 +307,10 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         },
         'correct_answer': questionData['correct_answer'],
         'formatting': {
-          'question_word_formatting': questionData['formatting']['question_word_formatting'],
-          'optional_word_formatting': questionData['formatting']['optional_word_formatting'],
+          'question_word_formatting': questionData['formatting']
+              ['question_word_formatting'],
+          'optional_word_formatting': questionData['formatting']
+              ['optional_word_formatting'],
         },
       };
 
@@ -282,7 +320,8 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         body: json.encode({'action': 'add', ...newQuestion}),
       );
 
-      _logger.i('Add question response: ${response.statusCode}, ${response.body}');
+      _logger
+          .i('Add question response: ${response.statusCode}, ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -308,22 +347,26 @@ class QuizSetDetailViewModel extends ChangeNotifier {
   }
 
   Future<void> editQuestion(
-      BuildContext context,
-      int id,
-      Map<String, dynamic> questionData,
-      File? questionFile,
-      List<File?> choiceFiles,
-      ) async {
+    BuildContext context,
+    int id,
+    Map<String, dynamic> questionData,
+    File? questionFile,
+    List<File?> choiceFiles,
+  ) async {
     final index = questions.indexWhere((q) => q.id == id);
     QuestionModel? oldQuestion;
     if (index != -1) {
       oldQuestion = questions[index];
       // Convert questionData['choices'] to Map<String, Choice> with null safety
       final Map<String, Choice> choices = {
-        'A': Choice.fromJson(questionData['choices']['A'] ?? {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
-        'B': Choice.fromJson(questionData['choices']['B'] ?? {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
-        'C': Choice.fromJson(questionData['choices']['C'] ?? {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
-        'D': Choice.fromJson(questionData['choices']['D'] ?? {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
+        'A': Choice.fromJson(questionData['choices']['A'] ??
+            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
+        'B': Choice.fromJson(questionData['choices']['B'] ??
+            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
+        'C': Choice.fromJson(questionData['choices']['C'] ??
+            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
+        'D': Choice.fromJson(questionData['choices']['D'] ??
+            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
       };
       questions[index] = QuestionModel(
         id: id,
@@ -336,7 +379,8 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         correctAnswer: questionData['correct_answer'],
         formatting: questionData['formatting'],
       );
-      _logger.i("Temporarily updated question at index $index: ${questions[index]}");
+      _logger.i(
+          "Temporarily updated question at index $index: ${questions[index]}");
       notifyListeners();
     }
 
@@ -357,13 +401,14 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       }
 
       final questionFileName = await uploadFile(
-        questionFile,
-        context,
-        'question',
+            questionFile,
+            context,
+            'question',
             (progress) {
-          notifyListeners();
-        },
-      ) ??
+              notifyListeners();
+            },
+            questionData['quiz_set_id'],
+          ) ??
           questionData['question_file'];
       if (questionFile != null) {
         completedFiles++;
@@ -375,14 +420,16 @@ class QuizSetDetailViewModel extends ChangeNotifier {
           final i = entry.key;
           final file = entry.value;
           final result = await uploadFile(
-            file,
-            context,
-            'choice_$i',
+                file,
+                context,
+                'choice_$i',
                 (progress) {
-              notifyListeners();
-            },
-          ) ??
-              questionData['choices'][String.fromCharCode(65 + i)]['choice_file'] ??
+                  notifyListeners();
+                },
+                questionData['quiz_set_id'],
+              ) ??
+              questionData['choices'][String.fromCharCode(65 + i)]
+                  ['choice_file'] ??
               '';
           if (file != null) {
             completedFiles++;
@@ -403,28 +450,34 @@ class QuizSetDetailViewModel extends ChangeNotifier {
           'A': {
             'choice_text': questionData['choices']['A']['choice_text'] ?? '',
             'choice_file': choiceFileNames[0],
-            'word_formatting': questionData['choices']['A']['word_formatting'] ?? [],
+            'word_formatting':
+                questionData['choices']['A']['word_formatting'] ?? [],
           },
           'B': {
             'choice_text': questionData['choices']['B']['choice_text'] ?? '',
             'choice_file': choiceFileNames[1],
-            'word_formatting': questionData['choices']['B']['word_formatting'] ?? [],
+            'word_formatting':
+                questionData['choices']['B']['word_formatting'] ?? [],
           },
           'C': {
             'choice_text': questionData['choices']['C']['choice_text'] ?? '',
             'choice_file': choiceFileNames[2],
-            'word_formatting': questionData['choices']['C']['word_formatting'] ?? [],
+            'word_formatting':
+                questionData['choices']['C']['word_formatting'] ?? [],
           },
           'D': {
             'choice_text': questionData['choices']['D']['choice_text'] ?? '',
             'choice_file': choiceFileNames[3],
-            'word_formatting': questionData['choices']['D']['word_formatting'] ?? [],
+            'word_formatting':
+                questionData['choices']['D']['word_formatting'] ?? [],
           },
         },
         'correct_answer': questionData['correct_answer'],
         'formatting': {
-          'question_word_formatting': questionData['formatting']['question_word_formatting'] ?? [],
-          'optional_word_formatting': questionData['formatting']['optional_word_formatting'] ?? [],
+          'question_word_formatting':
+              questionData['formatting']['question_word_formatting'] ?? [],
+          'optional_word_formatting':
+              questionData['formatting']['optional_word_formatting'] ?? [],
         },
       };
 
@@ -434,7 +487,8 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         body: json.encode({'action': 'edit', ...updatedQuestion}),
       );
 
-      _logger.i('Edit question response: ${response.statusCode}, ${response.body}');
+      _logger.i(
+          'Edit question response: ${response.statusCode}, ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);

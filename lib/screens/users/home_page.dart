@@ -4,7 +4,6 @@ import 'package:ema_app/screens/users/contactuspage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/login_page.dart';
 import '../../eps_section_page.dart';
 
@@ -25,20 +24,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late SharedPreferences _prefs;
-  String? _cachedUserIdentifier;
-  bool? _cachedIsAdmin;
-  String? _cachedFullName;
-
   @override
   void initState() {
     super.initState();
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
-    _initSharedPreferences();
   }
 
   @override
@@ -52,19 +43,6 @@ class _HomePageState extends State<HomePage> {
       ]);
     }
     super.dispose();
-  }
-
-  Future<void> _initSharedPreferences() async {
-    _prefs = await SharedPreferences.getInstance();
-    await _prefs.setString('userIdentifier', widget.userIdentifier);
-    await _prefs.setBool('isAdmin', widget.isAdmin);
-    await _prefs.setString('fullName', widget.fullName);
-
-    setState(() {
-      _cachedUserIdentifier = _prefs.getString('userIdentifier') ?? widget.userIdentifier;
-      _cachedIsAdmin = _prefs.getBool('isAdmin') ?? widget.isAdmin;
-      _cachedFullName = _prefs.getString('fullName') ?? widget.fullName;
-    });
   }
 
   ScreenSize _getScreenSize(BuildContext context) {
@@ -136,8 +114,8 @@ class _HomePageState extends State<HomePage> {
             fontSize: _getScreenSize(context) == ScreenSize.small
                 ? screenWidth * 0.045
                 : _getScreenSize(context) == ScreenSize.medium
-                    ? screenWidth * 0.03
-                    : 20.0,
+                ? screenWidth * 0.03
+                : 20.0,
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -169,7 +147,6 @@ class _HomePageState extends State<HomePage> {
             child: Padding(
               padding: EdgeInsets.all(dimensions.padding),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
@@ -188,7 +165,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   SizedBox(height: screenHeight * 0.02),
                   Text(
-                    "Welcome to EMA UBT, ${_cachedFullName?.isEmpty ?? true ? 'Guest' : _cachedFullName}",
+                    "Welcome to EMA UBT, ${widget.fullName.isEmpty ? 'Guest' : widget.fullName}",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -240,14 +217,14 @@ class _HomePageState extends State<HomePage> {
         const Icon(Icons.login, color: Colors.white),
         'Login / Register',
         Colors.teal[600]!,
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage())),
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage())),
       ),
       _buildLargeButton(
         dimensions,
         const Icon(Icons.notifications, color: Colors.white),
         'Important Information',
         Colors.deepPurple[600]!,
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
       ),
       _buildLargeButton(
         dimensions,
@@ -264,12 +241,17 @@ class _HomePageState extends State<HomePage> {
         ),
         'EPS TOPIK NEW UBT SESSION',
         Colors.green[600]!,
-        () => Navigator.push(
+            () => Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => EPSSectionPage(
-              userIdentifier: _cachedUserIdentifier ?? widget.userIdentifier,
-              isAdmin: _cachedIsAdmin ?? widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
+              userIdentifier: widget.userIdentifier,
+              isAdmin: widget.isAdmin,
+              fullName: widget.fullName,
+              profileImage: '',
+              userEmail: '',
+              folderId: null,
+              folderName: '',
             ),
           ),
         ),
@@ -279,7 +261,7 @@ class _HomePageState extends State<HomePage> {
         const Icon(Icons.contact_mail, color: Colors.white),
         'Contact Us',
         Colors.red[600]!,
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
       ),
     ];
   }
@@ -292,72 +274,65 @@ class _HomePageState extends State<HomePage> {
       width: screenSize == ScreenSize.small
           ? screenWidth * 0.8
           : screenSize == ScreenSize.medium
-              ? screenWidth * 0.6
-              : 300,
+          ? screenWidth * 0.6
+          : 300,
       child: Column(
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [Colors.teal[700]!, Colors.cyanAccent]),
             ),
-            child: SizedBox(
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: screenSize == ScreenSize.small
-                        ? 28
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: screenSize == ScreenSize.small
+                      ? 28
+                      : screenSize == ScreenSize.medium
+                      ? 32
+                      : 35,
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.account_circle,
+                    size: screenSize == ScreenSize.small
+                        ? 35
                         : screenSize == ScreenSize.medium
-                            ? 32
-                            : 35,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.account_circle,
-                      size: screenSize == ScreenSize.small
-                          ? 35
+                        ? 40
+                        : 45,
+                    color: Colors.teal,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  "Hello, ${widget.isAdmin ? 'Admin' : (widget.userIdentifier.isEmpty ? 'Guest' : 'User')}",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenSize == ScreenSize.small
+                        ? 16
+                        : screenSize == ScreenSize.medium
+                        ? 18
+                        : 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                if (widget.userIdentifier.isNotEmpty)
+                  Text(
+                    widget.userIdentifier,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: screenSize == ScreenSize.small
+                          ? 12
                           : screenSize == ScreenSize.medium
-                              ? 40
-                              : 45,
-                      color: Colors.teal,
+                          ? 14
+                          : 16,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
-                  SizedBox(height: 8),
-                  Flexible(
-                    child: Text(
-                      "Hello, ${_cachedIsAdmin ?? widget.isAdmin ? 'Admin' : (_cachedUserIdentifier?.isEmpty ?? true ? 'Guest' : 'User')}",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: screenSize == ScreenSize.small
-                            ? 16
-                            : screenSize == ScreenSize.medium
-                                ? 18
-                                : 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  if (_cachedUserIdentifier?.isNotEmpty ?? false)
-                    Flexible(
-                      child: Text(
-                        _cachedUserIdentifier ?? widget.userIdentifier,
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: screenSize == ScreenSize.small
-                              ? 12
-                              : screenSize == ScreenSize.medium
-                                  ? 14
-                                  : 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
           Expanded(
@@ -369,14 +344,14 @@ class _HomePageState extends State<HomePage> {
                   dimensions,
                   const Icon(Icons.login, color: Colors.teal),
                   "Login / Register",
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage())),
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage())),
                 ),
                 _buildDrawerItem(
                   context,
                   dimensions,
                   const Icon(Icons.notifications, color: Colors.teal),
                   "Important Information",
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
                 ),
                 _buildDrawerItem(
                   context,
@@ -393,12 +368,17 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   "EPS TOPIK NEW UBT SESSION",
-                  () => Navigator.push(
+                      () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => EPSSectionPage(
-                        userIdentifier: _cachedUserIdentifier ?? widget.userIdentifier,
-                        isAdmin: _cachedIsAdmin ?? widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
+                        userIdentifier: widget.userIdentifier,
+                        isAdmin: widget.isAdmin,
+                        fullName: widget.fullName,
+                        profileImage: '',
+                        userEmail: '',
+                        folderId: null,
+                        folderName: '',
                       ),
                     ),
                   ),
@@ -408,7 +388,7 @@ class _HomePageState extends State<HomePage> {
                   dimensions,
                   const Icon(Icons.contact_mail, color: Colors.teal),
                   "Contact Us",
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
                 ),
               ],
             ),
@@ -419,12 +399,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildLargeButton(
-    ResponsiveDimensions dimensions,
-    Widget icon,
-    String text,
-    Color color,
-    VoidCallback onPressed,
-  ) {
+      ResponsiveDimensions dimensions,
+      Widget icon,
+      String text,
+      Color color,
+      VoidCallback onPressed,
+      ) {
     return SizedBox(
       width: dimensions.buttonWidth,
       height: dimensions.buttonHeight,
@@ -441,26 +421,24 @@ class _HomePageState extends State<HomePage> {
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               height: dimensions.buttonHeight * 0.4,
               child: icon is Icon
                   ? Icon(
-                      (icon).icon,
-                      size: dimensions.iconSize,
-                      color: Colors.white,
-                    )
+                (icon).icon,
+                size: dimensions.iconSize,
+                color: Colors.white,
+              )
                   : SizedBox(
-                      width: dimensions.iconSize,
-                      height: dimensions.iconSize,
-                      child: icon,
-                    ),
+                width: dimensions.iconSize,
+                height: dimensions.iconSize,
+                child: icon,
+              ),
             ),
             SizedBox(height: 4),
             Expanded(
-              child: Container(
-                alignment: Alignment.center,
+              child: Center(
                 child: Text(
                   text,
                   style: TextStyle(
@@ -482,30 +460,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildDrawerItem(
-    BuildContext context,
-    ResponsiveDimensions dimensions,
-    Widget leading,
-    String title,
-    VoidCallback onTap,
-  ) {
+      BuildContext context,
+      ResponsiveDimensions dimensions,
+      Widget leading,
+      String title,
+      VoidCallback onTap,
+      ) {
     final screenSize = _getScreenSize(context);
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
-        leading: SizedBox(
-          width: 24,
-          height: 24,
-          child: leading,
-        ),
+        leading: SizedBox(width: 24, height: 24, child: leading),
         title: Text(
           title,
           style: TextStyle(
             fontSize: screenSize == ScreenSize.small
                 ? 14
                 : screenSize == ScreenSize.medium
-                    ? 16
-                    : 18,
+                ? 16
+                : 18,
             fontWeight: FontWeight.w600,
           ),
           maxLines: 2,
@@ -515,7 +489,7 @@ class _HomePageState extends State<HomePage> {
         tileColor: Colors.white,
         selectedTileColor: Colors.teal[100],
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         dense: true,
         visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
         minLeadingWidth: 36,

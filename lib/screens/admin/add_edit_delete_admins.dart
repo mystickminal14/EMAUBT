@@ -19,13 +19,20 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
   @override
   void initState() {
     super.initState();
-    final viewModel = context.read<AdminManagementViewModel>();
-    viewModel.fetchUsers(context);
-    viewModel.fetchAdmins(context);
     _searchController.addListener(() {
-      viewModel.searchUsersAndAdmins(_searchController.text);
+      context
+          .read<AdminManagementViewModel>()
+          .searchUsersAndAdmins(_searchController.text);
+    });
+
+    // Delay fetching until after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewModel = context.read<AdminManagementViewModel>();
+      viewModel.fetchUsers(context);
+      viewModel.fetchAdmins(context);
     });
   }
+
 
   /// Show loading dialog that is safe even if widget gets disposed
   Future<void> _showLoadingDialog(
