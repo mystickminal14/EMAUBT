@@ -53,7 +53,7 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   image_path: "assets/ema.jpeg"
   adaptive_icon_foreground: "assets/ema.jpeg"
-  adaptive_icon_background: "assets/ema.jpeg"
+  adaptive_icon_background: "#FFFFFF"
 
 flutter:
   uses-material-design: true
