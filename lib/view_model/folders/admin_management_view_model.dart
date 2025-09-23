@@ -100,7 +100,7 @@ class AdminManagementViewModel extends ChangeNotifier {
       _logger.i('Granting admin access to ${user.fullName}...');
 
       final response = await _apiService.postFormData(
-        '${BaseUrl.baseUrl}//give_admin_access.php',
+        '${BaseUrl.baseUrl}give_admin_access.php',
         {
           'user_id': user.id ?? '',
           'full_name': user.fullName ?? 'No Name',
@@ -132,7 +132,7 @@ class AdminManagementViewModel extends ChangeNotifier {
       _logger.i('Removing admin access from ${admin.fullName}...');
 
       final response = await _apiService.postFormData(
-        '${BaseUrl.baseUrl}//give_admin_access.php',
+        '${BaseUrl.baseUrl}give_admin_access.php',
         {
           'user_id': admin.userId ?? '',
           'action': 'remove',

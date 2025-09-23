@@ -647,7 +647,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
       });
     }
 
-    final fileUrl = '${BaseUrl.baseUrl}/${file['file_path']}';
+    final fileUrl = '${BaseUrl.baseUrl}${file['file_path']}';
     final encodedFileUrl = Uri.encodeFull(fileUrl);
     final viewerUrl =
         'https://docs.google.com/viewer?url=$encodedFileUrl&embedded=true&_cache_bust=${DateTime.now().millisecondsSinceEpoch}';

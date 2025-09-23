@@ -169,7 +169,7 @@ class _AddEditDeleteAdminsPageState extends State<AddEditDeleteAdminsPage> {
                                 final user = viewModel.filteredUsers[index];
                                 final imageUrl =
                                     user.image != null && user.image!.isNotEmpty
-                                        ? '${BaseUrl.baseUrl}//${user.image}'
+                                        ? '${BaseUrl.baseUrl}${user.image}'
                                         : null;
                                 return Card(
                                   margin: EdgeInsets.symmetric(

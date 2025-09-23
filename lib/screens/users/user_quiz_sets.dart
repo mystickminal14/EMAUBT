@@ -336,7 +336,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
     try {
       final response = await http.get(
         Uri.parse(
-            '${BaseUrl.baseUrl}//quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
+            '${BaseUrl.baseUrl}quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1020,7 +1020,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
   final List<Offset?> _mainPoints = [];
   final List<Offset?> _audioPoints = [];
   final List<Offset?> _choicePoints = [];
-  static const String baseUrl = '${BaseUrl.baseUrl}//';
+  static const String baseUrl = '${BaseUrl.baseUrl}';
   String? _currentAudioFile;
   List<int> displayNumbers = [];
   Map<int, int> displayNumberToIndex = {};
