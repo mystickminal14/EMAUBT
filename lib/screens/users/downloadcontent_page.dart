@@ -41,7 +41,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
   String _status = 'Fetching quiz data...';
   final Map<String, String> _cachedFiles = {};
   bool _hasError = false;
-  static const String baseUrl = '${BaseUrl.baseUrl}/';
+  static const String baseUrl = '${BaseUrl.baseUrl}';
   int _completedDownloads = 0;
 
   @override

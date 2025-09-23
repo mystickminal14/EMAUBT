@@ -52,7 +52,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
     TextEditingController questionController = TextEditingController();
     TextEditingController optionalTextController = TextEditingController();
     List<TextEditingController> choiceControllers =
-    List.generate(4, (_) => TextEditingController());
+        List.generate(4, (_) => TextEditingController());
     List<File?> choiceFiles = List.generate(4, (_) => null);
     File? questionFile;
     String selectedAnswer = 'A';
@@ -62,7 +62,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
       'optional_word_formatting': [],
     };
     List<List<Map<String, dynamic>>> choiceWordFormatting =
-    List.generate(4, (_) => []);
+        List.generate(4, (_) => []);
     Map<String, double> uploadProgress = {};
 
     _showQuestionDialog(
@@ -140,12 +140,12 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   void _editQuestion(int index) {
     final question = context.read<QuizSetDetailViewModel>().questions[index];
     TextEditingController questionController =
-    TextEditingController(text: question.question);
+        TextEditingController(text: question.question);
     TextEditingController optionalTextController =
-    TextEditingController(text: question.optionalText);
+        TextEditingController(text: question.optionalText);
     List<TextEditingController> choiceControllers = List.generate(
       4,
-          (i) => TextEditingController(
+      (i) => TextEditingController(
           text: question.choices[String.fromCharCode(65 + i)]!.choiceText),
     );
     List<File?> choiceFiles = List.generate(4, (_) => null);
@@ -160,7 +160,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
     };
     List<List<Map<String, dynamic>>> choiceWordFormatting = List.generate(
       4,
-          (i) => List<Map<String, dynamic>>.from(
+      (i) => List<Map<String, dynamic>>.from(
           question.choices[String.fromCharCode(65 + i)]!.wordFormatting),
     );
     String existingQuestionFile = question.questionFile;
@@ -236,7 +236,11 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
         _showLoadingDialog(context);
         try {
           await context.read<QuizSetDetailViewModel>().editQuestion(
-              context, question.id, questionData, selectedQuestionFile, selectedChoiceFiles);
+              context,
+              question.id,
+              questionData,
+              selectedQuestionFile,
+              selectedChoiceFiles);
         } finally {
           Navigator.of(context).pop(); // Close loading dialog
         }
@@ -261,27 +265,32 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
             onPressed: context.read<QuizSetDetailViewModel>().isSaving
                 ? null
                 : () async {
-              _showLoadingDialog(context);
-              try {
-                await context.read<QuizSetDetailViewModel>().deleteQuestion(
-                    context,
-                    widget.quizSetId,
-                    context.read<QuizSetDetailViewModel>().questions[index].id);
-              } finally {
-                Navigator.of(context).pop(); // Close loading dialog
-                Navigator.pop(context); // Close confirmation dialog
-              }
-            },
+                    _showLoadingDialog(context);
+                    try {
+                      await context
+                          .read<QuizSetDetailViewModel>()
+                          .deleteQuestion(
+                              context,
+                              widget.quizSetId,
+                              context
+                                  .read<QuizSetDetailViewModel>()
+                                  .questions[index]
+                                  .id);
+                    } finally {
+                      Navigator.of(context).pop(); // Close loading dialog
+                      Navigator.pop(context); // Close confirmation dialog
+                    }
+                  },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             child: context.read<QuizSetDetailViewModel>().isSaving
                 ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Colors.white),
-              ),
-            )
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  )
                 : const Text('Delete'),
           ),
         ],
@@ -306,7 +315,8 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
       final tempDir = await getTemporaryDirectory();
       final fileName = filePath.split('/').last;
       final localFile = File('${tempDir.path}/$fileName');
-      final response = await http.get(Uri.parse('${BaseUrl.baseUrl}/$filePath'));
+      final response =
+          await http.get(Uri.parse('${BaseUrl.baseUrl}/$filePath'));
       if (response.statusCode == 200) {
         await localFile.writeAsBytes(response.bodyBytes);
         final result = await OpenFile.open(localFile.path);
@@ -332,15 +342,15 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   }
 
   Widget _buildFormattedText(
-      String text,
-      List<Map<String, dynamic>> wordFormatting,
-      TextStyle? baseStyle, {
-        bool isQuestion = false,
-        int? questionIndex,
-        bool isOptionalText = false,
-        bool isChoice = false,
-        String? choiceLetter,
-      }) {
+    String text,
+    List<Map<String, dynamic>> wordFormatting,
+    TextStyle? baseStyle, {
+    bool isQuestion = false,
+    int? questionIndex,
+    bool isOptionalText = false,
+    bool isChoice = false,
+    String? choiceLetter,
+  }) {
     const int maxChoiceLength = 50;
     String displayText = text;
     bool isTruncated = false;
@@ -432,7 +442,8 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                   ? wordFormatting[index]['underline'] ?? false
                   : false;
               return TextSpan(
-                text: isTruncated && index == words.length - 1 ? '...' : '$word ',
+                text:
+                    isTruncated && index == words.length - 1 ? '...' : '$word ',
                 style: baseStyle?.copyWith(
                   fontWeight: bold ? FontWeight.bold : FontWeight.normal,
                   decoration: underline ? TextDecoration.underline : null,
@@ -469,30 +480,30 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   }
 
   void _showQuestionDialog(
-      String title,
-      TextEditingController questionController,
-      TextEditingController optionalTextController,
-      List<TextEditingController> choiceControllers, {
-        required String correctAnswer,
-        required File? questionFile,
-        required List<File?> choiceFiles,
-        required String questionType,
-        required Map<String, List<Map<String, dynamic>>> wordFormatting,
-        required List<List<Map<String, dynamic>>> choiceWordFormatting,
-        required String existingQuestionFile,
-        required Map<String, String> existingChoiceFiles,
-        required Map<String, double> uploadProgress,
-        required Function(
-            String,
-            File?,
-            List<File?>,
-            String,
-            Map<String, List<Map<String, dynamic>>>,
-            List<List<Map<String, dynamic>>>,
-            Map<String, String>,
-            StateSetter,
-            ) onSave,
-      }) {
+    String title,
+    TextEditingController questionController,
+    TextEditingController optionalTextController,
+    List<TextEditingController> choiceControllers, {
+    required String correctAnswer,
+    required File? questionFile,
+    required List<File?> choiceFiles,
+    required String questionType,
+    required Map<String, List<Map<String, dynamic>>> wordFormatting,
+    required List<List<Map<String, dynamic>>> choiceWordFormatting,
+    required String existingQuestionFile,
+    required Map<String, String> existingChoiceFiles,
+    required Map<String, double> uploadProgress,
+    required Function(
+      String,
+      File?,
+      List<File?>,
+      String,
+      Map<String, List<Map<String, dynamic>>>,
+      List<List<Map<String, dynamic>>>,
+      Map<String, String>,
+      StateSetter,
+    ) onSave,
+  }) {
     String selectedAnswer = correctAnswer;
     String selectedQuestionType = questionType;
     bool isDraggingQuestion = false;
@@ -504,7 +515,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
 
     Future<void> pickFile(Function(File) onFileSelected) async {
       FilePickerResult? result =
-      await FilePicker.platform.pickFiles(type: FileType.any);
+          await FilePicker.platform.pickFiles(type: FileType.any);
       if (result != null && result.files.single.path != null) {
         onFileSelected(File(result.files.single.path!));
       }
@@ -533,7 +544,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
         final currentFormatting = wordFormatting[key]!;
         wordFormatting[key] = List.generate(
           words.length,
-              (i) => i < currentFormatting.length
+          (i) => i < currentFormatting.length
               ? currentFormatting[i]
               : {'bold': false, 'underline': false},
         );
@@ -550,7 +561,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
         final currentFormatting = choiceWordFormatting[index];
         choiceWordFormatting[index] = List.generate(
           words.length,
-              (i) => i < currentFormatting.length
+          (i) => i < currentFormatting.length
               ? currentFormatting[i]
               : {'bold': false, 'underline': false},
         );
@@ -561,8 +572,10 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title:
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
             child: SingleChildScrollView(
@@ -595,24 +608,30 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             Text(
                               word,
                               style: TextStyle(
-                                fontWeight: wordFormatting['question_word_formatting']!
-                                    .isNotEmpty &&
-                                    index <
-                                        wordFormatting['question_word_formatting']!
-                                            .length &&
-                                    wordFormatting['question_word_formatting']![index]
-                                    ['bold'] ==
-                                        true
+                                fontWeight: wordFormatting[
+                                                'question_word_formatting']!
+                                            .isNotEmpty &&
+                                        index <
+                                            wordFormatting[
+                                                    'question_word_formatting']!
+                                                .length &&
+                                        wordFormatting[
+                                                    'question_word_formatting']![
+                                                index]['bold'] ==
+                                            true
                                     ? FontWeight.bold
                                     : FontWeight.normal,
-                                decoration: wordFormatting['question_word_formatting']!
-                                    .isNotEmpty &&
-                                    index <
-                                        wordFormatting['question_word_formatting']!
-                                            .length &&
-                                    wordFormatting['question_word_formatting']![index]
-                                    ['underline'] ==
-                                        true
+                                decoration: wordFormatting[
+                                                'question_word_formatting']!
+                                            .isNotEmpty &&
+                                        index <
+                                            wordFormatting[
+                                                    'question_word_formatting']!
+                                                .length &&
+                                        wordFormatting[
+                                                    'question_word_formatting']![
+                                                index]['underline'] ==
+                                            true
                                     ? TextDecoration.underline
                                     : null,
                               ),
@@ -620,44 +639,54 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             Row(
                               children: [
                                 Checkbox(
-                                  value: wordFormatting['question_word_formatting']!
-                                      .isNotEmpty &&
-                                      index <
-                                          wordFormatting['question_word_formatting']!
-                                              .length
-                                      ? wordFormatting['question_word_formatting']![index]
-                                  ['bold'] ??
-                                      false
+                                  value: wordFormatting[
+                                                  'question_word_formatting']!
+                                              .isNotEmpty &&
+                                          index <
+                                              wordFormatting[
+                                                      'question_word_formatting']!
+                                                  .length
+                                      ? wordFormatting[
+                                                  'question_word_formatting']![
+                                              index]['bold'] ??
+                                          false
                                       : false,
                                   onChanged: (value) {
                                     setDialogState(() {
-                                      if (wordFormatting['question_word_formatting']!
-                                          .length >
+                                      if (wordFormatting[
+                                                  'question_word_formatting']!
+                                              .length >
                                           index) {
-                                        wordFormatting['question_word_formatting']!
-                                        [index]['bold'] = value!;
+                                        wordFormatting[
+                                                'question_word_formatting']![
+                                            index]['bold'] = value!;
                                       }
                                     });
                                   },
                                 ),
                                 const Text('B'),
                                 Checkbox(
-                                  value: wordFormatting['question_word_formatting']!
-                                      .isNotEmpty &&
-                                      index <
-                                          wordFormatting['question_word_formatting']!
-                                              .length
-                                      ? wordFormatting['question_word_formatting']![index]
-                                  ['underline'] ??
-                                      false
+                                  value: wordFormatting[
+                                                  'question_word_formatting']!
+                                              .isNotEmpty &&
+                                          index <
+                                              wordFormatting[
+                                                      'question_word_formatting']!
+                                                  .length
+                                      ? wordFormatting[
+                                                  'question_word_formatting']![
+                                              index]['underline'] ??
+                                          false
                                       : false,
                                   onChanged: (value) {
                                     setDialogState(() {
-                                      if (wordFormatting['question_word_formatting']!
-                                          .length >
+                                      if (wordFormatting[
+                                                  'question_word_formatting']!
+                                              .length >
                                           index) {
-                                        wordFormatting['question_word_formatting']!
-                                        [index]['underline'] = value!;
+                                        wordFormatting[
+                                                'question_word_formatting']![
+                                            index]['underline'] = value!;
                                       }
                                     });
                                   },
@@ -684,7 +713,8 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             setDialogState(() => localQuestionFile = file);
                           } else {
                             Flushbar(
-                              message: 'Cannot access file: Restricted or invalid path',
+                              message:
+                                  'Cannot access file: Restricted or invalid path',
                               backgroundColor: Colors.redAccent,
                               duration: const Duration(seconds: 3),
                             ).show(context);
@@ -701,7 +731,8 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                     child: Container(
                       decoration: BoxDecoration(
                         border: Border.all(
-                            color: isDraggingQuestion ? Colors.blue : Colors.grey),
+                            color:
+                                isDraggingQuestion ? Colors.blue : Colors.grey),
                         borderRadius: BorderRadius.circular(8),
                         color: isDraggingQuestion
                             ? Colors.blue.withOpacity(0.1)
@@ -714,10 +745,11 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             children: [
                               Expanded(
                                 child: ElevatedButton(
-                                  onPressed: () => pickFile(
-                                          (file) => setDialogState(() => localQuestionFile = file)),
+                                  onPressed: () => pickFile((file) =>
+                                      setDialogState(
+                                          () => localQuestionFile = file)),
                                   child: Text(localQuestionFile == null &&
-                                      localExistingQuestionFile.isEmpty
+                                          localExistingQuestionFile.isEmpty
                                       ? "Attach Question File"
                                       : "Change Question File"),
                                 ),
@@ -738,18 +770,21 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                           if (localQuestionFile != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
-                              child: Text("File: ${localQuestionFile!.path.split('/').last}"),
+                              child: Text(
+                                  "File: ${localQuestionFile!.path.split('/').last}"),
                             ),
-                          if (localQuestionFile == null && localExistingQuestionFile.isNotEmpty)
+                          if (localQuestionFile == null &&
+                              localExistingQuestionFile.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Row(
                                 children: [
-                                  Text("File: ${localExistingQuestionFile.split('/').last}"),
+                                  Text(
+                                      "File: ${localExistingQuestionFile.split('/').last}"),
                                   IconButton(
                                     icon: const Icon(Icons.clear),
-                                    onPressed: () =>
-                                        setDialogState(() => localExistingQuestionFile = ''),
+                                    onPressed: () => setDialogState(
+                                        () => localExistingQuestionFile = ''),
                                   ),
                                 ],
                               ),
@@ -786,22 +821,30 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             Text(
                               word,
                               style: TextStyle(
-                                fontWeight: wordFormatting['optional_word_formatting']!
-                                    .isNotEmpty &&
-                                    index <
-                                        wordFormatting['optional_word_formatting']!.length &&
-                                    wordFormatting['optional_word_formatting']![index]
-                                    ['bold'] ==
-                                        true
+                                fontWeight: wordFormatting[
+                                                'optional_word_formatting']!
+                                            .isNotEmpty &&
+                                        index <
+                                            wordFormatting[
+                                                    'optional_word_formatting']!
+                                                .length &&
+                                        wordFormatting[
+                                                    'optional_word_formatting']![
+                                                index]['bold'] ==
+                                            true
                                     ? FontWeight.bold
                                     : FontWeight.normal,
-                                decoration: wordFormatting['optional_word_formatting']!
-                                    .isNotEmpty &&
-                                    index <
-                                        wordFormatting['optional_word_formatting']!.length &&
-                                    wordFormatting['optional_word_formatting']![index]
-                                    ['underline'] ==
-                                        true
+                                decoration: wordFormatting[
+                                                'optional_word_formatting']!
+                                            .isNotEmpty &&
+                                        index <
+                                            wordFormatting[
+                                                    'optional_word_formatting']!
+                                                .length &&
+                                        wordFormatting[
+                                                    'optional_word_formatting']![
+                                                index]['underline'] ==
+                                            true
                                     ? TextDecoration.underline
                                     : null,
                               ),
@@ -809,42 +852,54 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             Row(
                               children: [
                                 Checkbox(
-                                  value: wordFormatting['optional_word_formatting']!
-                                      .isNotEmpty &&
-                                      index <
-                                          wordFormatting['optional_word_formatting']!.length
-                                      ? wordFormatting['optional_word_formatting']![index]
-                                  ['bold'] ??
-                                      false
+                                  value: wordFormatting[
+                                                  'optional_word_formatting']!
+                                              .isNotEmpty &&
+                                          index <
+                                              wordFormatting[
+                                                      'optional_word_formatting']!
+                                                  .length
+                                      ? wordFormatting[
+                                                  'optional_word_formatting']![
+                                              index]['bold'] ??
+                                          false
                                       : false,
                                   onChanged: (value) {
                                     setDialogState(() {
-                                      if (wordFormatting['optional_word_formatting']!
-                                          .length >
+                                      if (wordFormatting[
+                                                  'optional_word_formatting']!
+                                              .length >
                                           index) {
-                                        wordFormatting['optional_word_formatting']![index]
-                                        ['bold'] = value!;
+                                        wordFormatting[
+                                                'optional_word_formatting']![
+                                            index]['bold'] = value!;
                                       }
                                     });
                                   },
                                 ),
                                 const Text('B'),
                                 Checkbox(
-                                  value: wordFormatting['optional_word_formatting']!
-                                      .isNotEmpty &&
-                                      index <
-                                          wordFormatting['optional_word_formatting']!.length
-                                      ? wordFormatting['optional_word_formatting']![index]
-                                  ['underline'] ??
-                                      false
+                                  value: wordFormatting[
+                                                  'optional_word_formatting']!
+                                              .isNotEmpty &&
+                                          index <
+                                              wordFormatting[
+                                                      'optional_word_formatting']!
+                                                  .length
+                                      ? wordFormatting[
+                                                  'optional_word_formatting']![
+                                              index]['underline'] ??
+                                          false
                                       : false,
                                   onChanged: (value) {
                                     setDialogState(() {
-                                      if (wordFormatting['optional_word_formatting']!
-                                          .length >
+                                      if (wordFormatting[
+                                                  'optional_word_formatting']!
+                                              .length >
                                           index) {
-                                        wordFormatting['optional_word_formatting']![index]
-                                        ['underline'] = value!;
+                                        wordFormatting[
+                                                'optional_word_formatting']![
+                                            index]['underline'] = value!;
                                       }
                                     });
                                   },
@@ -867,14 +922,20 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             labelText: "Choice ${String.fromCharCode(65 + i)}",
                             border: const OutlineInputBorder(),
                           ),
-                          onChanged: (_) => updateChoiceWordFormatting(i, setDialogState),
+                          onChanged: (_) =>
+                              updateChoiceWordFormatting(i, setDialogState),
                         ),
                         const SizedBox(height: 8),
                         if (choiceControllers[i].text.isNotEmpty &&
                             !isChoiceImageOrAudioOnly(i))
                           Wrap(
                             spacing: 8,
-                            children: choiceControllers[i].text.split(' ').asMap().entries.map((entry) {
+                            children: choiceControllers[i]
+                                .text
+                                .split(' ')
+                                .asMap()
+                                .entries
+                                .map((entry) {
                               final index = entry.key;
                               final word = entry.value;
                               if (word.isEmpty) return const SizedBox.shrink();
@@ -883,46 +944,67 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                   Text(
                                     word,
                                     style: TextStyle(
-                                      fontWeight: choiceWordFormatting[i].isNotEmpty &&
-                                          index < choiceWordFormatting[i].length &&
-                                          choiceWordFormatting[i][index]['bold'] == true
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      decoration: choiceWordFormatting[i].isNotEmpty &&
-                                          index < choiceWordFormatting[i].length &&
-                                          choiceWordFormatting[i][index]['underline'] ==
-                                              true
-                                          ? TextDecoration.underline
-                                          : null,
+                                      fontWeight:
+                                          choiceWordFormatting[i].isNotEmpty &&
+                                                  index <
+                                                      choiceWordFormatting[i]
+                                                          .length &&
+                                                  choiceWordFormatting[i][index]
+                                                          ['bold'] ==
+                                                      true
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                      decoration:
+                                          choiceWordFormatting[i].isNotEmpty &&
+                                                  index <
+                                                      choiceWordFormatting[i]
+                                                          .length &&
+                                                  choiceWordFormatting[i][index]
+                                                          ['underline'] ==
+                                                      true
+                                              ? TextDecoration.underline
+                                              : null,
                                     ),
                                   ),
                                   Row(
                                     children: [
                                       Checkbox(
-                                        value: choiceWordFormatting[i].isNotEmpty &&
-                                            index < choiceWordFormatting[i].length
-                                            ? choiceWordFormatting[i][index]['bold'] ?? false
+                                        value: choiceWordFormatting[i]
+                                                    .isNotEmpty &&
+                                                index <
+                                                    choiceWordFormatting[i]
+                                                        .length
+                                            ? choiceWordFormatting[i][index]
+                                                    ['bold'] ??
+                                                false
                                             : false,
                                         onChanged: (value) {
                                           setDialogState(() {
-                                            if (choiceWordFormatting[i].length > index) {
-                                              choiceWordFormatting[i][index]['bold'] = value!;
+                                            if (choiceWordFormatting[i].length >
+                                                index) {
+                                              choiceWordFormatting[i][index]
+                                                  ['bold'] = value!;
                                             }
                                           });
                                         },
                                       ),
                                       const Text('B'),
                                       Checkbox(
-                                        value: choiceWordFormatting[i].isNotEmpty &&
-                                            index < choiceWordFormatting[i].length
-                                            ? choiceWordFormatting[i][index]['underline'] ??
-                                            false
+                                        value: choiceWordFormatting[i]
+                                                    .isNotEmpty &&
+                                                index <
+                                                    choiceWordFormatting[i]
+                                                        .length
+                                            ? choiceWordFormatting[i][index]
+                                                    ['underline'] ??
+                                                false
                                             : false,
                                         onChanged: (value) {
                                           setDialogState(() {
-                                            if (choiceWordFormatting[i].length > index) {
-                                              choiceWordFormatting[i][index]['underline'] =
-                                              value!;
+                                            if (choiceWordFormatting[i].length >
+                                                index) {
+                                              choiceWordFormatting[i][index]
+                                                  ['underline'] = value!;
                                             }
                                           });
                                         },
@@ -936,8 +1018,10 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                           ),
                         const SizedBox(height: 8),
                         DropTarget(
-                          onDragEntered: (_) => setDialogState(() => isDraggingChoice[i] = true),
-                          onDragExited: (_) => setDialogState(() => isDraggingChoice[i] = false),
+                          onDragEntered: (_) =>
+                              setDialogState(() => isDraggingChoice[i] = true),
+                          onDragExited: (_) =>
+                              setDialogState(() => isDraggingChoice[i] = false),
                           onDragDone: (details) async {
                             if (details.files.isNotEmpty) {
                               try {
@@ -946,12 +1030,14 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                 if (await file.exists()) {
                                   setDialogState(() {
                                     localChoiceFiles[i] = file;
-                                    choiceFileNames[String.fromCharCode(65 + i)] =
+                                    choiceFileNames[
+                                            String.fromCharCode(65 + i)] =
                                         file.path.split('/').last;
                                   });
                                 } else {
                                   Flushbar(
-                                    message: 'Cannot access file: Restricted or invalid path',
+                                    message:
+                                        'Cannot access file: Restricted or invalid path',
                                     backgroundColor: Colors.redAccent,
                                     duration: const Duration(seconds: 3),
                                   ).show(context);
@@ -968,7 +1054,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                           child: Container(
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  color: isDraggingChoice[i] ? Colors.blue : Colors.grey),
+                                  color: isDraggingChoice[i]
+                                      ? Colors.blue
+                                      : Colors.grey),
                               borderRadius: BorderRadius.circular(8),
                               color: isDraggingChoice[i]
                                   ? Colors.blue.withOpacity(0.1)
@@ -981,15 +1069,20 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                   children: [
                                     Expanded(
                                       child: ElevatedButton(
-                                        onPressed: () => pickFile((file) => setDialogState(() {
-                                          localChoiceFiles[i] = file;
-                                          choiceFileNames[String.fromCharCode(65 + i)] =
-                                              file.path.split('/').last;
-                                        })),
+                                        onPressed: () => pickFile(
+                                            (file) => setDialogState(() {
+                                                  localChoiceFiles[i] = file;
+                                                  choiceFileNames[
+                                                          String.fromCharCode(
+                                                              65 + i)] =
+                                                      file.path.split('/').last;
+                                                })),
                                         child: Text(
                                             localChoiceFiles[i] == null &&
-                                                choiceFileNames[String.fromCharCode(65 + i)]!
-                                                    .isEmpty
+                                                    choiceFileNames[
+                                                            String.fromCharCode(
+                                                                65 + i)]!
+                                                        .isEmpty
                                                 ? "Attach File"
                                                 : "Change File"),
                                       ),
@@ -1010,11 +1103,13 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                 if (localChoiceFiles[i] != null)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8),
-                                    child:
-                                    Text("File: ${localChoiceFiles[i]!.path.split('/').last}"),
+                                    child: Text(
+                                        "File: ${localChoiceFiles[i]!.path.split('/').last}"),
                                   ),
                                 if (localChoiceFiles[i] == null &&
-                                    choiceFileNames[String.fromCharCode(65 + i)]!.isNotEmpty)
+                                    choiceFileNames[
+                                            String.fromCharCode(65 + i)]!
+                                        .isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8),
                                     child: Row(
@@ -1024,7 +1119,8 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                         IconButton(
                                           icon: const Icon(Icons.clear),
                                           onPressed: () => setDialogState(() {
-                                            choiceFileNames[String.fromCharCode(65 + i)] = '';
+                                            choiceFileNames[String.fromCharCode(
+                                                65 + i)] = '';
                                           }),
                                         ),
                                       ],
@@ -1043,9 +1139,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                         setDialogState(() => selectedAnswer = newValue!),
                     items: ['A', 'B', 'C', 'D']
                         .map((value) => DropdownMenuItem(
-                      value: value,
-                      child: Text("Correct Answer: $value"),
-                    ))
+                              value: value,
+                              child: Text("Correct Answer: $value"),
+                            ))
                         .toList(),
                   ),
                   const SizedBox(height: 16),
@@ -1055,16 +1151,19 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                         setDialogState(() => selectedQuestionType = newValue!),
                     items: ['Reading', 'Listening']
                         .map((value) => DropdownMenuItem(
-                      value: value,
-                      child: Text("Question Type: $value"),
-                    ))
+                              value: value,
+                              child: Text("Question Type: $value"),
+                            ))
                         .toList(),
                   ),
                   if (context.read<QuizSetDetailViewModel>().isSaving)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: LinearProgressIndicator(
-                        value: context.read<QuizSetDetailViewModel>().saveProgress / 100,
+                        value: context
+                                .read<QuizSetDetailViewModel>()
+                                .saveProgress /
+                            100,
                         minHeight: 10,
                       ),
                     ),
@@ -1087,28 +1186,29 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
               onPressed: context.read<QuizSetDetailViewModel>().isSaving
                   ? null
                   : () async {
-                await onSave(
-                  selectedAnswer,
-                  localQuestionFile,
-                  localChoiceFiles,
-                  selectedQuestionType,
-                  wordFormatting,
-                  choiceWordFormatting,
-                  choiceFileNames,
-                  setDialogState,
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                      await onSave(
+                        selectedAnswer,
+                        localQuestionFile,
+                        localChoiceFiles,
+                        selectedQuestionType,
+                        wordFormatting,
+                        choiceWordFormatting,
+                        choiceFileNames,
+                        setDialogState,
+                      );
+                      Navigator.pop(context);
+                    },
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
               child: context.read<QuizSetDetailViewModel>().isSaving
                   ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
-                ),
-              )
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    )
                   : const Text('Save'),
             ),
           ],
@@ -1128,7 +1228,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
           actions: [
             IconButton(
               icon: const Icon(Icons.add),
-              onPressed: context.read<QuizSetDetailViewModel>().isSaving ? null : _addQuestion,
+              onPressed: context.read<QuizSetDetailViewModel>().isSaving
+                  ? null
+                  : _addQuestion,
               tooltip: 'Add Question',
             ),
           ],
@@ -1167,7 +1269,8 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                           children: [
                             _buildFormattedText(
                               "${index + 1}. ${question.question}",
-                              question.formatting['question_word_formatting'] ?? [],
+                              question.formatting['question_word_formatting'] ??
+                                  [],
                               Theme.of(context).textTheme.titleLarge,
                               isQuestion: true,
                               questionIndex: index,
@@ -1181,9 +1284,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                       .textTheme
                                       .bodyMedium
                                       ?.copyWith(
-                                    fontStyle: FontStyle.italic,
-                                    color: Colors.blue,
-                                  ),
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.blue,
+                                      ),
                                 ),
                               ),
                             if (question.questionFile.isNotEmpty)
@@ -1193,24 +1296,30 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                   const SizedBox(height: 8),
                                   _isImageFile(question.questionFile)
                                       ? Image.network(
-                                    '${BaseUrl.baseUrl}/${question.questionFile}',
-                                    height: 150,
-                                    fit: BoxFit.contain,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return const SizedBox(
-                                        height: 150,
-                                        child: Center(child: CircularProgressIndicator()),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) =>
-                                    const Text('Image not available'),
-                                  )
+                                          '${BaseUrl.baseUrl}${question.questionFile}',
+                                          height: 150,
+                                          fit: BoxFit.contain,
+                                          loadingBuilder: (context, child,
+                                              loadingProgress) {
+                                            if (loadingProgress == null)
+                                              return child;
+                                            return const SizedBox(
+                                              height: 150,
+                                              child: Center(
+                                                  child:
+                                                      CircularProgressIndicator()),
+                                            );
+                                          },
+                                          errorBuilder: (context, error,
+                                                  stackTrace) =>
+                                              const Text('Image not available'),
+                                        )
                                       : ElevatedButton(
-                                    onPressed: () => _openFile(question.questionFile),
-                                    child: Text(
-                                        "Open File: ${question.questionFile.split('/').last}"),
-                                  ),
+                                          onPressed: () =>
+                                              _openFile(question.questionFile),
+                                          child: Text(
+                                              "Open File: ${question.questionFile.split('/').last}"),
+                                        ),
                                 ],
                               ),
                             if (question.optionalText.isNotEmpty)
@@ -1218,14 +1327,16 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                 padding: const EdgeInsets.only(top: 8),
                                 child: _buildFormattedText(
                                   "Note: ${question.optionalText}",
-                                  question.formatting['optional_word_formatting'] ?? [],
+                                  question.formatting[
+                                          'optional_word_formatting'] ??
+                                      [],
                                   Theme.of(context)
                                       .textTheme
                                       .bodyMedium
                                       ?.copyWith(
-                                    fontStyle: FontStyle.italic,
-                                    color: Colors.grey,
-                                  ),
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.grey,
+                                      ),
                                   isOptionalText: true,
                                 ),
                               ),
@@ -1233,65 +1344,85 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                             for (var choice in ['A', 'B', 'C', 'D'])
                               if (question.choices[choice] != null)
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Expanded(
                                             child: _buildFormattedText(
                                               "$choice) ${question.choices[choice]!.choiceText}",
-                                              question.choices[choice]!.wordFormatting,
-                                              Theme.of(context).textTheme.bodyLarge,
+                                              question.choices[choice]!
+                                                  .wordFormatting,
+                                              Theme.of(context)
+                                                  .textTheme
+                                                  .bodyLarge,
                                               isChoice: true,
                                               choiceLetter: choice,
                                             ),
                                           ),
-                                          if (question.choices[choice]!.choiceFile.isNotEmpty)
+                                          if (question.choices[choice]!
+                                              .choiceFile.isNotEmpty)
                                             Flexible(
                                               child: Padding(
-                                                padding: const EdgeInsets.only(left: 16),
+                                                padding: const EdgeInsets.only(
+                                                    left: 16),
                                                 child: Text(
                                                   "File: ${question.choices[choice]!.choiceFile.split('/').last}",
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: Theme.of(context).textTheme.bodyMedium,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium,
                                                 ),
                                               ),
                                             ),
                                         ],
                                       ),
-                                      if (question.choices[choice]!.choiceFile.isNotEmpty)
-                                        _isImageFile(question.choices[choice]!.choiceFile)
+                                      if (question.choices[choice]!.choiceFile
+                                          .isNotEmpty)
+                                        _isImageFile(question
+                                                .choices[choice]!.choiceFile)
                                             ? Padding(
-                                          padding: const EdgeInsets.only(top: 8),
-                                          child: Image.network(
-                                            '${BaseUrl.baseUrl}/${question.choices[choice]!.choiceFile}',
-                                            height: 150,
-                                            fit: BoxFit.contain,
-                                            loadingBuilder:
-                                                (context, child, loadingProgress) {
-                                              if (loadingProgress == null) return child;
-                                              return const SizedBox(
-                                                height: 150,
-                                                child: Center(
-                                                    child: CircularProgressIndicator()),
-                                              );
-                                            },
-                                            errorBuilder:
-                                                (context, error, stackTrace) =>
-                                            const Text('Image not available'),
-                                          ),
-                                        )
+                                                padding: const EdgeInsets.only(
+                                                    top: 8),
+                                                child: Image.network(
+                                                  '${BaseUrl.baseUrl}${question.choices[choice]!.choiceFile}',
+                                                  height: 150,
+                                                  fit: BoxFit.contain,
+                                                  loadingBuilder: (context,
+                                                      child, loadingProgress) {
+                                                    if (loadingProgress == null)
+                                                      return child;
+                                                    return const SizedBox(
+                                                      height: 150,
+                                                      child: Center(
+                                                          child:
+                                                              CircularProgressIndicator()),
+                                                    );
+                                                  },
+                                                  errorBuilder: (context, error,
+                                                          stackTrace) =>
+                                                      const Text(
+                                                          'Image not available'),
+                                                ),
+                                              )
                                             : Padding(
-                                          padding: const EdgeInsets.only(top: 8),
-                                          child: ElevatedButton(
-                                            onPressed: () => _openFile(
-                                                question.choices[choice]!.choiceFile),
-                                            child: const Text("Open File"),
-                                          ),
-                                        ),
+                                                padding: const EdgeInsets.only(
+                                                    top: 8),
+                                                child: ElevatedButton(
+                                                  onPressed: () => _openFile(
+                                                      question.choices[choice]!
+                                                          .choiceFile),
+                                                  child:
+                                                      const Text("Open File"),
+                                                ),
+                                              ),
                                     ],
                                   ),
                                 ),
@@ -1303,9 +1434,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                     .textTheme
                                     .bodyLarge
                                     ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
                               ),
                             const SizedBox(height: 24),
                             Row(
@@ -1313,21 +1444,25 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                               children: [
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: vm.isSaving ? null : () => _editQuestion(index),
+                                    onPressed: vm.isSaving
+                                        ? null
+                                        : () => _editQuestion(index),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blueAccent,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 16),
                                     ),
                                     child: vm.isSaving
                                         ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                        AlwaysStoppedAnimation(Colors.white),
-                                      ),
-                                    )
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                      Colors.white),
+                                            ),
+                                          )
                                         : const Text("Edit"),
                                   ),
                                 ),
@@ -1339,18 +1474,20 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                         : () => _confirmDeleteQuestion(index),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.redAccent,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 16),
                                     ),
                                     child: vm.isSaving
                                         ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                        AlwaysStoppedAnimation(Colors.white),
-                                      ),
-                                    )
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                      Colors.white),
+                                            ),
+                                          )
                                         : const Text("Delete"),
                                   ),
                                 ),

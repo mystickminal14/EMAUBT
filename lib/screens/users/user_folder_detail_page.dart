@@ -408,7 +408,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
   Widget _buildItemIcon(Map<String, dynamic> item, IconData defaultIcon) {
     if (item['icon_path'] != null && item['icon_path'].isNotEmpty) {
       return Image.network(
-        '${BaseUrl.baseUrl}/${item['icon_path']}',
+        '${BaseUrl.baseUrl}${item['icon_path']}',
         width: 28,
         height: 28,
         fit: BoxFit.cover,
@@ -848,7 +848,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
       });
     }
 
-    final fileUrl = '${BaseUrl.baseUrl}/${file['file_path']}';
+    final fileUrl = '${BaseUrl.baseUrl}${file['file_path']}';
     final encodedFileUrl = Uri.encodeFull(fileUrl);
     final viewerUrl =
         'https://docs.google.com/viewer?url=$encodedFileUrl&embedded=true&_cache_bust=${DateTime.now().millisecondsSinceEpoch}';

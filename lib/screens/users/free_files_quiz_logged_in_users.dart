@@ -273,7 +273,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Future<void> _fetchFiles() async {
     try {
       var response = await http.get(Uri.parse(
-          '${BaseUrl.baseUrl}/folder_details_page.php?action=get_files&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}folder_details_page.php?action=get_files&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
@@ -295,7 +295,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Future<void> _fetchQuizSets() async {
     try {
       var response = await http.get(Uri.parse(
-          '${BaseUrl.baseUrl}//folder_details_page.php?action=get_quiz_sets&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}folder_details_page.php?action=get_quiz_sets&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
@@ -318,7 +318,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
     try {
       // *** Make sure this URL points to your give_access_to_login_users.php file ***
       var response = await http.get(Uri.parse(
-          '${BaseUrl.baseUrl}//give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
@@ -352,7 +352,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Future<void> _giveAccess(String itemType, int itemId) async {
     try {
       var uri = Uri.parse(
-          '${BaseUrl.baseUrl}//give_access_to_login_users.php?action=give_access');
+          '${BaseUrl.baseUrl}give_access_to_login_users.php?action=give_access');
       var response = await http.post(uri, body: {
         'item_type': itemType,
         'item_id': itemId.toString(),
@@ -401,7 +401,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Future<void> _revokeAccess(String itemType, int itemId) async {
     try {
       var uri = Uri.parse(
-          '${BaseUrl.baseUrl}//give_access_to_login_users.php?action=revoke_access');
+          '${BaseUrl.baseUrl}give_access_to_login_users.php?action=revoke_access');
       var response = await http.post(uri, body: {
         'item_type': itemType,
         'item_id': itemId.toString(),
@@ -452,7 +452,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.network(
-          '${BaseUrl.baseUrl}//${item['icon_path']}',
+          '${BaseUrl.baseUrl}${item['icon_path']}',
           width: 40,
           height: 40,
           fit: BoxFit.cover,
@@ -465,7 +465,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   }
 
   Future<void> _openFile(Map<String, dynamic> file) async {
-    final fileUrl = '${BaseUrl.baseUrl}//${file['file_path']}';
+    final fileUrl = '${BaseUrl.baseUrl}${file['file_path']}';
     final fileName = file['name'].toString().toLowerCase();
     final isDocument = fileName.endsWith('.pdf') ||
         fileName.endsWith('.docx') ||

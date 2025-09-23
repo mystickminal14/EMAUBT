@@ -23,7 +23,9 @@ class _NoticesPageState extends State<NoticesPage> {
   void initState() {
     super.initState();
     final viewModel = context.read<NoticeManagementViewModel>();
-    viewModel.fetchNotices(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      viewModel.fetchNotices(context);
+    });
     _searchController.addListener(() {
       viewModel.searchNotices(_searchController.text);
     });

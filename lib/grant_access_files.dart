@@ -85,7 +85,7 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
     try {
       final response = await http.get(
         Uri.parse(
-            '${BaseUrl.baseUrl}//folder_details_page.php?action=get_all_quiz_sets'),
+            '${BaseUrl.baseUrl}folder_details_page.php?action=get_all_quiz_sets'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
@@ -364,7 +364,7 @@ class _GrantAccessFilesPageState extends State<GrantAccessFilesPage> {
       return ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: Image.network(
-          '${BaseUrl.baseUrl}//${item['icon_path']}',
+          '${BaseUrl.baseUrl}${item['icon_path']}',
           width: 40,
           height: 40,
           fit: BoxFit.cover,

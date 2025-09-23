@@ -209,7 +209,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Future<void> _fetchContent() async {
     try {
       final response = await http.get(Uri.parse(
-          '${BaseUrl.baseUrl}/give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
+          '${BaseUrl.baseUrl}give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
       final decodedResponse = jsonDecode(response.body);
 
       if (response.statusCode == 200 &&
@@ -405,7 +405,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   }
 
   Future<void> _handleFileTap(Map<String, dynamic> file) async {
-    final fileUrl = '${BaseUrl.baseUrl}/${file['file_path']}';
+    final fileUrl = '${BaseUrl.baseUrl}${file['file_path']}';
     final fileName = file['name'].toString();
     final fileType = _getFileType(fileName);
 
@@ -471,7 +471,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
   Widget _buildItemIcon(Map<String, dynamic> item, IconData defaultIcon) {
     if (item['icon_path'] != null && item['icon_path'].isNotEmpty) {
       return Image.network(
-        '${BaseUrl.baseUrl}/${item['icon_path']}',
+        '${BaseUrl.baseUrl}${item['icon_path']}',
         width: 40,
         height: 40,
         fit: BoxFit.cover,
