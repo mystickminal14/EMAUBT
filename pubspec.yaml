@@ -51,9 +51,9 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/ema.png"
-  adaptive_icon_foreground: "assets/ema.jpg"
-  adaptive_icon_background: "assets/ema.jpg"
+  image_path: "assets/ema.jpeg"
+  adaptive_icon_foreground: "assets/ema.jpeg"
+  adaptive_icon_background: "assets/ema.jpeg"
 
 flutter:
   uses-material-design: true
