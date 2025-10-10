@@ -64,8 +64,9 @@ class UserFolderViewModel with ChangeNotifier {
 
           allQuizSets.sort((a, b) => a['id'].compareTo(b['id']));
 
-          for (var quizSet in allQuizSets) {
-            var accessResult = await checkAccess(quizSet['id'], 'quiz_set', isAdmin, userIdentifier);
+          // Parallelize access checks to improve performance
+          final accessFutures = allQuizSets.map((quizSet) async {
+            final accessResult = await checkAccess(quizSet['id'], 'quiz_set', isAdmin, userIdentifier);
             quizSet['can_access'] = accessResult['can_access'];
             quizSet['has_permission'] = accessResult['has_permission'];
             quizSet['is_active'] = accessResult['is_active'];
@@ -75,7 +76,9 @@ class UserFolderViewModel with ChangeNotifier {
               print(
                   'QuizSet: ${quizSet['name']}, can_access: ${quizSet['can_access']}, has_permission: ${quizSet['has_permission']}, is_active: ${quizSet['is_active']}');
             }
-          }
+          }).toList();
+
+          await Future.wait(accessFutures);
 
           quizSets = allQuizSets;
           notifyListeners();
@@ -89,7 +92,6 @@ class UserFolderViewModel with ChangeNotifier {
       throw Exception('Error fetching quiz sets: $e');
     }
   }
-
   Future<String?> fetchFilePath(int fileId) async {
     try {
       final response = await http.get(

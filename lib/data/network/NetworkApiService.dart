@@ -286,7 +286,6 @@ class NetworkApiService extends BaseApiServices {
       _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
       throw FormatException('Invalid JSON response from server');
     }
-
     switch (response.statusCode) {
       case 200:
       case 201:

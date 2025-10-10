@@ -150,6 +150,8 @@ class QuizSetDetailViewModel extends ChangeNotifier {
             sink.add(data);
           },
           handleError: (error, stackTrace, sink) {
+            _logger.i(error.toString());
+
             sink.addError(error, stackTrace);
           },
           handleDone: (sink) {
