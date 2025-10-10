@@ -29,22 +29,27 @@ class QuizSetDetailViewModel extends ChangeNotifier {
     ).show(context);
   }
 
+  // ========================= FETCH QUESTIONS ==============================
   Future<void> fetchQuestions(int quizSetId) async {
     if (_isFetching) return;
     _isFetching = true;
     isLoading = true;
     questions.clear();
-    _logger.i(
-        "Starting fetchQuestions for quizSetId $quizSetId, current questions: $questions");
+    _logger.i("📥 Starting fetchQuestions for quizSetId: $quizSetId");
     notifyListeners();
+
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final url =
-          "${BaseUrl.baseUrl}/quiz_set_detail_page.php?quiz_set_id=$quizSetId&_=$timestamp";
-      final response = await http.get(Uri.parse(url), headers: {
-        'Content-Type': 'application/json'
-      }).timeout(const Duration(seconds: 15));
-      _logger.i("Server response: ${response.statusCode}, ${response.body}");
+          "${BaseUrl.baseUrl}quiz_set_detail_page.php?quiz_set_id=$quizSetId&_=$timestamp";
+      _logger.i("🔗 Fetch URL: $url");
+
+      final response = await http
+          .get(Uri.parse(url), headers: {'Content-Type': 'application/json'})
+          .timeout(const Duration(seconds: 15));
+
+      _logger.i("✅ Response: ${response.statusCode} - ${response.body}");
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true &&
@@ -53,54 +58,53 @@ class QuizSetDetailViewModel extends ChangeNotifier {
           questions = (data['questions'] as List)
               .map((q) => QuestionModel.fromJson(q))
               .toList();
-          _logger.i("Fetched ${questions.length} questions: $questions");
+          _logger.i("🧾 Fetched ${questions.length} questions successfully");
         } else {
-          questions = [];
-          _logger.w(
-              "No questions found or invalid response for quizSetId $quizSetId");
-          Utils.noInternet('Failed to load questions: ${response.statusCode}');
+          _logger.w("⚠️ Invalid or empty question list response");
+          Utils.noInternet('Failed to load questions.');
         }
       } else {
-        questions = [];
-        _logger.w("Failed to fetch questions: ${response.statusCode}");
-        Utils.noInternet('Failed to load questions: ${response.statusCode}');
+        _logger.w("⚠️ Failed to fetch questions: ${response.statusCode}");
+        Utils.noInternet('Failed to load questions.');
       }
     } on TimeoutException {
+      _logger.w("⏱️ Timeout fetching questions");
       Utils.noInternet("Request timed out. Please try again later.");
     } catch (e, stack) {
-      _logger.e('Error fetching questions', error: e, stackTrace: stack);
+      _logger.e('⛔ Error fetching questions', error: e, stackTrace: stack);
       Utils.noInternet('Error loading questions: $e');
     } finally {
       isLoading = false;
       _isFetching = false;
-      _logger.i("Fetch complete, questions: $questions");
+      _logger.i("🏁 Fetch complete. Total questions: ${questions.length}");
       notifyListeners();
     }
   }
 
+  // ========================= FILE UPLOAD ==============================
   Future<String?> uploadFile(
-    File? file,
-    BuildContext context,
-    String fileKey,
-    Function(double) onProgress,
-    int quizSetId,
-  ) async {
+      File? file,
+      BuildContext context,
+      String fileKey,
+      Function(double) onProgress,
+      int quizSetId,
+      ) async {
     if (file == null) return null;
     try {
       if (!await file.exists()) {
         throw Exception('File does not exist: ${file.path}');
       }
 
-      // Compress if it's an image
-      String ext = file.path.toLowerCase().split('.').last;
-      List<String> imageExts = ['jpg', 'jpeg', 'png', 'gif'];
+      // Compress image files before upload
+      final ext = file.path.split('.').last.toLowerCase();
+      final imageExts = ['jpg', 'jpeg', 'png', 'gif'];
       if (imageExts.contains(ext)) {
-        _logger.i('Compressing image: ${file.path}');
+        _logger.i("🗜️ Compressing image: ${file.path}");
         final tempDir = await getTemporaryDirectory();
         final targetPath =
             '${tempDir.path}/compressed_${file.path.split('/').last}';
         final Uint8List? compressedBytes =
-            await FlutterImageCompress.compressWithFile(
+        await FlutterImageCompress.compressWithFile(
           file.path,
           minWidth: 1024,
           minHeight: 1024,
@@ -110,96 +114,77 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         if (compressedBytes != null) {
           await File(targetPath).writeAsBytes(compressedBytes);
           file = File(targetPath);
-          _logger.i('Compressed image size: ${compressedBytes.length} bytes');
+          _logger.i(
+              "✅ Compression success. New size: ${compressedBytes.length} bytes");
         } else {
-          _logger.w('Compression failed, uploading original');
+          _logger.w("⚠️ Image compression failed, uploading original file");
         }
       } else {
-        _logger.i('Non-image file, no compression applied: ${file.path}');
+        _logger.i("📄 Non-image file, skipping compression: ${file.path}");
       }
 
-      var fileSize = await file.length();
-      _logger.i('Uploading file: ${file.path}, Size: $fileSize bytes');
+      final fileSize = await file.length();
+      _logger.i("🚀 Uploading file: ${file.path} (${fileSize} bytes)");
 
       var request = http.MultipartRequest(
-          'POST', Uri.parse('${BaseUrl.baseUrl}/quiz_set_detail_page.php'));
+          'POST', Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'));
       request.fields['quiz_set_id'] = quizSetId.toString();
       request.fields['action'] = 'upload';
-      request.fields['file_key'] =
-          fileKey; // Added to identify the file type on server
+      request.fields['file_key'] = fileKey;
 
-      var fileStream = file.openRead();
-      var fileLength = fileSize;
-      var byteCount = 0;
-      var lastReportedProgress = 0.0;
-
-      var stream = fileStream.transform(
+      int byteCount = 0;
+      final stream = file.openRead().transform(
         StreamTransformer<List<int>, List<int>>.fromHandlers(
           handleData: (data, sink) {
             byteCount += data.length;
-            var currentProgress = (byteCount / fileLength).clamp(0.0, 1.0);
-            var currentProgressPercent =
-                (currentProgress * 100).floorToDouble() / 100;
-            if (currentProgressPercent >= lastReportedProgress + 0.01 ||
-                currentProgressPercent == 1.0) {
-              onProgress(currentProgressPercent);
-              lastReportedProgress = currentProgressPercent;
-              _logger.i(
-                  'Progress for $fileKey: ${(currentProgressPercent * 100).toStringAsFixed(0)}%');
-            }
+            final progress = (byteCount / fileSize).clamp(0.0, 1.0);
+            onProgress(progress);
+            _logger.i(
+                "📤 Upload progress for $fileKey: ${(progress * 100).toStringAsFixed(1)}%");
             sink.add(data);
-          },
-          handleError: (error, stackTrace, sink) {
-            _logger.i(error.toString());
-
-            sink.addError(error, stackTrace);
-          },
-          handleDone: (sink) {
-            onProgress(1.0);
-            sink.close();
           },
         ),
       );
 
-      var multipartFile = http.MultipartFile(
+      final multipartFile = http.MultipartFile(
         fileKey,
         stream,
-        fileLength,
+        fileSize,
         filename: file.path.split('/').last,
       );
       request.files.add(multipartFile);
 
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-      var responseData = response.body;
-
-      _logger.i('Upload response: ${response.statusCode}, $responseData');
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      _logger.i("✅ Upload response: ${response.statusCode} - ${response.body}");
 
       if (response.statusCode == 200) {
-        var json = jsonDecode(responseData);
-        if (json['success'] == true) {
-          return json['filename'] ?? file.path.split('/').last;
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['success'] == true) {
+          _logger.i("🎉 File uploaded successfully: ${jsonResponse['filename']}");
+          return jsonResponse['filename'];
+        } else {
+          throw Exception(jsonResponse['error'] ?? 'Unknown upload error');
         }
-        throw Exception('Upload failed: ${json['error'] ?? 'Unknown error'}');
       } else {
-        throw Exception('Upload failed: ${response.statusCode}, $responseData');
+        final jsonResponse =response.toString();
+
+        throw Exception('Upload failed (${response.statusCode}) $jsonResponse');
       }
-    } catch (e) {
-      _logger.e('Upload error: $e');
+    } catch (e, stack) {
+      _logger.e('⛔ Upload error', error: e, stackTrace: stack);
       Utils.noInternet('Failed to upload file: $e');
       return null;
     }
   }
 
   Future<void> addQuestion(
-    BuildContext context,
-    Map<String, dynamic> questionData,
-    File? questionFile,
-    List<File?> choiceFiles,
-  ) async {
+      BuildContext context,
+      Map<String, dynamic> questionData,
+      File? questionFile,
+      List<File?> choiceFiles,
+      ) async {
     final tempId = DateTime.now().millisecondsSinceEpoch;
-
-    // Convert questionData['choices'] to Map<String, Choice>
     final Map<String, Choice> choices = {
       'A': Choice.fromJson(questionData['choices']['A']),
       'B': Choice.fromJson(questionData['choices']['B']),
@@ -214,13 +199,13 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       optionalText: questionData['optional_text'],
       questionFile: questionFile?.path ?? '',
       questionType: questionData['question_type'],
-      choices: choices, // Use the converted choices
+      choices: choices,
       correctAnswer: questionData['correct_answer'],
       formatting: questionData['formatting'],
     );
 
     questions.add(tempQuestion);
-    _logger.i("Added temporary question: $tempQuestion");
+    _logger.i("🟢 Temporarily added question: $tempQuestion");
     notifyListeners();
 
     try {
@@ -228,54 +213,29 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       saveProgress = 0.0;
       notifyListeners();
 
-      final totalFiles = (questionFile != null ? 1 : 0) +
-          choiceFiles.where((f) => f != null).length;
-      int completedFiles = 0;
-
-      void updateSaveProgress() {
-        if (totalFiles > 0) {
-          saveProgress = (completedFiles / totalFiles) * 100;
-          notifyListeners();
-        }
-      }
+      _logger.i("🚀 Starting addQuestion upload process");
 
       final questionFileName = await uploadFile(
-            questionFile,
-            context,
-            'question',
-            (progress) {
-              notifyListeners();
-            },
-            questionData['quiz_set_id'],
-          ) ??
+        questionFile,
+        context,
+        'question',
+            (progress) => notifyListeners(),
+        questionData['quiz_set_id'],
+      ) ??
           '';
-
-      if (questionFile != null) {
-        completedFiles++;
-        updateSaveProgress();
-      }
 
       final choiceFileNames = await Future.wait(
         choiceFiles.asMap().entries.map((entry) async {
           final i = entry.key;
           final file = entry.value;
-          final result = await uploadFile(
-                file,
-                context,
-                'choice_$i',
-                (progress) {
-                  notifyListeners();
-                },
-                questionData['quiz_set_id'],
-              ) ??
-              questionData['choices'][String.fromCharCode(65 + i)]
-                  ['choice_file'] ??
+          return await uploadFile(
+            file,
+            context,
+            'choice_$i',
+                (progress) => notifyListeners(),
+            questionData['quiz_set_id'],
+          ) ??
               '';
-          if (file != null) {
-            completedFiles++;
-            updateSaveProgress();
-          }
-          return result;
         }),
       );
 
@@ -308,38 +268,33 @@ class QuizSetDetailViewModel extends ChangeNotifier {
           },
         },
         'correct_answer': questionData['correct_answer'],
-        'formatting': {
-          'question_word_formatting': questionData['formatting']
-              ['question_word_formatting'],
-          'optional_word_formatting': questionData['formatting']
-              ['optional_word_formatting'],
-        },
+        'formatting': questionData['formatting'],
       };
 
+      _logger.i("📡 Sending add question request: $newQuestion");
+
       final response = await http.post(
-        Uri.parse('${BaseUrl.baseUrl}/quiz_set_detail_page.php'),
+        Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'action': 'add', ...newQuestion}),
       );
 
-      _logger
-          .i('Add question response: ${response.statusCode}, ${response.body}');
+      _logger.i("✅ Add question response: ${response.statusCode} - ${response.body}");
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
           _showSuccessMessage(context, 'Question added successfully');
-          await Future.delayed(const Duration(milliseconds: 500));
           await fetchQuestions(questionData['quiz_set_id']);
         } else {
-          throw Exception(responseData['error'] ?? 'Failed to add question');
+          throw Exception(jsonResponse['error'] ?? 'Failed to add question');
         }
       } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+        throw Exception('HTTP Error: ${response.statusCode}');
       }
     } catch (e, stack) {
       questions.removeWhere((q) => q.id == tempId);
-      _logger.e('Error adding question', error: e, stackTrace: stack);
+      _logger.e('⛔ Error adding question', error: e, stackTrace: stack);
       Utils.noInternet('Error adding question: $e');
     } finally {
       isSaving = false;
@@ -348,27 +303,23 @@ class QuizSetDetailViewModel extends ChangeNotifier {
     }
   }
 
+  // ========================= EDIT QUESTION ==============================
   Future<void> editQuestion(
-    BuildContext context,
-    int id,
-    Map<String, dynamic> questionData,
-    File? questionFile,
-    List<File?> choiceFiles,
-  ) async {
+      BuildContext context,
+      int id,
+      Map<String, dynamic> questionData,
+      File? questionFile,
+      List<File?> choiceFiles,
+      ) async {
     final index = questions.indexWhere((q) => q.id == id);
     QuestionModel? oldQuestion;
     if (index != -1) {
       oldQuestion = questions[index];
-      // Convert questionData['choices'] to Map<String, Choice> with null safety
       final Map<String, Choice> choices = {
-        'A': Choice.fromJson(questionData['choices']['A'] ??
-            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
-        'B': Choice.fromJson(questionData['choices']['B'] ??
-            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
-        'C': Choice.fromJson(questionData['choices']['C'] ??
-            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
-        'D': Choice.fromJson(questionData['choices']['D'] ??
-            {'choice_text': '', 'choice_file': '', 'word_formatting': []}),
+        'A': Choice.fromJson(questionData['choices']['A']),
+        'B': Choice.fromJson(questionData['choices']['B']),
+        'C': Choice.fromJson(questionData['choices']['C']),
+        'D': Choice.fromJson(questionData['choices']['D']),
       };
       questions[index] = QuestionModel(
         id: id,
@@ -377,12 +328,11 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         optionalText: questionData['optional_text'],
         questionFile: questionFile?.path ?? oldQuestion.questionFile,
         questionType: questionData['question_type'],
-        choices: choices, // Use the converted choices
+        choices: choices,
         correctAnswer: questionData['correct_answer'],
         formatting: questionData['formatting'],
       );
-      _logger.i(
-          "Temporarily updated question at index $index: ${questions[index]}");
+      _logger.i("✏️ Temporarily updated question $id");
       notifyListeners();
     }
 
@@ -391,53 +341,30 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       saveProgress = 0.0;
       notifyListeners();
 
-      final totalFiles = (questionFile != null ? 1 : 0) +
-          choiceFiles.where((f) => f != null).length;
-      int completedFiles = 0;
-
-      void updateSaveProgress() {
-        if (totalFiles > 0) {
-          saveProgress = (completedFiles / totalFiles) * 100;
-          notifyListeners();
-        }
-      }
+      _logger.i("🚀 Starting editQuestion process for ID: $id");
 
       final questionFileName = await uploadFile(
-            questionFile,
-            context,
-            'question',
-            (progress) {
-              notifyListeners();
-            },
-            questionData['quiz_set_id'],
-          ) ??
+        questionFile,
+        context,
+        'question',
+            (progress) => notifyListeners(),
+        questionData['quiz_set_id'],
+      ) ??
           questionData['question_file'];
-      if (questionFile != null) {
-        completedFiles++;
-        updateSaveProgress();
-      }
 
       final choiceFileNames = await Future.wait(
         choiceFiles.asMap().entries.map((entry) async {
           final i = entry.key;
           final file = entry.value;
-          final result = await uploadFile(
-                file,
-                context,
-                'choice_$i',
-                (progress) {
-                  notifyListeners();
-                },
-                questionData['quiz_set_id'],
-              ) ??
+          return await uploadFile(
+            file,
+            context,
+            'choice_$i',
+                (progress) => notifyListeners(),
+            questionData['quiz_set_id'],
+          ) ??
               questionData['choices'][String.fromCharCode(65 + i)]
-                  ['choice_file'] ??
-              '';
-          if (file != null) {
-            completedFiles++;
-            updateSaveProgress();
-          }
-          return result;
+              ['choice_file'];
         }),
       );
 
@@ -450,38 +377,31 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         'question_type': questionData['question_type'],
         'choices': {
           'A': {
-            'choice_text': questionData['choices']['A']['choice_text'] ?? '',
+            'choice_text': questionData['choices']['A']['choice_text'],
             'choice_file': choiceFileNames[0],
-            'word_formatting':
-                questionData['choices']['A']['word_formatting'] ?? [],
+            'word_formatting': questionData['choices']['A']['word_formatting'],
           },
           'B': {
-            'choice_text': questionData['choices']['B']['choice_text'] ?? '',
+            'choice_text': questionData['choices']['B']['choice_text'],
             'choice_file': choiceFileNames[1],
-            'word_formatting':
-                questionData['choices']['B']['word_formatting'] ?? [],
+            'word_formatting': questionData['choices']['B']['word_formatting'],
           },
           'C': {
-            'choice_text': questionData['choices']['C']['choice_text'] ?? '',
+            'choice_text': questionData['choices']['C']['choice_text'],
             'choice_file': choiceFileNames[2],
-            'word_formatting':
-                questionData['choices']['C']['word_formatting'] ?? [],
+            'word_formatting': questionData['choices']['C']['word_formatting'],
           },
           'D': {
-            'choice_text': questionData['choices']['D']['choice_text'] ?? '',
+            'choice_text': questionData['choices']['D']['choice_text'],
             'choice_file': choiceFileNames[3],
-            'word_formatting':
-                questionData['choices']['D']['word_formatting'] ?? [],
+            'word_formatting': questionData['choices']['D']['word_formatting'],
           },
         },
         'correct_answer': questionData['correct_answer'],
-        'formatting': {
-          'question_word_formatting':
-              questionData['formatting']['question_word_formatting'] ?? [],
-          'optional_word_formatting':
-              questionData['formatting']['optional_word_formatting'] ?? [],
-        },
+        'formatting': questionData['formatting'],
       };
+
+      _logger.i("📡 Sending edit question request: $updatedQuestion");
 
       final response = await http.post(
         Uri.parse('${BaseUrl.baseUrl}/quiz_set_detail_page.php'),
@@ -489,28 +409,26 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         body: json.encode({'action': 'edit', ...updatedQuestion}),
       );
 
-      _logger.i(
-          'Edit question response: ${response.statusCode}, ${response.body}');
+      _logger.i("✅ Edit response: ${response.statusCode} - ${response.body}");
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
           _showSuccessMessage(context, 'Question updated successfully');
-          await Future.delayed(const Duration(milliseconds: 500));
           await fetchQuestions(questionData['quiz_set_id']);
         } else {
-          throw Exception(responseData['error'] ?? 'Failed to edit question');
+          throw Exception(jsonResponse['error'] ?? 'Failed to edit question');
         }
       } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+        throw Exception('HTTP Error: ${response.statusCode}');
       }
     } catch (e, stack) {
       if (oldQuestion != null && index != -1) {
         questions[index] = oldQuestion;
-        _logger.i("Reverted question at index $index to: $oldQuestion");
+        _logger.w("↩️ Reverted changes for question $id");
         notifyListeners();
       }
-      _logger.e('Error editing question', error: e, stackTrace: stack);
+      _logger.e('⛔ Error editing question', error: e, stackTrace: stack);
       Utils.noInternet('Error editing question: $e');
     } finally {
       isSaving = false;
@@ -519,6 +437,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
     }
   }
 
+  // ========================= DELETE QUESTION ==============================
   Future<void> deleteQuestion(
       BuildContext context, int quizSetId, int id) async {
     final index = questions.indexWhere((q) => q.id == id);
@@ -526,40 +445,37 @@ class QuizSetDetailViewModel extends ChangeNotifier {
     if (index != -1) {
       removedQuestion = questions[index];
       questions.removeAt(index);
-      _logger
-          .i("Temporarily removed question at index $index: $removedQuestion");
+      _logger.i("🗑️ Temporarily removed question ID: $id");
       notifyListeners();
     }
 
     try {
       final response = await http.post(
-        Uri.parse('${BaseUrl.baseUrl}/quiz_set_detail_page.php'),
+        Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'action': 'delete', 'id': id}),
       );
 
-      _logger.i(
-          'Delete question response: ${response.statusCode}, ${response.body}');
+      _logger.i("✅ Delete response: ${response.statusCode} - ${response.body}");
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
           _showSuccessMessage(context, 'Question deleted successfully');
-          await Future.delayed(const Duration(milliseconds: 500));
           await fetchQuestions(quizSetId);
         } else {
-          throw Exception(responseData['error'] ?? 'Failed to delete question');
+          throw Exception(jsonResponse['error'] ?? 'Failed to delete question');
         }
       } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+        throw Exception('HTTP Error: ${response.statusCode}');
       }
     } catch (e, stack) {
       if (removedQuestion != null && index != -1) {
         questions.insert(index, removedQuestion);
-        _logger.i("Restored question at index $index: $removedQuestion");
+        _logger.w("↩️ Restored deleted question ID: $id");
         notifyListeners();
       }
-      _logger.e('Error deleting question', error: e, stackTrace: stack);
+      _logger.e('⛔ Error deleting question', error: e, stackTrace: stack);
       Utils.noInternet('Error deleting question: $e');
     }
   }
