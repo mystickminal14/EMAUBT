@@ -2,6 +2,7 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/users/user_folder_detail_page.dart';
 import 'package:ema_app/view_model/folders/folder_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 
 import 'model/folder_model.dart';
@@ -30,6 +31,8 @@ class _EPSSectionPageState extends State<EPSSectionPage> {
   void initState() {
     super.initState();
     // Fetch folders after first frame
+    var log=Logger();
+    log.d("jh ${widget.userIdentifier}");
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Provider.of<FolderViewModel>(context, listen: false).fetchFolders();

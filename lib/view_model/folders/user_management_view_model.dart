@@ -7,7 +7,7 @@ import 'package:ema_app/model/user_data_model.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart'; // Add this import
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class UserManagementViewModel extends ChangeNotifier {
   final Logger _logger = Logger();

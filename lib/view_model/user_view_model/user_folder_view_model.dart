@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:ema_app/constants/base_url.dart';
+import 'package:logger/logger.dart';
 
 class UserFolderViewModel with ChangeNotifier {
   List<Map<String, dynamic>> files = [];
@@ -10,9 +11,11 @@ class UserFolderViewModel with ChangeNotifier {
 
   Future<void> fetchFiles(String folderId, bool isAdmin, String userIdentifier) async {
     try {
+      var logger=Logger();
       final url =
           '${BaseUrl.baseUrl}folder_details_page.php?action=get_files&folder_id=$folderId';
-      final response = await http.get(Uri.parse(url));
+
+     logger.d(url); final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] == "success") {
@@ -121,29 +124,40 @@ class UserFolderViewModel with ChangeNotifier {
         'times_accessed': 0,
       };
     }
-
+if(userIdentifier==''){
+  return {
+    'can_access': false,
+    'has_permission': false,
+    'is_active': false,
+    'access_times': -1,
+    'times_accessed': 0,
+  };
+}
     try {
+      var lo=Logger();
+      lo.d('bb $userIdentifier');
       final response = await http.post(
         Uri.parse('${BaseUrl.baseUrl}check_access.php'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {
-          'identifier': userIdentifier.isEmpty ? 'guest' : userIdentifier,
+          'identifier': userIdentifier=='' ? 'guest' : userIdentifier,
           'is_admin': 'false',
           'item_id': itemId.toString(),
           'item_type': itemType,
         },
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        var logger=Logger();
+        logger.d(data);
         if (kDebugMode) {
           print(
               'CheckAccess Response for Item ID: $itemId, Type: $itemType - $data');
         }
         if (data['success'] == true) {
           return {
-            'can_access': data['can_access'] == true,
-            'has_permission': data['has_permission'] == true,
+            'can_access': data['can_access'] ,
+            'has_permission': data['has_permission'] ,
             'is_active': data['is_active'] ?? 0,
             'access_times': data['access_times'] ?? -1,
             'times_accessed': data['times_accessed'] ?? 0,
@@ -158,9 +172,10 @@ class UserFolderViewModel with ChangeNotifier {
         'times_accessed': 0,
       };
     } catch (e) {
-      if (kDebugMode)
+      if (kDebugMode) {
         print(
             'Error checking access for Item ID: $itemId, Type: $itemType - $e');
+      }
       return {
         'can_access': false,
         'has_permission': false,

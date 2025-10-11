@@ -40,7 +40,6 @@ class AuthViewModel with ChangeNotifier {
     logger.i("Attempting login with email: ${body['email']}");
 
     try {
-      // Set a timeout of 10 seconds
       final response = await _authService.login(url, body).timeout(
         Duration(seconds: 10),
         onTimeout: () {
@@ -52,9 +51,10 @@ class AuthViewModel with ChangeNotifier {
 
       if (response['success'] == true) {
         final user = UserModel.fromJson(response);
+         logger.i("User loggs $user.");
 
-        // Save user in SharedPreferences
-        final saved = await _userViewModel.saveUser(user);
+        final saved = await _userViewModel.saveUser(user)
+        ;
         if (saved) logger.i("User saved successfully in SharedPreferences.");
 
         setUser(ApiResponse.completed(user));
