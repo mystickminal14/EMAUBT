@@ -1,12 +1,10 @@
 import 'dart:io';
 import 'package:ema_app/constants/base_url.dart';
-import 'package:ema_app/data/network/BaseApiService.dart';
-import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/screens/users/user_quiz_sets.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
 
 class DownloadContentPage extends StatefulWidget {
   final int quizSetId;
@@ -18,8 +16,6 @@ class DownloadContentPage extends StatefulWidget {
   final String folderId;
   final String folderName;
   final bool isAdmin;
-  final String userIdentifier;
-  final String fullName;
 
   const DownloadContentPage({
     super.key,
@@ -32,8 +28,8 @@ class DownloadContentPage extends StatefulWidget {
     required this.folderId,
     required this.folderName,
     required this.isAdmin,
-    required this.userIdentifier,
-    required this.fullName,
+    required String userIdentifier,
+    required String fullName,
   });
 
   @override
@@ -46,9 +42,6 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
   final Map<String, String> _cachedFiles = {};
   bool _hasError = false;
   int _completedDownloads = 0;
-  int _totalFiles = 0;
-  static const int maxConcurrentDownloads = 5;
-  final BaseApiServices _apiService = NetworkApiService();
 
   @override
   void initState() {
@@ -58,21 +51,43 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
 
   Future<void> _preloadContent() async {
     try {
+      if (!mounted) return;
       setState(() {
         _hasError = false;
         _status = 'Fetching quiz data...';
         _progress = 0.0;
         _completedDownloads = 0;
-        _totalFiles = 0;
       });
 
-      final data = await _apiService.getApiResponse(
-          '${BaseUrl.baseUrl}/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}');
+      final response = await http
+          .get(Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'))
+          .timeout(const Duration(seconds: 30));
 
-      List<Map<String, dynamic>> questions =
-      List<Map<String, dynamic>>.from(data['questions'] ?? []);
+      if (!mounted) return;
+      debugPrint('Fetch response: ${response.statusCode}');
 
+      if (response.statusCode != 200) {
+        if (!mounted) return;
+        setState(() {
+          _status = 'Failed to fetch quiz data (HTTP ${response.statusCode})';
+          _hasError = true;
+        });
+        return;
+      }
+
+      final data = json.decode(response.body);
+      if (data['success'] != true) {
+        if (!mounted) return;
+        setState(() {
+          _status = 'Server error: ${data['error'] ?? 'Unknown error'}';
+          _hasError = true;
+        });
+        return;
+      }
+
+      List<Map<String, dynamic>> questions = List<Map<String, dynamic>>.from(data['questions'] ?? []);
       if (questions.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _status = 'No questions found in this quiz set';
           _hasError = true;
@@ -80,12 +95,12 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
         return;
       }
 
+      // Collect media URLs
       List<String> mediaUrls = [];
       Set<String> uniqueUrls = {};
-
       for (var question in questions) {
         if (question['question_file']?.isNotEmpty == true) {
-          String url = '${BaseUrl.baseUrl}/${question['question_file']}';
+          String url = '${BaseUrl.baseUrl}${question['question_file']}';
           if (!uniqueUrls.contains(url)) {
             mediaUrls.add(url);
             uniqueUrls.add(url);
@@ -95,7 +110,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
         for (var choice in ['A', 'B', 'C', 'D']) {
           String? choiceFile = question['choice_${choice}_file'];
           if (choiceFile?.isNotEmpty == true) {
-            String url = '${BaseUrl.baseUrl}/$choiceFile';
+            String url = '${BaseUrl.baseUrl}$choiceFile';
             if (!uniqueUrls.contains(url)) {
               mediaUrls.add(url);
               uniqueUrls.add(url);
@@ -105,6 +120,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
       }
 
       if (mediaUrls.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _status = 'No media files to download';
           _progress = 100.0;
@@ -113,64 +129,49 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
         return;
       }
 
-      _totalFiles = mediaUrls.length;
       final tempDir = await getTemporaryDirectory();
       int successfulDownloads = 0;
       int failedDownloads = 0;
 
-      // Use a semaphore-like approach to limit concurrent downloads
-      final downloadQueue = <Future<void>>[];
-      int activeDownloads = 0;
+      if (!mounted) return;
+      setState(() {
+        _status = 'Downloading files... (0/${mediaUrls.length})';
+      });
 
+      List<Future<void>> downloadFutures = [];
       for (String url in mediaUrls) {
-        if (activeDownloads >= maxConcurrentDownloads) {
-          await Future.any(downloadQueue);
-          activeDownloads--;
-        }
-
-        final future = _downloadWithRetry(url, tempDir.path, (progress) {
-          setState(() {
-            _progress = (_completedDownloads + progress) / _totalFiles * 90;
-          });
-        }).then((filePath) {
+        downloadFutures.add(_downloadWithRetry(url, tempDir.path).then((filePath) {
           if (filePath != null) {
             _cachedFiles[url] = filePath;
             successfulDownloads++;
           } else {
             failedDownloads++;
           }
-          _updateProgress();
+          _updateProgress(mediaUrls.length);
         }).catchError((e) {
           failedDownloads++;
-          _updateProgress();
+          _updateProgress(mediaUrls.length);
           debugPrint('Failed to download $url: $e');
-        });
-
-        downloadQueue.add(future);
-        activeDownloads++;
+        }));
       }
 
-      setState(() {
-        _status = 'Downloading files... (0/$_totalFiles)';
-      });
+      await Future.wait(downloadFutures);
 
-      await Future.wait(downloadQueue);
-
+      if (!mounted) return;
       setState(() {
         _progress = 100.0;
-        if (failedDownloads > 0) {
-          _status =
-          'Download completed with some errors ($successfulDownloads successful, $failedDownloads failed)';
-        } else {
-          _status =
-          'Download complete! ($successfulDownloads files downloaded)';
-        }
+        _status = failedDownloads > 0
+            ? 'Download completed with some errors ($successfulDownloads successful, $failedDownloads failed)'
+            : 'Download complete! ($successfulDownloads files downloaded)';
       });
 
       await Future.delayed(const Duration(milliseconds: 500));
+
+      if (!mounted) return;
       _navigateToQuizPage(data);
     } catch (e) {
       debugPrint('Error in _preloadContent: $e');
+      if (!mounted) return;
       setState(() {
         _status = 'Connection error: ${e.toString()}';
         _hasError = true;
@@ -178,7 +179,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
     }
   }
 
-  Future<String?> _downloadWithRetry(String url, String tempPath, Function(double) onProgress) async {
+  Future<String?> _downloadWithRetry(String url, String tempPath) async {
     final fileName = url.split('/').last;
     final filePath = '$tempPath/$fileName';
     final file = File(filePath);
@@ -189,53 +190,35 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
 
     for (int attempt = 0; attempt < 3; attempt++) {
       try {
-        final client = http.Client();
-        try {
-          final request = http.Request('GET', Uri.parse(url));
-          final response = await client.send(request).timeout(const Duration(seconds: 30));
-
-          if (response.statusCode != 200) {
-            debugPrint('Attempt $attempt failed for $fileName: HTTP ${response.statusCode}');
-            continue;
-          }
-
-          final sink = file.openWrite();
-          int receivedBytes = 0;
-          final totalBytes = response.contentLength ?? 0;
-
-          await for (var chunk in response.stream) {
-            sink.add(chunk);
-            receivedBytes += chunk.length;
-            if (totalBytes > 0) {
-              onProgress(receivedBytes / totalBytes);
-            }
-          }
-          await sink.close();
+        final fileResponse = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+        if (fileResponse.statusCode == 200) {
+          await file.writeAsBytes(fileResponse.bodyBytes);
           debugPrint('Successfully downloaded: $fileName');
           return filePath;
-        } finally {
-          client.close();
+        } else {
+          debugPrint('Attempt $attempt failed for $fileName: HTTP ${fileResponse.statusCode}');
         }
       } catch (e) {
         debugPrint('Attempt $attempt error for $fileName: $e');
       }
       if (attempt < 2) {
-        await Future.delayed(Duration(milliseconds: 1000 * (1 << attempt))); // Exponential backoff
+        await Future.delayed(const Duration(seconds: 2));
       }
     }
     return null;
   }
 
-  void _updateProgress() {
+  void _updateProgress(int total) {
+    if (!mounted) return;
     setState(() {
       _completedDownloads++;
-      _status = 'Downloading files... ($_completedDownloads/$_totalFiles)';
+      _progress = (_completedDownloads / total) * 90;
+      _status = 'Downloading files... ($_completedDownloads/$total)';
     });
   }
 
   void _navigateToQuizPage(Map<String, dynamic> data) {
     if (!mounted) return;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -259,15 +242,21 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
   }
 
   void _retryDownload() {
+    if (!mounted) return;
     setState(() {
       _hasError = false;
       _status = 'Fetching quiz data...';
       _progress = 0.0;
       _cachedFiles.clear();
       _completedDownloads = 0;
-      _totalFiles = 0;
     });
     _preloadContent();
+  }
+
+  @override
+  void dispose() {
+    // You can cancel timers, streams, etc. here if added later
+    super.dispose();
   }
 
   @override
@@ -291,8 +280,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                 const SizedBox(height: 24),
                 Text(
                   _status,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -309,26 +297,16 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                     padding: const EdgeInsets.only(top: 16),
                     child: Text(
                       'Please keep this screen open while downloading...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       textAlign: TextAlign.center,
                     ),
                   ),
               ] else ...[
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.red[400],
-                ),
+                Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
                 const SizedBox(height: 24),
                 Text(
                   _status,
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.red),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.red),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -340,8 +318,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('Retry'),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -350,8 +327,7 @@ class _DownloadContentPageState extends State<DownloadContentPage> {
                       label: const Text('Cancel'),
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       ),
                     ),
                   ],
