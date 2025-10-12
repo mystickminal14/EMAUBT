@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:another_flushbar/flushbar.dart';
 import 'package:ema_app/model/question_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
@@ -95,14 +96,18 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         throw Exception('File does not exist: ${file.path}');
       }
 
-      // Compress image files before upload
       final ext = file.path.split('.').last.toLowerCase();
       final imageExts = ['jpg', 'jpeg', 'png', 'gif'];
-      if (imageExts.contains(ext)) {
+      bool shouldCompress = imageExts.contains(ext) &&
+          !kIsWeb &&
+          !(Platform.isWindows || Platform.isLinux);  // Skip on Windows/Linux (unsupported), allow on macOS/mobile/web
+
+      File? uploadFile = file;
+      if (shouldCompress) {
         _logger.i("🗜️ Compressing image: ${file.path}");
         final tempDir = await getTemporaryDirectory();
         final targetPath =
-            '${tempDir.path}/compressed_${file.path.split('/').last}';
+            '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
         final Uint8List? compressedBytes =
         await FlutterImageCompress.compressWithFile(
           file.path,
@@ -111,20 +116,22 @@ class QuizSetDetailViewModel extends ChangeNotifier {
           quality: 85,
           format: ext == 'png' ? CompressFormat.png : CompressFormat.jpeg,
         );
-        if (compressedBytes != null) {
+        if (compressedBytes != null && compressedBytes.isNotEmpty) {
           await File(targetPath).writeAsBytes(compressedBytes);
-          file = File(targetPath);
+          uploadFile = File(targetPath);
           _logger.i(
               "✅ Compression success. New size: ${compressedBytes.length} bytes");
         } else {
           _logger.w("⚠️ Image compression failed, uploading original file");
         }
+      } else if (imageExts.contains(ext)) {
+        _logger.i("🖥️ Skipping compression on unsupported platform: ${file.path}");
       } else {
         _logger.i("📄 Non-image file, skipping compression: ${file.path}");
       }
 
-      final fileSize = await file.length();
-      _logger.i("🚀 Uploading file: ${file.path} (${fileSize} bytes)");
+      final fileSize = await uploadFile.length();
+      _logger.i("🚀 Uploading file: ${uploadFile.path} (${fileSize} bytes)");
 
       var request = http.MultipartRequest(
           'POST', Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'));
@@ -133,7 +140,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       request.fields['file_key'] = fileKey;
 
       int byteCount = 0;
-      final stream = file.openRead().transform(
+      final stream = uploadFile.openRead().transform(
         StreamTransformer<List<int>, List<int>>.fromHandlers(
           handleData: (data, sink) {
             byteCount += data.length;
@@ -150,7 +157,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         fileKey,
         stream,
         fileSize,
-        filename: file.path.split('/').last,
+        filename: uploadFile.path.split(Platform.pathSeparator).last,  // Use platform separator for filename
       );
       request.files.add(multipartFile);
 
@@ -167,9 +174,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
           throw Exception(jsonResponse['error'] ?? 'Unknown upload error');
         }
       } else {
-        final jsonResponse =response.toString();
-
-        throw Exception('Upload failed (${response.statusCode}) $jsonResponse');
+        throw Exception('Upload failed (${response.statusCode})');
       }
     } catch (e, stack) {
       _logger.e('⛔ Upload error', error: e, stackTrace: stack);
@@ -219,7 +224,10 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         questionFile,
         context,
         'question',
-            (progress) => notifyListeners(),
+            (progress) {
+          saveProgress = (saveProgress * 0.3) + (progress * 0.7);  // Simple weighted progress
+          notifyListeners();
+        },
         questionData['quiz_set_id'],
       ) ??
           '';
@@ -232,7 +240,10 @@ class QuizSetDetailViewModel extends ChangeNotifier {
             file,
             context,
             'choice_$i',
-                (progress) => notifyListeners(),
+                (progress) {
+              saveProgress += (1.0 / 4.0) * progress;  // Distribute across choices
+              notifyListeners();
+            },
             questionData['quiz_set_id'],
           ) ??
               '';
@@ -277,7 +288,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'action': 'add', ...newQuestion}),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       _logger.i("✅ Add question response: ${response.statusCode} - ${response.body}");
 
@@ -298,7 +309,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       Utils.noInternet('Error adding question: $e');
     } finally {
       isSaving = false;
-      saveProgress = 0.0;
+      saveProgress = 100.0;
       notifyListeners();
     }
   }
@@ -343,28 +354,41 @@ class QuizSetDetailViewModel extends ChangeNotifier {
 
       _logger.i("🚀 Starting editQuestion process for ID: $id");
 
-      final questionFileName = await uploadFile(
-        questionFile,
-        context,
-        'question',
-            (progress) => notifyListeners(),
-        questionData['quiz_set_id'],
-      ) ??
-          questionData['question_file'];
+      String questionFileName = questionData['question_file'] ?? '';
+      if (questionFile != null) {
+        questionFileName = await uploadFile(
+          questionFile,
+          context,
+          'question',
+              (progress) {
+            saveProgress = (saveProgress * 0.3) + (progress * 0.7);
+            notifyListeners();
+          },
+          questionData['quiz_set_id'],
+        ) ??
+            questionFileName;
+      }
 
       final choiceFileNames = await Future.wait(
         choiceFiles.asMap().entries.map((entry) async {
           final i = entry.key;
           final file = entry.value;
-          return await uploadFile(
-            file,
-            context,
-            'choice_$i',
-                (progress) => notifyListeners(),
-            questionData['quiz_set_id'],
-          ) ??
-              questionData['choices'][String.fromCharCode(65 + i)]
-              ['choice_file'];
+          final choiceKey = String.fromCharCode(65 + i);
+          String existingFile = questionData['choices'][choiceKey]['choice_file'] ?? '';
+          if (file != null) {
+            existingFile = await uploadFile(
+              file,
+              context,
+              'choice_$i',
+                  (progress) {
+                saveProgress += (1.0 / 4.0) * progress;
+                notifyListeners();
+              },
+              questionData['quiz_set_id'],
+            ) ??
+                existingFile;
+          }
+          return existingFile;
         }),
       );
 
@@ -407,7 +431,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         Uri.parse('${BaseUrl.baseUrl}/quiz_set_detail_page.php'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'action': 'edit', ...updatedQuestion}),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       _logger.i("✅ Edit response: ${response.statusCode} - ${response.body}");
 
@@ -432,7 +456,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       Utils.noInternet('Error editing question: $e');
     } finally {
       isSaving = false;
-      saveProgress = 0.0;
+      saveProgress = 100.0;
       notifyListeners();
     }
   }
@@ -454,7 +478,7 @@ class QuizSetDetailViewModel extends ChangeNotifier {
         Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'action': 'delete', 'id': id}),
-      );
+      ).timeout(const Duration(seconds: 15));
 
       _logger.i("✅ Delete response: ${response.statusCode} - ${response.body}");
 
