@@ -19,7 +19,6 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_windows/webview_windows.dart' as webview_windows;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:logger/logger.dart';
-
 import '../../../model/user_model.dart';
 
 class UserFolderDetailsPage extends StatefulWidget {
@@ -324,11 +323,16 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                           ),
                           _buildAudioButton(
                             context,
-                            'Pause',
-                            Icons.pause,
+                            isPlaying ? 'Pause' : 'Resume',
+                            isPlaying ? Icons.pause : Icons.play_arrow,
                                 () async {
-                              await _audioPlayer.pause();
-                              setDialogState(() => isPlaying = false);
+                              if (isPlaying) {
+                                await _audioPlayer.pause();
+                                setDialogState(() => isPlaying = false);
+                              } else {
+                                await _audioPlayer.resume();
+                                setDialogState(() => isPlaying = true);
+                              }
                             },
                           ),
                           _buildAudioButton(
@@ -345,44 +349,46 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          _buildAudioButton(
-                            context,
-                            '← 10s',
-                            Icons.replay_10,
-                                () async {
-                              final currentPosition = await _audioPlayer.getCurrentPosition();
-                              if (currentPosition != null) {
-                                final newPosition = currentPosition - const Duration(seconds: 10);
-                                await _audioPlayer.seek(
-                                    newPosition > Duration.zero ? newPosition : Duration.zero);
-                                setDialogState(() => position =
-                                newPosition > Duration.zero ? newPosition : Duration.zero);
-                              }
-                            },
-                          ),
-                          _buildAudioButton(
-                            context,
-                            '10s →',
-                            Icons.forward_10,
-                                () async {
-                              final currentPosition = await _audioPlayer.getCurrentPosition();
-                              if (currentPosition != null && totalDuration != null) {
-                                final newPosition = currentPosition + const Duration(seconds: 10);
-                                await _audioPlayer.seek(
-                                    newPosition < totalDuration! ? newPosition : totalDuration!);
-                                setDialogState(() => position =
-                                newPosition < totalDuration! ? newPosition : totalDuration!);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+                      if (widget.isAdmin) ...[
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 12.0,
+                          runSpacing: 12.0,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _buildAudioButton(
+                              context,
+                              '← 10s',
+                              Icons.replay_10,
+                                  () async {
+                                final currentPosition = await _audioPlayer.getCurrentPosition();
+                                if (currentPosition != null) {
+                                  final newPosition = currentPosition - const Duration(seconds: 10);
+                                  await _audioPlayer.seek(
+                                      newPosition > Duration.zero ? newPosition : Duration.zero);
+                                  setDialogState(() => position =
+                                  newPosition > Duration.zero ? newPosition : Duration.zero);
+                                }
+                              },
+                            ),
+                            _buildAudioButton(
+                              context,
+                              '10s →',
+                              Icons.forward_10,
+                                  () async {
+                                final currentPosition = await _audioPlayer.getCurrentPosition();
+                                if (currentPosition != null && totalDuration != null) {
+                                  final newPosition = currentPosition + const Duration(seconds: 10);
+                                  await _audioPlayer.seek(
+                                      newPosition < totalDuration! ? newPosition : totalDuration!);
+                                  setDialogState(() => position =
+                                  newPosition < totalDuration! ? newPosition : totalDuration!);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -1213,11 +1219,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.fileName, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.teal[700],
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(widget.fileName)),
       body: OrientationBuilder(
         builder: (context, orientation) {
           return Center(
@@ -1369,11 +1371,7 @@ class _WebViewPageState extends State<WebViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.fileName, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.teal[700],
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(widget.fileName)),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),

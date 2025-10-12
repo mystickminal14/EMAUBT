@@ -18,6 +18,8 @@ class DownloadContentPage extends StatefulWidget {
   final String folderId;
   final String folderName;
   final bool isAdmin;
+  final String userIdentifier;
+  final String fullName;
 
   const DownloadContentPage({
     super.key,
@@ -30,8 +32,8 @@ class DownloadContentPage extends StatefulWidget {
     required this.folderId,
     required this.folderName,
     required this.isAdmin,
-    required String userIdentifier,
-    required String fullName,
+    required this.userIdentifier,
+    required this.fullName,
   });
 
   @override

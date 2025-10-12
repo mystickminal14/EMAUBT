@@ -72,7 +72,7 @@ class AdminManagementViewModel extends ChangeNotifier {
       notifyListeners();
       _logger.i('Fetching admins...');
       final response = await _apiService
-          .getApiResponse('${BaseUrl.baseUrl}//give_admin_access.php');
+          .getApiResponse('${BaseUrl.baseUrl}give_admin_access.php');
       final adminData = AdminModel.fromJson(response);
       if (adminData.success == true && adminData.admins != null) {
         admins = adminData.admins!;

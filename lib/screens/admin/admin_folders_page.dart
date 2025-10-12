@@ -74,6 +74,7 @@ class _FoldersPageState extends State<FoldersPage> {
     folderController.clear();
     selectedImage = null;
     isProcessing = false;
+    bool isImageProcessing = false;
 
     if (isEditing && folder != null) {
       folderController.text = folder.name ?? '';
@@ -97,36 +98,48 @@ class _FoldersPageState extends State<FoldersPage> {
                 GestureDetector(
                   onTap: () async {
                     _logger.i("User tapped to select folder icon...");
+                    setDialogState(() => isImageProcessing = true);
                     XFile? newImage = await _pickImage();
+                    await Future.delayed(const Duration(milliseconds: 300)); // simulate compression delay
                     if (newImage != null && context.mounted) {
-                      setDialogState(() => selectedImage = newImage);
+                      setDialogState(() {
+                        selectedImage = newImage;
+                        isImageProcessing = false;
+                      });
                       _logger.i("Image selected: ${newImage.path}");
+                    } else {
+                      setDialogState(() => isImageProcessing = false);
                     }
                   },
                   child: Column(
                     children: [
-                      if (selectedImage != null)
+                      if (isImageProcessing)
+                        const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (selectedImage != null)
                         kIsWeb
                             ? FutureBuilder(
-                                future: selectedImage!.readAsBytes(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.hasData) {
-                                    return Image.memory(
-                                      snapshot.data!,
-                                      width: 60,
-                                      height: 60,
-                                      fit: BoxFit.cover,
-                                    );
-                                  }
-                                  return const Icon(Icons.folder, size: 40);
-                                },
-                              )
-                            : Image.file(
-                                File(selectedImage!.path),
+                          future: selectedImage!.readAsBytes(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              return Image.memory(
+                                snapshot.data!,
                                 width: 60,
                                 height: 60,
                                 fit: BoxFit.cover,
-                              )
+                              );
+                            }
+                            return const Icon(Icons.folder, size: 40);
+                          },
+                        )
+                            : Image.file(
+                          File(selectedImage!.path),
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                        )
                       else
                         const Icon(Icons.folder, size: 40),
                       const SizedBox(height: 10),
@@ -143,49 +156,49 @@ class _FoldersPageState extends State<FoldersPage> {
                 child: const Text("Cancel")),
             Consumer<FolderViewModel>(
               builder: (context, folderVM, _) => TextButton(
-                onPressed: isProcessing
+                onPressed: (isProcessing || isImageProcessing)
                     ? null
                     : () async {
-                        if (folderController.text.isEmpty) {
-                          _logger.w("Folder name is empty. Cannot add/edit.");
-                          return;
-                        }
+                  if (folderController.text.isEmpty) {
+                    _logger.w("Folder name is empty. Cannot add/edit.");
+                    return;
+                  }
 
-                        setDialogState(() => isProcessing = true);
+                  setDialogState(() => isProcessing = true);
 
-                        if (isEditing && folder != null) {
-                          _logger.i(
-                              "Updating folder ${folder.id}: ${folderController.text}");
-                          await folderVM.editFolder(
-                            context,
-                            folder.id ?? '',
-                            folderController.text,
-                            selectedImage != null
-                                ? File(selectedImage!.path)
-                                : null,
-                          );
-                        } else {
-                          _logger
-                              .i("Adding new folder: ${folderController.text}");
-                          await folderVM.addFolder(
-                            context,
-                            folderController.text,
-                            selectedImage != null
-                                ? File(selectedImage!.path)
-                                : null,
-                          );
-                        }
+                  if (isEditing && folder != null) {
+                    _logger.i(
+                        "Updating folder ${folder.id}: ${folderController.text}");
+                    await folderVM.editFolder(
+                      context,
+                      folder.id ?? '',
+                      folderController.text,
+                      selectedImage != null
+                          ? File(selectedImage!.path)
+                          : null,
+                    );
+                  } else {
+                    _logger.i(
+                        "Adding new folder: ${folderController.text}");
+                    await folderVM.addFolder(
+                      context,
+                      folderController.text,
+                      selectedImage != null
+                          ? File(selectedImage!.path)
+                          : null,
+                    );
+                  }
 
-                        if (context.mounted) {
-                          setDialogState(() => isProcessing = false);
-                          Navigator.pop(context);
-                        }
-                      },
-                child: isProcessing
+                  if (context.mounted) {
+                    setDialogState(() => isProcessing = false);
+                    Navigator.pop(context); // Close after success
+                  }
+                },
+                child: (isProcessing || isImageProcessing)
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
                     : Text(isEditing ? "Update" : "Add"),
               ),
             ),
@@ -194,6 +207,7 @@ class _FoldersPageState extends State<FoldersPage> {
       ),
     );
   }
+
 
   void _confirmDeleteFolder(BuildContext context, FolderModel folder) {
     bool isProcessing = false;

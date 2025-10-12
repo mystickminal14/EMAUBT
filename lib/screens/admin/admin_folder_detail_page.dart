@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:ema_app/model/files_model.dart';
-import 'package:ema_app/model/files_model.dart';
 import 'package:ema_app/model/quiz_set_model.dart';
 import 'package:ema_app/view_model/folders/files_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_view_model.dart';
@@ -331,12 +330,13 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
   void _showQuizSetDialog({QuizSetData? quizSet, bool isEditing = false}) {
     final nameController = TextEditingController(text: quizSet?.name ?? '');
     XFile? selectedIcon;
+    bool isProcessing = false;
+    bool isImageProcessing = false; // 👈 New flag
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateDialog) {
-          bool isProcessing = false;
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text(
@@ -356,44 +356,59 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () async {
-                    final icon = await _pickImage();
-                    if (icon != null) setStateDialog(() => selectedIcon = icon);
+                    setStateDialog(() => isImageProcessing = true); // show spinner
+                    final icon = await _pickImage(); // your image picker (can include compression)
+                    await Future.delayed(const Duration(milliseconds: 300)); // small UX delay
+                    if (icon != null) {
+                      setStateDialog(() {
+                        selectedIcon = icon;
+                        isImageProcessing = false;
+                      });
+                    } else {
+                      setStateDialog(() => isImageProcessing = false);
+                    }
                   },
                   child: Column(
                     children: [
-                      selectedIcon != null
-                          ? kIsWeb
-                          ? FutureBuilder(
-                        future: selectedIcon!.readAsBytes(),
-                        builder: (_, snapshot) => snapshot.hasData
-                            ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.memory(
-                            snapshot.data!,
-                            width: 60,
-                            height: 60,
+                      if (isImageProcessing)
+                        const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (selectedIcon != null)
+                        kIsWeb
+                            ? FutureBuilder(
+                          future: selectedIcon!.readAsBytes(),
+                          builder: (_, snapshot) => snapshot.hasData
+                              ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(
+                              snapshot.data!,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                              : const SizedBox(),
+                        )
+                            : ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.file(
+                            File(selectedIcon!.path),
+                            width: 40,
+                            height: 40,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(Icons.image, size: 50, color: Colors.grey);
+                            },
                           ),
                         )
-                            : const SizedBox(),
-                      )
-                          : ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.file(
-                          File(selectedIcon!.path),
-                          width: 40,
-                          height: 40,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.folder, size: 40);
-                          },
-                        ),
-                      )
-                          : const Icon(Icons.image, size: 50, color: Colors.grey),
+                      else
+                        const Icon(Icons.image, size: 50, color: Colors.grey),
                       const SizedBox(height: 8),
-                      const Text(
-                        "Select Icon (Optional)",
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      Text(
+                        isImageProcessing ? "Processing image..." : "Select Icon (Optional)",
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -406,8 +421,8 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
                 child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
               ElevatedButton(
-                onPressed: isProcessing
-                    ? null
+                onPressed: (isProcessing || isImageProcessing)
+                    ? null // disable while adding or compressing
                     : () async {
                   if (nameController.text.isEmpty) {
                     Flushbar(
@@ -417,6 +432,7 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
                     ).show(ctx);
                     return;
                   }
+
                   setStateDialog(() => isProcessing = true);
 
                   try {
@@ -426,17 +442,22 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
                         widget.folderId,
                         quizSet.id!,
                         nameController.text,
-                        iconFile: selectedIcon != null ? File(selectedIcon!.path) : null,
+                        iconFile: selectedIcon != null
+                            ? File(selectedIcon!.path)
+                            : null,
                       );
                     } else {
                       await context.read<QuizSetsViewModel>().addQuizSet(
                         ctx,
                         widget.folderId,
                         nameController.text,
-                        iconFile: selectedIcon != null ? File(selectedIcon!.path) : null,
+                        iconFile: selectedIcon != null
+                            ? File(selectedIcon!.path)
+                            : null,
                       );
                     }
-                    if (context.mounted) Navigator.pop(ctx);
+
+                    if (context.mounted) Navigator.pop(ctx); // close on success
                   } catch (e) {
                     Flushbar(
                       message: 'Operation failed: $e',
@@ -451,7 +472,7 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
                   backgroundColor: Colors.blueAccent,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: isProcessing
+                child: (isProcessing || isImageProcessing)
                     ? const SizedBox(
                   width: 20,
                   height: 20,
@@ -468,6 +489,7 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
       ),
     );
   }
+
 
   void _showDeleteFileDialog(FileData file) {
     showDialog(
