@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
+import 'package:logger/logger.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:webview_windows/webview_windows.dart' as webview_windows;
@@ -94,6 +95,8 @@ class UserQuizSetsPage extends StatefulWidget {
   final String userIdentifier;
   final bool preStart;
   final Map<String, String> cachedFiles; // New parameter
+  final Map<String, dynamic> quizData;
+  final List<Map<String, dynamic>> rawQuestions; // New parameter for raw questions
 
   const UserQuizSetsPage({
     super.key,
@@ -109,7 +112,8 @@ class UserQuizSetsPage extends StatefulWidget {
     required this.userIdentifier,
     required this.preStart,
     required this.cachedFiles,
-    required quizData,
+    required this.quizData,
+    this.rawQuestions = const [], // Default empty list
   });
 
   @override
@@ -141,8 +145,10 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
         DeviceOrientation.landscapeRight,
       ]);
     }
-
-    _quizDataFuture = fetchQuizData();
+    var logger=Logger();
+    logger.d(widget.isAdmin);
+    // Use passed quizData instead of refetching
+    _quizDataFuture = Future.value(_processQuizData(widget.quizData));
     _timerManager.addListener(_updateTimer);
   }
 
@@ -196,9 +202,9 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
     try {
       final response = await http
           .get(
-            Uri.parse(
-                '${BaseUrl.baseUrl}/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
-          )
+        Uri.parse(
+            '${BaseUrl.baseUrl}/quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
+      )
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -334,66 +340,52 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
   Future<void> fetchQuestionsAndSubmit(BuildContext context,
       int timeTakenInSeconds, int minutesTaken, int secondsTaken) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-            '${BaseUrl.baseUrl}quiz_set_detail_page.php?quiz_set_id=${widget.quizSetId}'),
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['questions'] != null && data['questions'] is List) {
-          List<Map<String, dynamic>> questions =
-              List<Map<String, dynamic>>.from(data['questions'])
-                  .map((q) => {
-                        'id': q['id'],
-                        'question': q['question'] ?? '',
-                        'correct_answer': q['correct_answer'] ?? 'A',
-                      })
-                  .toList();
+      // Use rawQuestions instead of refetching
+      List<Map<String, dynamic>> questions = widget.rawQuestions.map((q) => {
+        'id': q['id'],
+        'question': q['question'] ?? '',
+        'correct_answer': q['correct_answer'] ?? 'A',
+      }).toList();
 
-          int correctAnswersCount = 0;
-          List<Map<String, String>> correctAnswersList = [];
-          for (var entry in _selectedAnswers.entries) {
-            final questionIndex = entry.key;
-            final selectedChoice = entry.value;
-            final correctChoice = questions[questionIndex]['correct_answer'];
-            final questionText = questions[questionIndex]['question'];
-            if (selectedChoice == correctChoice) correctAnswersCount++;
-            correctAnswersList.add({
-              'question': (questionIndex + 1).toString(),
-              'selected': selectedChoice,
-              'correct': correctChoice,
-              'question_text': questionText,
-            });
-          }
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SubmitPage(
-                selectedAnswers: _selectedAnswers,
-                quizSetId: widget.quizSetId,
-                quizSetName: widget.quizSetName,
-                timeTaken:
-                    '$minutesTaken:${secondsTaken.toString().padLeft(2, '0')}',
-                totalQuestions: questions.length,
-                totalCorrect: correctAnswersCount,
-                correctAnswersList: correctAnswersList,
-                folderId: widget.folderId,
-                folderName: widget.folderName,
-                userIdentifier:
-                    widget.isAdmin ? widget.userEmail : widget.userId,
-                isAdmin: widget.isAdmin,
-                timePerQuestion: {},
-                cachedFiles: {},
-              ),
-            ),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to fetch quiz data')),
-        );
+      int correctAnswersCount = 0;
+      List<Map<String, String>> correctAnswersList = [];
+      for (var entry in _selectedAnswers.entries) {
+        final questionIndex = entry.key;
+        final selectedChoice = entry.value;
+        final correctChoice = questions[questionIndex]['correct_answer'];
+        final questionText = questions[questionIndex]['question'];
+        if (selectedChoice == correctChoice) correctAnswersCount++;
+        correctAnswersList.add({
+          'question': (questionIndex + 1).toString(),
+          'selected': selectedChoice,
+          'correct': correctChoice,
+          'question_text': questionText,
+        });
       }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubmitPage(
+            selectedAnswers: _selectedAnswers,
+            quizSetId: widget.quizSetId,
+            quizSetName: widget.quizSetName,
+            timeTaken:
+            '$minutesTaken:${secondsTaken.toString().padLeft(2, '0')}',
+            totalQuestions: questions.length,
+            totalCorrect: correctAnswersCount,
+            correctAnswersList: correctAnswersList,
+            folderId: widget.folderId,
+            folderName: widget.folderName,
+            userIdentifier:
+            widget.isAdmin ? widget.userEmail : widget.userId,
+            isAdmin: widget.isAdmin,
+            timePerQuestion: {},
+            cachedFiles: widget.cachedFiles,
+            rawQuestions: widget.rawQuestions, // Pass rawQuestions
+          ),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -451,7 +443,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
                     ...quizData['readingQuestions'],
                     ...quizData['listeningQuestions'],
                   ].firstWhere(
-                    (q) => q['originalIndex'] == originalIndex,
+                        (q) => q['originalIndex'] == originalIndex,
                     orElse: () => null,
                   );
                   if (question != null) {
@@ -497,7 +489,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
                   ...quizData['readingQuestions'],
                   ...quizData['listeningQuestions'],
                 ].firstWhere(
-                  (q) => q['originalIndex'] == originalIndex,
+                      (q) => q['originalIndex'] == originalIndex,
                   orElse: () => null,
                 );
                 if (question != null) {
@@ -570,7 +562,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
                 ...quizData['readingQuestions'],
                 ...quizData['listeningQuestions'],
               ].firstWhere(
-                (q) => q['originalIndex'] == originalIndex,
+                    (q) => q['originalIndex'] == originalIndex,
                 orElse: () => null,
               );
               if (question != null) {
@@ -732,12 +724,12 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
 
   // Add fontSize and buttonFontSize as optional parameters for responsiveness
   Widget _buildQuestionGroups(
-    int totalQuestions,
-    int listeningCount,
-    int readingCount, {
-    double fontSize = 16,
-    double buttonFontSize = 14,
-  }) {
+      int totalQuestions,
+      int listeningCount,
+      int readingCount, {
+        double fontSize = 16,
+        double buttonFontSize = 14,
+      }) {
     return FutureBuilder<Map<String, dynamic>>(
       future: _quizDataFuture,
       builder: (context, snapshot) {
@@ -773,7 +765,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
                           padding: EdgeInsets.all(localFontSize * 0.5),
                           decoration: BoxDecoration(
                             border:
-                                Border.all(color: Colors.grey[300]!, width: 1),
+                            Border.all(color: Colors.grey[300]!, width: 1),
                             borderRadius: BorderRadius.circular(8),
                             color: Colors.white,
                           ),
@@ -810,7 +802,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
                           padding: EdgeInsets.all(localFontSize * 0.5),
                           decoration: BoxDecoration(
                             border:
-                                Border.all(color: Colors.grey[300]!, width: 1),
+                            Border.all(color: Colors.grey[300]!, width: 1),
                             borderRadius: BorderRadius.circular(8),
                             color: Colors.white,
                           ),
@@ -875,11 +867,11 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
 
   // Add fontSize as an optional parameter for responsiveness
   Widget _buildNumberGrid(
-    List<Map<String, dynamic>> questions,
-    BuildContext context,
-    Map<String, dynamic>? data, {
-    double fontSize = 16,
-  }) {
+      List<Map<String, dynamic>> questions,
+      BuildContext context,
+      Map<String, dynamic>? data, {
+        double fontSize = 16,
+      }) {
     if (questions.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -928,7 +920,7 @@ class _UserQuizSetsPageState extends State<UserQuizSetsPage>
         ...(data['readingQuestions'] ?? []),
         ...(data['listeningQuestions'] ?? []),
       ].firstWhere(
-        (q) => q['displayNumber'] == displayNumber,
+            (q) => q['displayNumber'] == displayNumber,
         orElse: () => null,
       );
 
@@ -1106,46 +1098,46 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
   void _processQuestions(Map<String, dynamic> data) {
     if (data['questions'] != null && data['questions'] is List) {
       List<Map<String, dynamic>> fetchedQuestions =
-          List<Map<String, dynamic>>.from(data['questions'])
-              .map((q) => {
-                    'id': q['id'],
-                    'question': q['question'] ?? '',
-                    'optional_text': q['optional_text'] ?? '',
-                    'question_file': q['question_file'] ?? '',
-                    'question_type': q['question_type'] ?? 'Reading',
-                    'question_word_formatting': List<Map<String, dynamic>>.from(
-                        q['question_word_formatting'] ?? []),
-                    'optional_word_formatting': List<Map<String, dynamic>>.from(
-                        q['optional_word_formatting'] ?? []),
-                    'choices': {
-                      'A': {
-                        'choice_text': q['choice_A_text'] ?? '',
-                        'choice_file': q['choice_A_file'] ?? '',
-                        'word_formatting': List<Map<String, dynamic>>.from(
-                            q['choice_A_word_formatting'] ?? []),
-                      },
-                      'B': {
-                        'choice_text': q['choice_B_text'] ?? '',
-                        'choice_file': q['choice_B_file'] ?? '',
-                        'word_formatting': List<Map<String, dynamic>>.from(
-                            q['choice_B_word_formatting'] ?? []),
-                      },
-                      'C': {
-                        'choice_text': q['choice_C_text'] ?? '',
-                        'choice_file': q['choice_C_file'] ?? '',
-                        'word_formatting': List<Map<String, dynamic>>.from(
-                            q['choice_C_word_formatting'] ?? []),
-                      },
-                      'D': {
-                        'choice_text': q['choice_D_text'] ?? '',
-                        'choice_file': q['choice_D_file'] ?? '',
-                        'word_formatting': List<Map<String, dynamic>>.from(
-                            q['choice_D_word_formatting'] ?? []),
-                      },
-                    },
-                    'correct_answer': q['correct_answer'] ?? 'A',
-                  })
-              .toList();
+      List<Map<String, dynamic>>.from(data['questions'])
+          .map((q) => {
+        'id': q['id'],
+        'question': q['question'] ?? '',
+        'optional_text': q['optional_text'] ?? '',
+        'question_file': q['question_file'] ?? '',
+        'question_type': q['question_type'] ?? 'Reading',
+        'question_word_formatting': List<Map<String, dynamic>>.from(
+            q['question_word_formatting'] ?? []),
+        'optional_word_formatting': List<Map<String, dynamic>>.from(
+            q['optional_word_formatting'] ?? []),
+        'choices': {
+          'A': {
+            'choice_text': q['choice_A_text'] ?? '',
+            'choice_file': q['choice_A_file'] ?? '',
+            'word_formatting': List<Map<String, dynamic>>.from(
+                q['choice_A_word_formatting'] ?? []),
+          },
+          'B': {
+            'choice_text': q['choice_B_text'] ?? '',
+            'choice_file': q['choice_B_file'] ?? '',
+            'word_formatting': List<Map<String, dynamic>>.from(
+                q['choice_B_word_formatting'] ?? []),
+          },
+          'C': {
+            'choice_text': q['choice_C_text'] ?? '',
+            'choice_file': q['choice_C_file'] ?? '',
+            'word_formatting': List<Map<String, dynamic>>.from(
+                q['choice_C_word_formatting'] ?? []),
+          },
+          'D': {
+            'choice_text': q['choice_D_text'] ?? '',
+            'choice_file': q['choice_D_file'] ?? '',
+            'word_formatting': List<Map<String, dynamic>>.from(
+                q['choice_D_word_formatting'] ?? []),
+          },
+        },
+        'correct_answer': q['correct_answer'] ?? 'A',
+      })
+          .toList();
 
       List<Map<String, dynamic>> readingQuestions = [];
       List<Map<String, dynamic>> listeningQuestions = [];
@@ -1341,7 +1333,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
   Widget _buildFileBox(String filePath) {
     if (filePath.isEmpty) return const SizedBox.shrink();
     final fullUrl =
-        filePath.startsWith('http') ? filePath : '$baseUrl$filePath';
+    filePath.startsWith('http') ? filePath : '$baseUrl$filePath';
     final localPath = widget.cachedFiles[fullUrl] ?? '';
     final fileExtension = filePath.split('.').last.toLowerCase();
     final fileName = filePath.split('/').last;
@@ -1359,25 +1351,25 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           ),
           child: localPath.isNotEmpty
               ? Image.file(
-                  File(localPath),
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    if (kDebugMode) print('Image load error: $error');
-                    return const Icon(Icons.broken_image, size: 20);
-                  },
-                )
+            File(localPath),
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              if (kDebugMode) print('Image load error: $error');
+              return const Icon(Icons.broken_image, size: 20);
+            },
+          )
               : Image.network(
-                  fullUrl,
-                  fit: BoxFit.contain,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    if (kDebugMode) print('Image load error: $error');
-                    return const Icon(Icons.broken_image, size: 20);
-                  },
-                ),
+            fullUrl,
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return const Center(child: CircularProgressIndicator());
+            },
+            errorBuilder: (context, error, stackTrace) {
+              if (kDebugMode) print('Image load error: $error');
+              return const Icon(Icons.broken_image, size: 20);
+            },
+          ),
         ),
       );
     } else if (['mp3', 'wav'].contains(fileExtension)) {
@@ -1392,15 +1384,20 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                 _playedMedia.contains(filePath)
                     ? Icons.check
                     : (_isAudioPlaying
-                        ? Icons.play_circle_filled
-                        : Icons.play_arrow),
+                    ? Icons.pause_circle_filled
+                    : Icons.play_arrow),
                 color: _isAudioPlaying ? Colors.grey : Colors.black54,
                 size: 20,
               ),
-              onPressed: _playedMedia.contains(filePath) || _isAudioPlaying
+              onPressed: _playedMedia.contains(filePath)
                   ? null
-                  : () =>
-                      _playAudio(localPath.isNotEmpty ? localPath : fullUrl),
+                  : () {
+                if (_isAudioPlaying) {
+                  _pauseAudio();
+                } else {
+                  _playAudio(localPath.isNotEmpty ? localPath : fullUrl);
+                }
+              },
             ),
             Text(
               fileName,
@@ -1551,7 +1548,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               child: Text(
                 fileName,
                 style:
-                    TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
+                TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1581,7 +1578,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               child: Text(
                 fileName,
                 style:
-                    TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
+                TextStyle(fontSize: fontSize * 0.7, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1649,7 +1646,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   leading: IconButton(
                     icon: const Icon(Icons.arrow_back, size: 24),
                     onPressed: (currentQuestionIndex == 0 ||
-                            (_isAudioPlaying && !widget.isAdmin))
+                        (_isAudioPlaying && !widget.isAdmin))
                         ? null
                         : _goToPreviousQuestion,
                   ),
@@ -1699,28 +1696,28 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               body: questions.isEmpty
                   ? const SizedBox.shrink()
                   : Container(
-                      padding: EdgeInsets.only(
-                        top: appBarHeight + statusBarHeight + 8,
-                        bottom: 8,
-                        left: 12.0,
-                        right: 12.0,
-                      ),
-                      height: double.infinity,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: isLandscape ? 1 : 1,
-                            child: _buildLeftSide(),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: isLandscape ? 1 : 1,
-                            child: _buildRightSide(),
-                          ),
-                        ],
-                      ),
+                padding: EdgeInsets.only(
+                  top: appBarHeight + statusBarHeight + 8,
+                  bottom: 8,
+                  left: 12.0,
+                  right: 12.0,
+                ),
+                height: double.infinity,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: isLandscape ? 1 : 1,
+                      child: _buildLeftSide(),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: isLandscape ? 1 : 1,
+                      child: _buildRightSide(),
+                    ),
+                  ],
+                ),
+              ),
               bottomNavigationBar: Container(
                 height: bottomNavHeight,
                 decoration: BoxDecoration(
@@ -1733,13 +1730,13 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   ],
                 ),
                 padding:
-                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ElevatedButton(
                       onPressed: isFirstQuestion ||
-                              (!widget.isAdmin && _isAudioPlaying)
+                          (!widget.isAdmin && _isAudioPlaying)
                           ? null
                           : _goToPreviousQuestion,
                       style: ElevatedButton.styleFrom(
@@ -1772,12 +1769,12 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                     ),
                     ElevatedButton(
                       onPressed:
-                          isLastQuestion || (!widget.isAdmin && _isAudioPlaying)
-                              ? null
-                              : _goToNextQuestion,
+                      isLastQuestion || (!widget.isAdmin && _isAudioPlaying)
+                          ? null
+                          : _goToNextQuestion,
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
-                            isLastQuestion ? Colors.grey : Colors.blue,
+                        isLastQuestion ? Colors.grey : Colors.blue,
                         disabledBackgroundColor: Colors.grey,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
@@ -1793,40 +1790,40 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               ),
               floatingActionButton: widget.isAdmin
                   ? Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        FloatingActionButton(
-                          onPressed: () {
-                            setState(() {
-                              _isDrawingMode = !_isDrawingMode;
-                              if (!_isDrawingMode) {
-                                _mainPoints.clear();
-                                _audioPoints.clear();
-                                _choicePoints.clear();
-                              }
-                            });
-                          },
-                          tooltip:
-                              _isDrawingMode ? 'Exit Drawing' : 'Enter Drawing',
-                          child: Icon(
-                              _isDrawingMode ? Icons.edit_off : Icons.edit,
-                              size: 20),
-                        ),
-                        const SizedBox(height: 8),
-                        if (_isDrawingMode)
-                          FloatingActionButton(
-                            onPressed: () {
-                              setState(() {
-                                _mainPoints.clear();
-                                _audioPoints.clear();
-                                _choicePoints.clear();
-                              });
-                            },
-                            tooltip: 'Clear Drawing',
-                            child: const Icon(Icons.clear, size: 20),
-                          ),
-                      ],
-                    )
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FloatingActionButton(
+                    onPressed: () {
+                      setState(() {
+                        _isDrawingMode = !_isDrawingMode;
+                        if (!_isDrawingMode) {
+                          _mainPoints.clear();
+                          _audioPoints.clear();
+                          _choicePoints.clear();
+                        }
+                      });
+                    },
+                    tooltip:
+                    _isDrawingMode ? 'Exit Drawing' : 'Enter Drawing',
+                    child: Icon(
+                        _isDrawingMode ? Icons.edit_off : Icons.edit,
+                        size: 20),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_isDrawingMode)
+                    FloatingActionButton(
+                      onPressed: () {
+                        setState(() {
+                          _mainPoints.clear();
+                          _audioPoints.clear();
+                          _choicePoints.clear();
+                        });
+                      },
+                      tooltip: 'Clear Drawing',
+                      child: const Icon(Icons.clear, size: 20),
+                    ),
+                ],
+              )
                   : null,
             ),
             if (questions.isEmpty)
@@ -1857,11 +1854,11 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 
     return widget.isAdmin && Platform.isWindows
         ? InteractiveViewer(
-            boundaryMargin: const EdgeInsets.all(20),
-            minScale: 0.5,
-            maxScale: 3.0,
-            child: content,
-          )
+      boundaryMargin: const EdgeInsets.all(20),
+      minScale: 0.5,
+      maxScale: 3.0,
+      child: content,
+    )
         : content;
   }
 
@@ -1891,9 +1888,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 
     for (int i = 0; i < words.length; i++) {
       bool isBold =
-          i < formatting.length ? formatting[i]['bold'] ?? false : false;
+      i < formatting.length ? formatting[i]['bold'] ?? false : false;
       bool isUnderline =
-          i < formatting.length ? formatting[i]['underline'] ?? false : false;
+      i < formatting.length ? formatting[i]['underline'] ?? false : false;
 
       spans.add(TextSpan(
         text: words[i] + (i < words.length - 1 ? ' ' : ''),
@@ -1901,7 +1898,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           fontSize: adjustedFontSize,
           fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
           decoration:
-              isUnderline ? TextDecoration.underline : TextDecoration.none,
+          isUnderline ? TextDecoration.underline : TextDecoration.none,
           color: Colors.black87,
           height: 1.3,
         ),
@@ -2040,18 +2037,18 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: widget.selectedAnswers[
-                                        questions[currentQuestionIndex]
-                                            ['originalIndex']] ==
-                                    choice
+                            questions[currentQuestionIndex]
+                            ['originalIndex']] ==
+                                choice
                                 ? Colors.blue.shade400
                                 : Colors.grey.shade300,
                             width: 2,
                           ),
                           borderRadius: BorderRadius.circular(8),
                           color: widget.selectedAnswers[
-                                      questions[currentQuestionIndex]
-                                          ['originalIndex']] ==
-                                  choice
+                          questions[currentQuestionIndex]
+                          ['originalIndex']] ==
+                              choice
                               ? Colors.blue.shade50
                               : Colors.white,
                           boxShadow: [
@@ -2073,19 +2070,19 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                                 _buildChoiceBox(
                                   choice,
                                   widget.selectedAnswers[
-                                          questions[currentQuestionIndex]
-                                              ['originalIndex']] ==
+                                  questions[currentQuestionIndex]
+                                  ['originalIndex']] ==
                                       choice,
                                 ),
                                 if (questions[currentQuestionIndex]['choices']
-                                            [choice]['choice_file']
-                                        ?.isNotEmpty ==
+                                [choice]['choice_file']
+                                    ?.isNotEmpty ==
                                     true)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8),
                                     child: _buildFileBox(
                                       questions[currentQuestionIndex]['choices']
-                                          [choice]['choice_file'],
+                                      [choice]['choice_file'],
                                     ),
                                   ),
                               ],
@@ -2143,28 +2140,28 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                 child: Center(
                   child: imageUrl.startsWith('http')
                       ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.contain,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const Center(
-                                child: CircularProgressIndicator());
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            if (kDebugMode)
-                              print('Full image load error: $error');
-                            return const Icon(Icons.broken_image, size: 50);
-                          },
-                        )
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(
+                          child: CircularProgressIndicator());
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      if (kDebugMode)
+                        print('Full image load error: $error');
+                      return const Icon(Icons.broken_image, size: 50);
+                    },
+                  )
                       : Image.file(
-                          File(imageUrl),
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            if (kDebugMode)
-                              print('Full image load error: $error');
-                            return const Icon(Icons.broken_image, size: 50);
-                          },
-                        ),
+                    File(imageUrl),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      if (kDebugMode)
+                        print('Full image load error: $error');
+                      return const Icon(Icons.broken_image, size: 50);
+                    },
+                  ),
                 ),
               ),
               if (widget.isAdmin && isDrawingMode)
@@ -2221,7 +2218,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   right: 8,
                   child: IconButton(
                     icon:
-                        const Icon(Icons.clear, color: Colors.black, size: 24),
+                    const Icon(Icons.clear, color: Colors.black, size: 24),
                     onPressed: () {
                       setDialogState(() {
                         imagePoints.clear();
@@ -2261,7 +2258,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               boxShadow: [
                 BoxShadow(
                   color:
-                      (isSelected ? Colors.blue : Colors.grey).withOpacity(0.3),
+                  (isSelected ? Colors.blue : Colors.grey).withOpacity(0.3),
                   spreadRadius: 1,
                   blurRadius: 3,
                   offset: const Offset(0, 1),
@@ -2319,17 +2316,17 @@ class WindowsWebViewPage extends StatefulWidget {
 
   const WindowsWebViewPage(
       {super.key,
-      required this.url,
-      required this.fileName,
-      this.isVideo,
-      required this.isAdmin});
+        required this.url,
+        required this.fileName,
+        this.isVideo,
+        required this.isAdmin});
 
   @override
   _WindowsWebViewPageState createState() => _WindowsWebViewPageState();
 }
 
 class _WindowsWebViewPageState extends State<WindowsWebViewPage> {
-  final _controller = WebviewController();
+  final _controller = webview_windows.WebviewController();
   bool _isInitialized = false;
 
   @override
@@ -2342,8 +2339,8 @@ class _WindowsWebViewPageState extends State<WindowsWebViewPage> {
     try {
       await _controller.initialize().timeout(const Duration(seconds: 3),
           onTimeout: () {
-        throw TimeoutException('WebView initialization timed out');
-      });
+            throw TimeoutException('WebView initialization timed out');
+          });
       _controller.setJavaScriptEnabled(true);
       await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
       if (widget.isVideo == true) {
@@ -2386,39 +2383,39 @@ class _WindowsWebViewPageState extends State<WindowsWebViewPage> {
           title: Text(widget.fileName, style: const TextStyle(fontSize: 10)),
           actions: widget.isVideo == true && widget.isAdmin
               ? [
-                  Wrap(
-                    spacing: 2,
-                    runSpacing: 2,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.replay_10, size: 12),
-                        onPressed: () async {
-                          try {
-                            await _controller.executeScript('seekBackward();');
-                          } catch (e) {
-                            if (kDebugMode) print('Seek backward error: $e');
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.forward_10, size: 12),
-                        onPressed: () async {
-                          try {
-                            await _controller.executeScript('seekForward();');
-                          } catch (e) {
-                            if (kDebugMode) print('Seek forward error: $e');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ]
+            Wrap(
+              spacing: 2,
+              runSpacing: 2,
+              alignment: WrapAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.replay_10, size: 12),
+                  onPressed: () async {
+                    try {
+                      await _controller.executeScript('seekBackward();');
+                    } catch (e) {
+                      if (kDebugMode) print('Seek backward error: $e');
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.forward_10, size: 12),
+                  onPressed: () async {
+                    try {
+                      await _controller.executeScript('seekForward();');
+                    } catch (e) {
+                      if (kDebugMode) print('Seek forward error: $e');
+                    }
+                  },
+                ),
+              ],
+            ),
+          ]
               : null,
         ),
       ),
       body: _isInitialized && _controller.value.isInitialized
-          ? Webview(_controller)
+          ? webview_windows.Webview(_controller)
           : const Center(child: CircularProgressIndicator()),
     );
   }
@@ -2442,10 +2439,10 @@ class VideoPlayerPage extends StatefulWidget {
 
   const VideoPlayerPage(
       {super.key,
-      required this.url,
-      required this.fileName,
-      required this.controller,
-      required this.isAdmin});
+        required this.url,
+        required this.fileName,
+        required this.controller,
+        required this.isAdmin});
 
   @override
   _VideoPlayerPageState createState() => _VideoPlayerPageState();
@@ -2465,11 +2462,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     } else {
       widget.controller.initialize().timeout(const Duration(seconds: 5),
           onTimeout: () {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Video initialization timed out')));
-        }
-      }).then((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Video initialization timed out')));
+            }
+          }).then((_) {
         if (mounted) {
           setState(() {
             _isInitialized = true;
@@ -2505,72 +2502,72 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       body: Center(
         child: _isInitialized
             ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AspectRatio(
+              aspectRatio: widget.controller.value.aspectRatio,
+              child: VideoPlayer(widget.controller),
+            ),
+            if (widget.isAdmin) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
                 children: [
-                  AspectRatio(
-                    aspectRatio: widget.controller.value.aspectRatio,
-                    child: VideoPlayer(widget.controller),
+                  IconButton(
+                    icon: Icon(
+                      widget.controller.value.isPlaying
+                          ? Icons.pause
+                          : Icons.play_arrow,
+                      size: 16,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        if (widget.controller.value.isPlaying) {
+                          widget.controller.pause();
+                        } else {
+                          widget.controller.play();
+                        }
+                      });
+                    },
                   ),
-                  if (widget.isAdmin) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            widget.controller.value.isPlaying
-                                ? Icons.pause
-                                : Icons.play_arrow,
-                            size: 16,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              if (widget.controller.value.isPlaying) {
-                                widget.controller.pause();
-                              } else {
-                                widget.controller.play();
-                              }
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.replay_10, size: 16),
-                          onPressed: () {
-                            final newPosition =
-                                _position - const Duration(seconds: 10);
-                            widget.controller.seekTo(newPosition < Duration.zero
-                                ? Duration.zero
-                                : newPosition);
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.forward_10, size: 16),
-                          onPressed: () {
-                            final newPosition =
-                                _position + const Duration(seconds: 10);
-                            widget.controller.seekTo(newPosition > _duration
-                                ? _duration
-                                : newPosition);
-                          },
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: _position.inSeconds.toDouble(),
-                      max: _duration.inSeconds.toDouble(),
-                      onChanged: (value) {
-                        widget.controller
-                            .seekTo(Duration(seconds: value.toInt()));
-                      },
-                    ),
-                    Text(
-                      '${_position.inMinutes}:${(_position.inSeconds % 60).toString().padLeft(2, '0')} / '
-                      '${_duration.inMinutes}:${(_duration.inSeconds % 60).toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
+                  IconButton(
+                    icon: const Icon(Icons.replay_10, size: 16),
+                    onPressed: () {
+                      final newPosition =
+                          _position - const Duration(seconds: 10);
+                      widget.controller.seekTo(newPosition < Duration.zero
+                          ? Duration.zero
+                          : newPosition);
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.forward_10, size: 16),
+                    onPressed: () {
+                      final newPosition =
+                          _position + const Duration(seconds: 10);
+                      widget.controller.seekTo(newPosition > _duration
+                          ? _duration
+                          : newPosition);
+                    },
+                  ),
                 ],
-              )
+              ),
+              Slider(
+                value: _position.inSeconds.toDouble(),
+                max: _duration.inSeconds.toDouble(),
+                onChanged: (value) {
+                  widget.controller
+                      .seekTo(Duration(seconds: value.toInt()));
+                },
+              ),
+              Text(
+                '${_position.inMinutes}:${(_position.inSeconds % 60).toString().padLeft(2, '0')} / '
+                    '${_duration.inMinutes}:${(_duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ],
+        )
             : const CircularProgressIndicator(),
       ),
     );
@@ -2620,6 +2617,7 @@ class SubmitPage extends StatelessWidget {
   final bool isAdmin;
   final Map<int, int> timePerQuestion;
   final Map<String, String> cachedFiles; // Add cachedFiles parameter
+  final List<Map<String, dynamic>> rawQuestions; // New parameter
 
   const SubmitPage({
     super.key,
@@ -2636,6 +2634,7 @@ class SubmitPage extends StatelessWidget {
     required this.isAdmin,
     required this.timePerQuestion,
     required this.cachedFiles, // Add to constructor
+    this.rawQuestions = const [], // Default empty
   });
 
   // Method to clean up temporary files
@@ -2760,7 +2759,7 @@ class SubmitPage extends StatelessWidget {
                             role: '',
                           ),
                         ),
-                        (Route<dynamic> route) => false,
+                            (Route<dynamic> route) => false,
                       );
                     },
                     style: ElevatedButton.styleFrom(

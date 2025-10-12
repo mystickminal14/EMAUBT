@@ -44,14 +44,6 @@ class GiveAccessViewModel extends ChangeNotifier {
   }
 
   Future<void> fetchInitialData() async {
-    if (_users.isNotEmpty &&
-        _admins.isNotEmpty &&
-        _files.isNotEmpty &&
-        _quizSets.isNotEmpty &&
-        _grantedItems.isNotEmpty &&
-        _activatedItems.isNotEmpty) {
-      return; // Skip if data is already loaded
-    }
     _isLoading = true;
     notifyListeners();
     try {

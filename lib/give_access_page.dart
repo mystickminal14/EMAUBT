@@ -18,9 +18,12 @@ class _GiveAccessPageState extends State<GiveAccessPage> with SingleTickerProvid
     super.initState();
     _tabController = TabController(length: 3, vsync: this, animationDuration: Duration.zero);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<GiveAccessViewModel>(context, listen: false).fetchInitialData();
+      fetch();
     });
   }
+void fetch()async{
+ await Provider.of<GiveAccessViewModel>(context, listen: false).fetchInitialData();
+}
 
   @override
   void dispose() {

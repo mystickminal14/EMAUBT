@@ -36,7 +36,7 @@ class _NoticesPageState extends State<NoticesPage> {
 
   String getFullFileUrl(String? path) {
     if (path == null || path.isEmpty) return "";
-    if (path.startsWith("http")) return path; // already a full URL
+    if (path.startsWith("http")) return path;
     return "${BaseUrl.baseUrl}$path";
   }
 
@@ -63,6 +63,32 @@ class _NoticesPageState extends State<NoticesPage> {
     );
   }
 
+  void _showSuccessMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<bool?> _showConfirmationDialog(
       BuildContext context, String action, String title) {
     return showDialog<bool>(
@@ -78,7 +104,7 @@ class _NoticesPageState extends State<NoticesPage> {
             onPressed: () => Navigator.pop(context, false),
             child: Text('Cancel',
                 style:
-                    TextStyle(color: Theme.of(context).colorScheme.secondary)),
+                TextStyle(color: Theme.of(context).colorScheme.secondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -121,7 +147,7 @@ class _NoticesPageState extends State<NoticesPage> {
           child: Card(
             elevation: 2,
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Consumer<NoticeManagementViewModel>(
@@ -139,12 +165,12 @@ class _NoticesPageState extends State<NoticesPage> {
                               borderRadius: BorderRadius.circular(8)),
                           filled: true,
                           fillColor:
-                              Theme.of(context).colorScheme.surfaceContainer,
+                          Theme.of(context).colorScheme.surfaceContainer,
                         ),
                         validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'Title is required'
-                                : null,
+                        value == null || value.trim().isEmpty
+                            ? 'Title is required'
+                            : null,
                         onChanged: (value) => vm.setFields(
                             title: value,
                             textContent: vm.textContent,
@@ -161,7 +187,7 @@ class _NoticesPageState extends State<NoticesPage> {
                               borderRadius: BorderRadius.circular(8)),
                           filled: true,
                           fillColor:
-                              Theme.of(context).colorScheme.surfaceContainer,
+                          Theme.of(context).colorScheme.surfaceContainer,
                         ),
                         maxLines: 3,
                         onChanged: (value) => vm.setFields(
@@ -175,7 +201,7 @@ class _NoticesPageState extends State<NoticesPage> {
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
-                              Theme.of(context).colorScheme.secondaryContainer,
+                          Theme.of(context).colorScheme.secondaryContainer,
                           foregroundColor: Theme.of(context)
                               .colorScheme
                               .onSecondaryContainer,
@@ -198,40 +224,40 @@ class _NoticesPageState extends State<NoticesPage> {
                       // show new files OR old files
                       if (vm.selectedFiles.isNotEmpty)
                         ...vm.selectedFiles.map((file) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.attach_file, size: 20),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                      child: Text(file.name,
-                                          style:
-                                              const TextStyle(fontSize: 14))),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, size: 20),
-                                    onPressed: () {
-                                      vm.selectedFiles.remove(file);
-                                      vm.notifyListeners();
-                                      setState(() {});
-                                    },
-                                  ),
-                                ],
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.attach_file, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: Text(file.name,
+                                      style:
+                                      const TextStyle(fontSize: 14))),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20),
+                                onPressed: () {
+                                  vm.selectedFiles.remove(file);
+                                  vm.notifyListeners();
+                                  setState(() {});
+                                },
                               ),
-                            ))
+                            ],
+                          ),
+                        ))
                       else if (notice.files != null && notice.files!.isNotEmpty)
                         ...notice.files!.map((file) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.attach_file, size: 20),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(file.fileName ?? '',
-                                        style: const TextStyle(fontSize: 14)),
-                                  ),
-                                ],
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.attach_file, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(file.fileName ?? '',
+                                    style: const TextStyle(fontSize: 14)),
                               ),
-                            )),
+                            ],
+                          ),
+                        )),
                     ],
                   ),
                 ),
@@ -244,7 +270,7 @@ class _NoticesPageState extends State<NoticesPage> {
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel',
                 style:
-                    TextStyle(color: Theme.of(context).colorScheme.secondary)),
+                TextStyle(color: Theme.of(context).colorScheme.secondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -258,17 +284,18 @@ class _NoticesPageState extends State<NoticesPage> {
                 final confirm = await _showConfirmationDialog(
                     context, 'Edit', notice.title ?? 'this notice');
                 if (confirm == true) {
-                  _showLoadingDialog(context);
-                  await viewModel.editNotice(context, notice);
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop(); // Close loading dialog
+                  try {
+                    await viewModel.editNotice(context, notice);
+                    _showSuccessMessage(context, 'Notice updated successfully');
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop(); // Close edit dialog
+                    }
+                    _titleController.clear();
+                    _textContentController.clear();
+                    viewModel.clearFields();
+                  } catch (e) {
+                    _showErrorMessage(context, 'Error updating notice: $e');
                   }
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop(); // Close edit dialog
-                  }
-                  _titleController.clear();
-                  _textContentController.clear();
-                  viewModel.clearFields();
                 }
               }
             },
@@ -279,19 +306,15 @@ class _NoticesPageState extends State<NoticesPage> {
     );
   }
 
-
   Future<void> _openFile(BuildContext context, Files file) async {
     final url = getFullFileUrl(file.filePath);
 
     if (url.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No URL available for file: ${file.fileName}')),
-      );
+      _showErrorMessage(context, 'No URL available for file: ${file.fileName}');
       return;
     }
 
-    // If it's an image, just preview inside a dialog
-    final isImage = file.fileName?.toLowerCase ().endsWith('.jpg') == true ||
+    final isImage = file.fileName?.toLowerCase().endsWith('.jpg') == true ||
         file.fileName?.toLowerCase().endsWith('.jpeg') == true ||
         file.fileName?.toLowerCase().endsWith('.png') == true;
 
@@ -304,7 +327,7 @@ class _NoticesPageState extends State<NoticesPage> {
               url,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) =>
-                  const Text("Failed to load image"),
+              const Text("Failed to load image"),
             ),
           ),
         ),
@@ -312,7 +335,6 @@ class _NoticesPageState extends State<NoticesPage> {
       return;
     }
 
-    // Example: If it's a PDF, preview with flutter_pdfview
     if (file.fileName?.toLowerCase().endsWith('.pdf') == true) {
       Navigator.push(
         context,
@@ -323,13 +345,10 @@ class _NoticesPageState extends State<NoticesPage> {
       return;
     }
 
-    // Fallback: open link in browser
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch $url')),
-      );
+      _showErrorMessage(context, 'Could not launch $url');
     }
   }
 
@@ -355,9 +374,9 @@ class _NoticesPageState extends State<NoticesPage> {
         title: Text(
           "Manage Notices",
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -373,487 +392,492 @@ class _NoticesPageState extends State<NoticesPage> {
       body: viewModel.isLoading
           ? const Center(child: CircularProgressIndicator())
           : LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                padding: EdgeInsets.all(getPadding(16, 24)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Notices",
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: getFontSize(20, 24),
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: EdgeInsets.all(getPadding(16, 24)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Notices",
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: getFontSize(20, 24),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          labelText: "Search by Title or Content",
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainer,
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: () => viewModel
+                                .searchNotices(_searchController.text),
+                          ),
+                        ),
+                        style: TextStyle(fontSize: getFontSize(14, 16)),
+                        onFieldSubmitted: (value) =>
+                            viewModel.searchNotices(value),
+                      ),
+                      const SizedBox(height: 12),
+                      viewModel.filteredNotices.isEmpty
+                          ? Padding(
+                        padding: EdgeInsets.symmetric(
+                            vertical: getPadding(8, 16)),
+                        child: Text(
+                          'No notices found',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                            fontSize: getFontSize(14, 16),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                        ),
+                      )
+                          : ListView.builder(
+                        shrinkWrap: true,
+                        physics:
+                        const NeverScrollableScrollPhysics(),
+                        itemCount: viewModel.filteredNotices.length,
+                        itemBuilder: (context, index) {
+                          final notice =
+                          viewModel.filteredNotices[index];
+                          return Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(12)),
+                            margin: EdgeInsets.symmetric(
+                                vertical: getPadding(6, 8)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment
+                                        .spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          notice.title ?? '',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                            fontSize:
+                                            getFontSize(
+                                                16, 18),
+                                            fontWeight:
+                                            FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(Icons.edit,
+                                                color: Theme.of(
+                                                    context)
+                                                    .colorScheme
+                                                    .primary),
+                                            onPressed: viewModel
+                                                .isActionLoading
+                                                ? null
+                                                : () => _editNotice(
+                                                context,
+                                                notice,
+                                                viewModel),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.delete,
+                                                color: Theme.of(
+                                                    context)
+                                                    .colorScheme
+                                                    .error),
+                                            onPressed: viewModel
+                                                .isActionLoading
+                                                ? null
+                                                : () async {
+                                              final confirm =
+                                              await _showConfirmationDialog(
+                                                context,
+                                                'Delete',
+                                                notice.title ??
+                                                    'this notice',
+                                              );
+                                              if (confirm ==
+                                                  true) {
+                                                try {
+                                                  await viewModel
+                                                      .deleteNotice(
+                                                      context,
+                                                      notice);
+                                                  _showSuccessMessage(
+                                                      context,
+                                                      'Notice deleted successfully');
+                                                } catch (e) {
+                                                  _showErrorMessage(
+                                                      context,
+                                                      'Error deleting notice: $e');
+                                                }
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                labelText: "Search by Title or Content",
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8)),
-                                filled: true,
-                                fillColor: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainer,
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.search),
-                                  onPressed: () => viewModel
-                                      .searchNotices(_searchController.text),
-                                ),
-                              ),
-                              style: TextStyle(fontSize: getFontSize(14, 16)),
-                              onFieldSubmitted: (value) =>
-                                  viewModel.searchNotices(value),
-                            ),
-                            const SizedBox(height: 12),
-                            viewModel.filteredNotices.isEmpty
-                                ? Padding(
-                                    padding: EdgeInsets.symmetric(
-                                        vertical: getPadding(8, 16)),
-                                    child: Text(
-                                      'No notices found',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            fontSize: getFontSize(14, 16),
+                                  if (notice.textContent != null &&
+                                      notice.textContent!
+                                          .isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      width: double.infinity,
+                                      padding:
+                                      const EdgeInsets.all(8.0),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
                                             color: Theme.of(context)
                                                 .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
+                                                .outline),
+                                        borderRadius:
+                                        BorderRadius.circular(
+                                            8),
+                                      ),
+                                      child: Text(
+                                        notice.textContent!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                          fontSize: getFontSize(
+                                              14, 16),
+                                        ),
+                                      ),
                                     ),
-                                  )
-                                : ListView.builder(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    itemCount: viewModel.filteredNotices.length,
-                                    itemBuilder: (context, index) {
-                                      final notice =
-                                          viewModel.filteredNotices[index];
-                                      return Card(
-                                        elevation: 2,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12)),
-                                        margin: EdgeInsets.symmetric(
-                                            vertical: getPadding(6, 8)),
+                                  ],
+                                  if (notice.files != null &&
+                                      notice.files!.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    ...notice.files!.map((file) {
+                                      final isImage = file.fileName
+                                          ?.toLowerCase()
+                                          .endsWith('.jpg') ??
+                                          false ||
+                                              file.fileName!
+                                                  .toLowerCase()
+                                                  .endsWith(
+                                                  '.jpeg') ??
+                                          false ||
+                                              file.fileName!
+                                                  .toLowerCase()
+                                                  .endsWith(
+                                                  '.png') ??
+                                          false;
+                                      return GestureDetector(
+                                        onTap: () => _openFile(
+                                            context, file),
                                         child: Padding(
-                                          padding: const EdgeInsets.all(16.0),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      notice.title ?? '',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .titleMedium
-                                                          ?.copyWith(
-                                                            fontSize:
-                                                                getFontSize(
-                                                                    16, 18),
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                          ),
+                                          padding: const EdgeInsets
+                                              .symmetric(
+                                              vertical: 4),
+                                          child: isImage &&
+                                              file.filePath !=
+                                                  null
+                                              ? ClipRRect(
+                                            borderRadius:
+                                            BorderRadius
+                                                .circular(
+                                                8),
+                                            child:
+                                            Image.network(
+                                              getFullFileUrl(
+                                                  file
+                                                      .filePath),
+                                              height:
+                                              getFontSize(
+                                                  100,
+                                                  120),
+                                              width: double
+                                                  .infinity,
+                                              fit: BoxFit
+                                                  .cover,
+                                              errorBuilder:
+                                                  (context,
+                                                  error,
+                                                  stackTrace) =>
+                                                  Text(
+                                                    "Failed to load image: ${file.fileName}",
+                                                    style:
+                                                    TextStyle(
+                                                      color: Theme.of(
+                                                          context)
+                                                          .colorScheme
+                                                          .error,
+                                                      fontSize:
+                                                      getFontSize(
+                                                          14,
+                                                          16),
                                                     ),
                                                   ),
-                                                  Row(
-                                                    children: [
-                                                      IconButton(
-                                                        icon: Icon(Icons.edit,
-                                                            color: Theme.of(
-                                                                    context)
-                                                                .colorScheme
-                                                                .primary),
-                                                        onPressed: viewModel
-                                                                .isActionLoading
-                                                            ? null
-                                                            : () => _editNotice(
-                                                                context,
-                                                                notice,
-                                                                viewModel),
-                                                      ),
-                                                      IconButton(
-                                                        icon: Icon(Icons.delete,
-                                                            color: Theme.of(
-                                                                    context)
-                                                                .colorScheme
-                                                                .error),
-                                                        onPressed: viewModel
-                                                                .isActionLoading
-                                                            ? null
-                                                            : () async {
-                                                                final confirm =
-                                                                    await _showConfirmationDialog(
-                                                                  context,
-                                                                  'Delete',
-                                                                  notice.title ??
-                                                                      'this notice',
-                                                                );
-                                                                if (confirm ==
-                                                                    true) {
-                                                                  _showLoadingDialog(
-                                                                      context);
-                                                                  await viewModel
-                                                                      .deleteNotice(
-                                                                          context,
-                                                                          notice);
-                                                                  if (Navigator.of(
-                                                                          context)
-                                                                      .canPop()) {
-                                                                    Navigator.of(
-                                                                            context)
-                                                                        .pop(); // Close loading dialog
-                                                                  }
-                                                                }
-                                                              },
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                              if (notice.textContent != null &&
-                                                  notice.textContent!
-                                                      .isNotEmpty) ...[
-                                                const SizedBox(height: 8),
-                                                Container(
-                                                  width: double.infinity,
-                                                  padding:
-                                                      const EdgeInsets.all(8.0),
-                                                  decoration: BoxDecoration(
-                                                    border: Border.all(
-                                                        color: Theme.of(context)
-                                                            .colorScheme
-                                                            .outline),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
-                                                  ),
-                                                  child: Text(
-                                                    notice.textContent!,
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .bodyMedium
-                                                        ?.copyWith(
-                                                          fontSize: getFontSize(
-                                                              14, 16),
-                                                        ),
+                                            ),
+                                          )
+                                              : Row(
+                                            children: [
+                                              Icon(
+                                                  Icons
+                                                      .attach_file,
+                                                  size:
+                                                  getFontSize(
+                                                      20,
+                                                      24),
+                                                  color: Theme.of(
+                                                      context)
+                                                      .colorScheme
+                                                      .primary),
+                                              const SizedBox(
+                                                  width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  file.fileName ??
+                                                      '',
+                                                  style:
+                                                  TextStyle(
+                                                    color: Theme.of(
+                                                        context)
+                                                        .colorScheme
+                                                        .primary,
+                                                    fontSize:
+                                                    getFontSize(
+                                                        14,
+                                                        16),
                                                   ),
                                                 ),
-                                              ],
-                                              if (notice.files != null &&
-                                                  notice.files!.isNotEmpty) ...[
-                                                const SizedBox(height: 8),
-                                                ...notice.files!.map((file) {
-                                                  final isImage = file.fileName
-                                                          ?.toLowerCase()
-                                                          .endsWith('.jpg') ??
-                                                      false ||
-                                                          file.fileName!
-                                                              .toLowerCase()
-                                                              .endsWith(
-                                                                  '.jpeg') ??
-                                                      false ||
-                                                          file.fileName!
-                                                              .toLowerCase()
-                                                              .endsWith(
-                                                                  '.png') ??
-                                                      false;
-                                                  return GestureDetector(
-                                                    onTap: () => _openFile(
-                                                        context, file),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 4),
-                                                      child: isImage &&
-                                                              file.filePath !=
-                                                                  null
-                                                          ? ClipRRect(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          8),
-                                                              child:
-                                                                  Image.network(
-                                                                file.filePath!,
-                                                                height:
-                                                                    getFontSize(
-                                                                        100,
-                                                                        120),
-                                                                width: double
-                                                                    .infinity,
-                                                                fit: BoxFit
-                                                                    .cover,
-                                                                errorBuilder:
-                                                                    (context,
-                                                                            error,
-                                                                            stackTrace) =>
-                                                                        Text(
-                                                                  "Failed to load image: ${file.fileName}",
-                                                                  style:
-                                                                      TextStyle(
-                                                                    color: Theme.of(
-                                                                            context)
-                                                                        .colorScheme
-                                                                        .error,
-                                                                    fontSize:
-                                                                        getFontSize(
-                                                                            14,
-                                                                            16),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            )
-                                                          : Row(
-                                                              children: [
-                                                                Icon(
-                                                                    Icons
-                                                                        .attach_file,
-                                                                    size:
-                                                                        getFontSize(
-                                                                            20,
-                                                                            24),
-                                                                    color: Theme.of(
-                                                                            context)
-                                                                        .colorScheme
-                                                                        .primary),
-                                                                const SizedBox(
-                                                                    width: 8),
-                                                                Expanded(
-                                                                  child: Text(
-                                                                    file.fileName ??
-                                                                        '',
-                                                                    style:
-                                                                        TextStyle(
-                                                                      color: Theme.of(
-                                                                              context)
-                                                                          .colorScheme
-                                                                          .primary,
-                                                                      fontSize:
-                                                                          getFontSize(
-                                                                              14,
-                                                                              16),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                    ),
-                                                  );
-                                                }),
-                                              ],
+                                              ),
                                             ],
                                           ),
                                         ),
                                       );
-                                    },
-                                  ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: viewModel.isActionLoading
-            ? null
-            : () {
-                _titleController.clear();
-                _textContentController.clear();
-                viewModel.clearFields();
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    title: Text(
-                      "Add Notice",
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    content: SingleChildScrollView(
-                      child: Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Consumer<NoticeManagementViewModel>(
-                            builder: (context, vm, _) => Form(
-                              key: _formKey,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextFormField(
-                                    controller: _titleController,
-                                    decoration: InputDecoration(
-                                      labelText: "Title (required)",
-                                      border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8)),
-                                      filled: true,
-                                      fillColor: Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainer,
-                                    ),
-                                    validator: (value) =>
-                                        value == null || value.trim().isEmpty
-                                            ? 'Title is required'
-                                            : null,
-                                    onChanged: (value) => vm.setFields(
-                                        title: value,
-                                        textContent: vm.textContent,
-                                        files: vm.selectedFiles),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextFormField(
-                                    controller: _textContentController,
-                                    decoration: InputDecoration(
-                                      labelText: "Text Content (optional)",
-                                      border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8)),
-                                      filled: true,
-                                      fillColor: Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainer,
-                                    ),
-                                    maxLines: 3,
-                                    onChanged: (value) => vm.setFields(
-                                        title: vm.title,
-                                        textContent: value,
-                                        files: vm.selectedFiles),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(context)
-                                          .colorScheme
-                                          .secondaryContainer,
-                                      foregroundColor: Theme.of(context)
-                                          .colorScheme
-                                          .onSecondaryContainer,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8)),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                    ),
-                                    icon: const Icon(Icons.upload_file),
-                                    label: Text(vm.selectedFiles.isNotEmpty
-                                        ? "Change Files (${vm.selectedFiles.length})"
-                                        : "Pick Files"),
-                                    onPressed: () async {
-                                      await vm.pickFiles();
-                                      setState(() {}); // Refresh UI
-                                    },
-                                  ),
-                                  if (vm.selectedFiles.isNotEmpty) ...[
-                                    const SizedBox(height: 16),
-                                    ...vm.selectedFiles.map((file) => Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 4),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.attach_file,
-                                                  size: 20),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                  child: Text(file.name,
-                                                      style: const TextStyle(
-                                                          fontSize: 14))),
-                                              IconButton(
-                                                icon: const Icon(Icons.close,
-                                                    size: 20),
-                                                onPressed: () {
-                                                  vm.selectedFiles.remove(file);
-                                                  vm.notifyListeners();
-                                                  setState(() {});
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        )),
+                                    }),
                                   ],
                                 ],
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Cancel',
-                            style: TextStyle(
-                                color:
-                                    Theme.of(context).colorScheme.secondary)),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () async {
-                          if (_formKey.currentState!.validate()) {
-                            final confirm = await _showConfirmationDialog(
-                              context,
-                              'Add',
-                              _titleController.text.isEmpty
-                                  ? 'this notice'
-                                  : _titleController.text,
-                            );
-                            if (confirm == true) {
-                              _showLoadingDialog(context);
-                              await viewModel.addNotice(context);
-                              if (Navigator.of(context).canPop()) {
-                                Navigator.of(context)
-                                    .pop(); // Close loading dialog
-                              }
-                              if (Navigator.of(context).canPop()) {
-                                Navigator.of(context).pop(); // Close add dialog
-                              }
-                              _titleController.clear();
-                              _textContentController.clear();
-                              viewModel.clearFields();
-                            }
-                          }
+                          );
                         },
-                        child: const Text("Add"),
                       ),
                     ],
                   ),
-                );
-              },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: viewModel.isActionLoading
+            ? null
+            : () {
+          _titleController.clear();
+          _textContentController.clear();
+          viewModel.clearFields();
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              title: Text(
+                "Add Notice",
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Consumer<NoticeManagementViewModel>(
+                      builder: (context, vm, _) => Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextFormField(
+                              controller: _titleController,
+                              decoration: InputDecoration(
+                                labelText: "Title (required)",
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(8)),
+                                filled: true,
+                                fillColor: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainer,
+                              ),
+                              validator: (value) =>
+                              value == null || value.trim().isEmpty
+                                  ? 'Title is required'
+                                  : null,
+                              onChanged: (value) => vm.setFields(
+                                  title: value,
+                                  textContent: vm.textContent,
+                                  files: vm.selectedFiles),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _textContentController,
+                              decoration: InputDecoration(
+                                labelText: "Text Content (optional)",
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(8)),
+                                filled: true,
+                                fillColor: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainer,
+                              ),
+                              maxLines: 3,
+                              onChanged: (value) => vm.setFields(
+                                  title: vm.title,
+                                  textContent: value,
+                                  files: vm.selectedFiles),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .secondaryContainer,
+                                foregroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .onSecondaryContainer,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                              icon: const Icon(Icons.upload_file),
+                              label: Text(vm.selectedFiles.isNotEmpty
+                                  ? "Change Files (${vm.selectedFiles.length})"
+                                  : "Pick Files"),
+                              onPressed: () async {
+                                await vm.pickFiles();
+                                setState(() {}); // Refresh UI
+                              },
+                            ),
+                            if (vm.selectedFiles.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              ...vm.selectedFiles.map((file) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 4),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.attach_file,
+                                        size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                        child: Text(file.name,
+                                            style: const TextStyle(
+                                                fontSize: 14))),
+                                    IconButton(
+                                      icon: const Icon(Icons.close,
+                                          size: 20),
+                                      onPressed: () {
+                                        vm.selectedFiles.remove(file);
+                                        vm.notifyListeners();
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              )),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel',
+                      style: TextStyle(
+                          color:
+                          Theme.of(context).colorScheme.secondary)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                    Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      final confirm = await _showConfirmationDialog(
+                        context,
+                        'Add',
+                        _titleController.text.isEmpty
+                            ? 'this notice'
+                            : _titleController.text,
+                      );
+                      if (confirm == true) {
+                        try {
+                          await viewModel.addNotice(context);
+                          _showSuccessMessage(
+                              context, 'Notice added successfully');
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context)
+                                .pop(); // Close add dialog
+                          }
+                          _titleController.clear();
+                          _textContentController.clear();
+                          viewModel.clearFields();
+                        } catch (e) {
+                          _showErrorMessage(
+                              context, 'Error adding notice: $e');
+                        }
+                      }
+                    }
+                  },
+                  child: const Text("Add"),
+                ),
+              ],
+            ),
+          );
+        },
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),

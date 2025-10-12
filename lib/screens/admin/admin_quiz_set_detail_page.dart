@@ -59,7 +59,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
     TextEditingController questionController = TextEditingController();
     TextEditingController optionalTextController = TextEditingController();
     List<TextEditingController> choiceControllers =
-        List.generate(4, (_) => TextEditingController());
+    List.generate(4, (_) => TextEditingController());
     List<File?> choiceFiles = List.generate(4, (_) => null);
     File? questionFile;
     String selectedAnswer = 'A';
@@ -69,7 +69,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
       'optional_word_formatting': [],
     };
     List<List<Map<String, dynamic>>> choiceWordFormatting =
-        List.generate(4, (_) => []);
+    List.generate(4, (_) => []);
     Map<String, double> uploadProgress = {};
 
     _showQuestionDialog(
@@ -149,12 +149,12 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   void _editQuestion(int index) {
     final question = context.read<QuizSetDetailViewModel>().questions[index];
     TextEditingController questionController =
-        TextEditingController(text: question.question);
+    TextEditingController(text: question.question);
     TextEditingController optionalTextController =
-        TextEditingController(text: question.optionalText);
+    TextEditingController(text: question.optionalText);
     List<TextEditingController> choiceControllers = List.generate(
       4,
-      (i) => TextEditingController(
+          (i) => TextEditingController(
           text: question.choices[String.fromCharCode(65 + i)]!.choiceText),
     );
     List<File?> choiceFiles = List.generate(4, (_) => null);
@@ -169,7 +169,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
     };
     List<List<Map<String, dynamic>>> choiceWordFormatting = List.generate(
       4,
-      (i) => List<Map<String, dynamic>>.from(
+          (i) => List<Map<String, dynamic>>.from(
           question.choices[String.fromCharCode(65 + i)]!.wordFormatting),
     );
     String existingQuestionFile = question.questionFile;
@@ -367,15 +367,15 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   }
 
   Widget _buildFormattedText(
-    String text,
-    List<Map<String, dynamic>> wordFormatting,
-    TextStyle? baseStyle, {
-    bool isQuestion = false,
-    int? questionIndex,
-    bool isOptionalText = false,
-    bool isChoice = false,
-    String? choiceLetter,
-  }) {
+      String text,
+      List<Map<String, dynamic>> wordFormatting,
+      TextStyle? baseStyle, {
+        bool isQuestion = false,
+        int? questionIndex,
+        bool isOptionalText = false,
+        bool isChoice = false,
+        String? choiceLetter,
+      }) {
     const int maxChoiceLength = 50;
     String displayText = text;
     bool isTruncated = false;
@@ -505,30 +505,30 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   }
 
   void _showQuestionDialog(
-    String title,
-    TextEditingController questionController,
-    TextEditingController optionalTextController,
-    List<TextEditingController> choiceControllers, {
-    required String correctAnswer,
-    required File? questionFile,
-    required List<File?> choiceFiles,
-    required String questionType,
-    required Map<String, List<Map<String, dynamic>>> wordFormatting,
-    required List<List<Map<String, dynamic>>> choiceWordFormatting,
-    required String existingQuestionFile,
-    required Map<String, String> existingChoiceFiles,
-    required Map<String, double> uploadProgress,
-    required Function(
-      String,
-      File?,
-      List<File?>,
-      String,
-      Map<String, List<Map<String, dynamic>>>,
-      List<List<Map<String, dynamic>>>,
-      Map<String, String>,
-      StateSetter,
-    ) onSave,
-  }) {
+      String title,
+      TextEditingController questionController,
+      TextEditingController optionalTextController,
+      List<TextEditingController> choiceControllers, {
+        required String correctAnswer,
+        required File? questionFile,
+        required List<File?> choiceFiles,
+        required String questionType,
+        required Map<String, List<Map<String, dynamic>>> wordFormatting,
+        required List<List<Map<String, dynamic>>> choiceWordFormatting,
+        required String existingQuestionFile,
+        required Map<String, String> existingChoiceFiles,
+        required Map<String, double> uploadProgress,
+        required Function(
+            String,
+            File?,
+            List<File?>,
+            String,
+            Map<String, List<Map<String, dynamic>>>,
+            List<List<Map<String, dynamic>>>,
+            Map<String, String>,
+            StateSetter,
+            ) onSave,
+      }) {
     String selectedAnswer = correctAnswer;
     String selectedQuestionType = questionType;
     bool isDraggingQuestion = false;
@@ -540,7 +540,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
 
     Future<void> pickFile(Function(File) onFileSelected) async {
       FilePickerResult? result =
-          await FilePicker.platform.pickFiles(type: FileType.any);
+      await FilePicker.platform.pickFiles(type: FileType.any);
       if (result != null && result.files.single.path != null) {
         onFileSelected(File(result.files.single.path!));
       }
@@ -569,7 +569,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
         final currentFormatting = wordFormatting[key]!;
         wordFormatting[key] = List.generate(
           words.length,
-          (i) => i < currentFormatting.length
+              (i) => i < currentFormatting.length
               ? currentFormatting[i]
               : {'bold': false, 'underline': false},
         );
@@ -586,7 +586,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
         final currentFormatting = choiceWordFormatting[index];
         choiceWordFormatting[index] = List.generate(
           words.length,
-          (i) => i < currentFormatting.length
+              (i) => i < currentFormatting.length
               ? currentFormatting[i]
               : {'bold': false, 'underline': false},
         );
@@ -1241,8 +1241,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                                             index) {
                                                           choiceWordFormatting[i]
                                                           [index]['bold'] =
-                                                          !(choiceWordFormatting[i]
-                                                          [index]['bold'] ??
+                                                          !(choiceWordFormatting[
+                                                          i][index]
+                                                          ['bold'] ??
                                                               false);
                                                         }
                                                       });
@@ -1275,9 +1276,11 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                                             .length >
                                                             index) {
                                                           choiceWordFormatting[i][
-                                                          index]['underline'] =
-                                                          !(choiceWordFormatting[i]
-                                                          [index]['underline'] ??
+                                                          index]
+                                                          ['underline'] =
+                                                          !(choiceWordFormatting[
+                                                          i][index]
+                                                          ['underline'] ??
                                                               false);
                                                         }
                                                       });
@@ -1458,52 +1461,48 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                         ),
                       const Divider(height: 32),
                       // Correct Answer and Question Type
-                      Row(
+                      Column(
                         children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: selectedAnswer,
-                              decoration: InputDecoration(
-                                labelText: "Correct Answer",
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.grey[300]!),
-                                ),
-                                filled: true,
-                                fillColor: Colors.grey[50],
+                          DropdownButtonFormField<String>(
+                            value: selectedAnswer,
+                            decoration: InputDecoration(
+                              labelText: "Correct Answer",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey[300]!),
                               ),
-                              items: ['A', 'B', 'C', 'D']
-                                  .map((value) => DropdownMenuItem(
-                                value: value,
-                                child: Text("Answer $value"),
-                              ))
-                                  .toList(),
-                              onChanged: (String? newValue) =>
-                                  setDialogState(() => selectedAnswer = newValue!),
+                              filled: true,
+                              fillColor: Colors.grey[50],
                             ),
+                            items: ['A', 'B', 'C', 'D']
+                                .map((value) => DropdownMenuItem(
+                              value: value,
+                              child: Text("Answer $value"),
+                            ))
+                                .toList(),
+                            onChanged: (String? newValue) =>
+                                setDialogState(() => selectedAnswer = newValue!),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: selectedQuestionType,
-                              decoration: InputDecoration(
-                                labelText: "Question Type",
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.grey[300]!),
-                                ),
-                                filled: true,
-                                fillColor: Colors.grey[50],
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            value: selectedQuestionType,
+                            decoration: InputDecoration(
+                              labelText: "Question Type",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey[300]!),
                               ),
-                              items: ['Reading', 'Listening']
-                                  .map((value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value),
-                              ))
-                                  .toList(),
-                              onChanged: (String? newValue) => setDialogState(
-                                      () => selectedQuestionType = newValue!),
+                              filled: true,
+                              fillColor: Colors.grey[50],
                             ),
+                            items: ['Reading', 'Listening']
+                                .map((value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ))
+                                .toList(),
+                            onChanged: (String? newValue) => setDialogState(
+                                    () => selectedQuestionType = newValue!),
                           ),
                         ],
                       ),
@@ -1850,9 +1849,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
                                     .textTheme
                                     .bodyLarge
                                     ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
                               ),
                             const SizedBox(height: 24),
                             Row(

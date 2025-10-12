@@ -34,7 +34,7 @@ class _FlashScreenState extends State<FlashScreen> {
     final UserModel? user = await userViewModel.getUser();
 
     if (user != null && user.success == true) {
-      logger.i("User found: ${user.email}, role: ${user.role}");
+      logger.i("User found: ${user.email}, ${user.fullName} ${user.name}role: ${user.role}");
 
       if (user.role == "admin") {
         _navigateTo(AdminDashboardPage(
@@ -49,7 +49,7 @@ class _FlashScreenState extends State<FlashScreen> {
           profileImage: user.image ?? '',
           isAdmin: false,
           userEmail: user.email ?? '',
-          userIdentifier: user.phone ?? '',   // example: using phone as identifier
+          userIdentifier:  user.email ?? '',   // example: using phone as identifier
           folderId: '',                       // you can adjust this based on your logic
           folderName: '',
         ));

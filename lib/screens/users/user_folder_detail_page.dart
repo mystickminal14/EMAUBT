@@ -18,7 +18,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_windows/webview_windows.dart' as webview_windows;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
-
+import 'package:logger/logger.dart';
 import '../../../model/user_model.dart';
 
 class UserFolderDetailsPage extends StatefulWidget {
@@ -56,6 +56,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
   String? _cachedUserEmail;
   final Dio _dio = Dio();
   late UserFolderViewModel _viewModel;
+  final Logger _logger = Logger();
 
   ScreenSize _getScreenSize(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -103,7 +104,6 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
         );
     }
   }
-
   String _getFileType(String fileName) {
     if (fileName.isEmpty) return 'other';
     final extension = fileName.split('.').last.toLowerCase().trim();
@@ -151,6 +151,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
     }
 
     user = await userViewModel.getUser();
+    var logg=Logger();
+    logg.d(user?.email);
     if (user != null && mounted) {
       setState(() {
         _cachedFullName = user?.fullName ?? '';
@@ -165,6 +167,8 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
     setState(() => _isLoading = true);
 
     try {
+      var logs=Logger();
+      logs.d(widget.userIdentifier);
       await _viewModel.fetchFiles(widget.folderId, widget.isAdmin, widget.userIdentifier);
     } catch (e) {
       if (mounted) {
@@ -172,6 +176,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
           SnackBar(content: Text('$e')),
         );
       }
+      _logger.e('Error fetching files: $e');
     }
 
     try {
@@ -182,6 +187,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
           SnackBar(content: Text('$e')),
         );
       }
+      _logger.e('Error fetching quiz sets: $e');
     }
 
     if (mounted) {
@@ -317,11 +323,16 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                           ),
                           _buildAudioButton(
                             context,
-                            'Pause',
-                            Icons.pause,
+                            isPlaying ? 'Pause' : 'Resume',
+                            isPlaying ? Icons.pause : Icons.play_arrow,
                                 () async {
-                              await _audioPlayer.pause();
-                              setDialogState(() => isPlaying = false);
+                              if (isPlaying) {
+                                await _audioPlayer.pause();
+                                setDialogState(() => isPlaying = false);
+                              } else {
+                                await _audioPlayer.resume();
+                                setDialogState(() => isPlaying = true);
+                              }
                             },
                           ),
                           _buildAudioButton(
@@ -338,44 +349,46 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          _buildAudioButton(
-                            context,
-                            '← 10s',
-                            Icons.replay_10,
-                                () async {
-                              final currentPosition = await _audioPlayer.getCurrentPosition();
-                              if (currentPosition != null) {
-                                final newPosition = currentPosition - const Duration(seconds: 10);
-                                await _audioPlayer.seek(
-                                    newPosition > Duration.zero ? newPosition : Duration.zero);
-                                setDialogState(() => position =
-                                newPosition > Duration.zero ? newPosition : Duration.zero);
-                              }
-                            },
-                          ),
-                          _buildAudioButton(
-                            context,
-                            '10s →',
-                            Icons.forward_10,
-                                () async {
-                              final currentPosition = await _audioPlayer.getCurrentPosition();
-                              if (currentPosition != null && totalDuration != null) {
-                                final newPosition = currentPosition + const Duration(seconds: 10);
-                                await _audioPlayer.seek(
-                                    newPosition < totalDuration! ? newPosition : totalDuration!);
-                                setDialogState(() => position =
-                                newPosition < totalDuration! ? newPosition : totalDuration!);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+                      if (widget.isAdmin) ...[
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 12.0,
+                          runSpacing: 12.0,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _buildAudioButton(
+                              context,
+                              '← 10s',
+                              Icons.replay_10,
+                                  () async {
+                                final currentPosition = await _audioPlayer.getCurrentPosition();
+                                if (currentPosition != null) {
+                                  final newPosition = currentPosition - const Duration(seconds: 10);
+                                  await _audioPlayer.seek(
+                                      newPosition > Duration.zero ? newPosition : Duration.zero);
+                                  setDialogState(() => position =
+                                  newPosition > Duration.zero ? newPosition : Duration.zero);
+                                }
+                              },
+                            ),
+                            _buildAudioButton(
+                              context,
+                              '10s →',
+                              Icons.forward_10,
+                                  () async {
+                                final currentPosition = await _audioPlayer.getCurrentPosition();
+                                if (currentPosition != null && totalDuration != null) {
+                                  final newPosition = currentPosition + const Duration(seconds: 10);
+                                  await _audioPlayer.seek(
+                                      newPosition < totalDuration! ? newPosition : totalDuration!);
+                                  setDialogState(() => position =
+                                  newPosition < totalDuration! ? newPosition : totalDuration!);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -390,7 +403,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                         await File(localFilePath).delete();
                       }
                     } catch (e) {
-                      if (kDebugMode) print('Error during cleanup: $e');
+                      _logger.e('Error during cleanup: $e');
                     }
                     if (mounted) Navigator.pop(context);
                   },
@@ -437,7 +450,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
           try {
             if (await file.exists()) await file.delete();
           } catch (e) {
-            if (kDebugMode) print('Error deleting file: $e');
+            _logger.e('Error deleting file: $e');
           }
         });
       } else {
@@ -452,7 +465,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
         totalDuration = d;
       });
     } catch (e) {
-      if (kDebugMode) print('Audio error: $e');
+      _logger.e('Audio error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error playing audio: $e')));
         Navigator.pop(context);
@@ -550,7 +563,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
             await controller.dispose();
           }
         } catch (e) {
-          if (kDebugMode) print('Video init error on Android: $e');
+          _logger.e('Video init error on Android: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Error initializing video: $e')),
@@ -560,7 +573,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
         }
       }
     } catch (e) {
-      if (kDebugMode) print('Video setup error on Android: $e');
+      _logger.e('Video setup error on Android: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading video: $e')),
@@ -653,7 +666,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
         'https://docs.google.com/viewer?url=$encodedFileUrl&embedded=true&_cache_bust=${DateTime.now().millisecondsSinceEpoch}';
     final fileType = _getFileType(file['name'] ?? '');
     if (kDebugMode) {
-      print('File: ${file['name']}, Type: $fileType, URL: $fileUrl');
+      _logger.i('File: ${file['name']}, Type: $fileType, URL: $fileUrl');
     }
 
     switch (fileType) {
@@ -743,6 +756,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
           SnackBar(content: Text('Failed to open Facebook: $e')),
         );
       }
+      _logger.e('Failed to open Facebook: $e');
     }
   }
 
@@ -764,6 +778,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
           SnackBar(content: Text('Failed to make phone call: $e')),
         );
       }
+      _logger.e('Failed to make phone call: $e');
     }
   }
 
@@ -773,12 +788,12 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
       String itemType,
       VoidCallback onTap,
       ) {
-    final hasPermission = item['has_permission'] == true;
+    final canAccess = item['can_access'] == true;
     final isActive = item['is_active'] == 1;
     final fileType = itemType == 'file' ? _getFileType(item['name'] ?? '') : null;
 
     if (kDebugMode) {
-      print('Building Tile for Item: ${item['name']}, has_permission: $hasPermission, is_active: $isActive');
+      _logger.i('Building Tile for Item: ${item['name']}, can_access: $canAccess, is_active: $isActive');
     }
 
     return GestureDetector(
@@ -823,11 +838,11 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
                 ),
               ),
               const SizedBox(width: 5),
-              hasPermission
+              canAccess
                   ? ElevatedButton(
                 onPressed: onTap,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isActive ? Colors.teal : Colors.teal.withOpacity(0.6),
+                  backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1156,6 +1171,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool _isInitialized = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  final Logger _logger = Logger();
 
   @override
   void initState() {
@@ -1183,7 +1199,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           });
         }
       }).catchError((e) {
-        if (kDebugMode) print('Video init error on Android: $e');
+        if (kDebugMode) _logger.e('Video init error on Android: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error initializing video: $e')),
@@ -1203,11 +1219,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.fileName, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.teal[700],
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(widget.fileName)),
       body: OrientationBuilder(
         builder: (context, orientation) {
           return Center(
@@ -1310,6 +1322,7 @@ class WebViewPage extends StatefulWidget {
 class _WebViewPageState extends State<WebViewPage> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  final Logger _logger = Logger();
 
   @override
   void initState() {
@@ -1345,7 +1358,7 @@ class _WebViewPageState extends State<WebViewPage> {
         ),
       )
       ..loadRequest(Uri.parse(widget.url)).catchError((e) {
-        if (kDebugMode) print('WebView load error: $e');
+        if (kDebugMode) _logger.e('WebView load error: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error loading document: $e')),
@@ -1358,11 +1371,7 @@ class _WebViewPageState extends State<WebViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.fileName, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.teal[700],
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(widget.fileName)),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
@@ -1394,6 +1403,7 @@ class WindowsWebViewPage extends StatefulWidget {
 class _WindowsWebViewPageState extends State<WindowsWebViewPage> {
   final _controller = webview_windows.WebviewController();
   bool _isInitialized = false;
+  final Logger _logger = Logger();
 
   @override
   void initState() {
@@ -1440,7 +1450,7 @@ class _WindowsWebViewPageState extends State<WindowsWebViewPage> {
         setState(() => _isInitialized = true);
       }
     } catch (e) {
-      if (kDebugMode) print('Windows WebView error: $e');
+      if (kDebugMode) _logger.e('Windows WebView error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading file: $e')),
@@ -1464,7 +1474,7 @@ class _WindowsWebViewPageState extends State<WindowsWebViewPage> {
               try {
                 await _controller.executeScript('seekBackward();');
               } catch (e) {
-                if (kDebugMode) print('Seek backward error: $e');
+                if (kDebugMode) _logger.e('Seek backward error: $e');
               }
             },
           ),
@@ -1474,7 +1484,7 @@ class _WindowsWebViewPageState extends State<WindowsWebViewPage> {
               try {
                 await _controller.executeScript('seekForward();');
               } catch (e) {
-                if (kDebugMode) print('Seek forward error: $e');
+                if (kDebugMode) _logger.e('Seek forward error: $e');
               }
             },
           ),

@@ -1,14 +1,18 @@
 import 'package:ema_app/eps_section_page.dart';
-import 'package:ema_app/screens/users/home_page.dart';
-import 'package:ema_app/screens/users/user_notices_page.dart';
+import 'package:ema_app/model/user_model.dart';
+import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
+import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/login_user_free_files_quiz_sets.dart';
-import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
+import 'package:ema_app/screens/users/user_notices_page.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../admin/admin_dashboard_page.dart';
+import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'dart:io' show Platform;
+
+import 'package:logger/logger.dart';
 
 class UserHomePage extends StatefulWidget {
   final String fullName;
@@ -37,7 +41,10 @@ class UserHomePage extends StatefulWidget {
 }
 
 class _UserHomePageState extends State<UserHomePage> {
-
+  final UserViewModel _userViewModel = UserViewModel();
+  String? _cachedFullName;
+  String? _cachedProfileImage;
+  String? _cachedUserEmail;
 
   @override
   void initState() {
@@ -46,6 +53,35 @@ class _UserHomePageState extends State<UserHomePage> {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
       ]);
+    }
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    var logg=Logger();
+    logg.d(widget.userIdentifier);
+    logg.d(widget.userEmail);
+    final UserModel? user = await _userViewModel.getUser();
+    logg.d('kasdk ${user?.email}');
+    if (user != null && user.success == true) {
+      setState(() {
+        _cachedFullName = user.name ?? widget.fullName;
+        _cachedProfileImage = user.image ?? widget.profileImage;
+        _cachedUserEmail = user.email ?? widget.userEmail;
+      });
+    } else {
+      setState(() {
+        _cachedFullName = widget.fullName;
+        _cachedProfileImage = widget.profileImage;
+        _cachedUserEmail = widget.userEmail;
+      });
+      await _userViewModel.saveUser(UserModel(
+        email: widget.userEmail,
+        name: widget.fullName,
+        role: widget.isAdmin ? 'admin' : 'user',
+        image: widget.profileImage,
+        success: true,
+      ));
     }
   }
 
@@ -61,7 +97,6 @@ class _UserHomePageState extends State<UserHomePage> {
     }
     super.dispose();
   }
-
 
   ScreenSize _getScreenSize(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -129,11 +164,11 @@ class _UserHomePageState extends State<UserHomePage> {
         title: Text(
           "Empower Your Future",
           style: TextStyle(
-            fontSize: _getScreenSize(context) == ScreenSize.small 
-                ? screenWidth * 0.045 
-                : _getScreenSize(context) == ScreenSize.medium 
-                    ? screenWidth * 0.03 
-                    : 20.0,
+            fontSize: _getScreenSize(context) == ScreenSize.small
+                ? screenWidth * 0.045
+                : _getScreenSize(context) == ScreenSize.medium
+                ? screenWidth * 0.03
+                : 20.0,
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -176,15 +211,15 @@ class _UserHomePageState extends State<UserHomePage> {
                       width: dimensions.logoWidth,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.image_not_supported, 
-                        size: dimensions.logoWidth * 0.3, 
-                        color: Colors.grey
+                          Icons.image_not_supported,
+                          size: dimensions.logoWidth * 0.3,
+                          color: Colors.grey
                       ),
                     ),
                   ),
                   SizedBox(height: screenHeight * 0.02),
                   Text(
-                    "Welcome to EMA UBT, ${ widget.fullName}",
+                    "Welcome to EMA UBT, ${_cachedFullName ?? widget.fullName}",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -205,7 +240,7 @@ class _UserHomePageState extends State<UserHomePage> {
 
   Widget _buildResponsiveButtonGrid(BuildContext context, ResponsiveDimensions dimensions) {
     final screenSize = _getScreenSize(context);
-    
+
     if (screenSize == ScreenSize.large) {
       return Container(
         constraints: const BoxConstraints(maxWidth: 800),
@@ -230,24 +265,25 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   List<Widget> _buildButtonList(ResponsiveDimensions dimensions) {
+    final cachedEmail = _cachedUserEmail ?? widget.userEmail;
     return [
       _buildLargeButton(
         dimensions,
         const Icon(Icons.notifications, color: Colors.white),
         'Important Information',
         Colors.deepPurple[600]!,
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
       ),
       _buildLargeButton(
         dimensions,
         const Icon(Icons.file_copy, color: Colors.white),
         'Free Files & Quiz Sets',
         Colors.blue[600]!,
-        () => Navigator.push(
+            () => Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => LoginUserFreeFilesQuizSets(
-              userIdentifier: widget.userEmail,
+              userIdentifier: cachedEmail,
               isAdmin: widget.isAdmin,
             ),
           ),
@@ -259,14 +295,14 @@ class _UserHomePageState extends State<UserHomePage> {
           const Icon(Icons.admin_panel_settings, color: Colors.white),
           'Admin Dashboard',
           Colors.teal[600]!,
-          () => Navigator.pushReplacement(
+              () => Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (_) => AdminDashboardPage(
-                fullName:  widget.fullName,
-                profileImage: widget.profileImage,
+                fullName: _cachedFullName ?? widget.fullName,
+                profileImage: _cachedProfileImage ?? widget.profileImage,
                 isAdmin: widget.isAdmin,
-                userEmail:widget.userEmail,
+                userEmail: cachedEmail,
               ),
             ),
           ),
@@ -279,18 +315,18 @@ class _UserHomePageState extends State<UserHomePage> {
           height: dimensions.iconSize,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => Icon(
-            Icons.image_not_supported, 
-            size: dimensions.iconSize, 
-            color: Colors.white
+              Icons.image_not_supported,
+              size: dimensions.iconSize,
+              color: Colors.white
           ),
         ),
         'EPS TOPIK NEW UBT SESSION',
         Colors.green[600]!,
-        () => Navigator.push(
+            () => Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => EPSSectionPage(
-              userIdentifier:widget.userEmail,
+              userIdentifier:widget.userEmail!=''?widget.userEmail:cachedEmail,
               isAdmin: widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
             ),
           ),
@@ -301,14 +337,14 @@ class _UserHomePageState extends State<UserHomePage> {
         const Icon(Icons.contact_mail, color: Colors.white),
         'Contact Us',
         Colors.red[600]!,
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
       ),
       _buildLargeButton(
         dimensions,
         const Icon(Icons.logout, color: Colors.white),
         'Logout',
         Colors.grey[600]!,
-        () => _handleLogout(context),
+            () => _handleLogout(context),
       ),
     ];
   }
@@ -316,13 +352,14 @@ class _UserHomePageState extends State<UserHomePage> {
   Widget _buildDrawer(BuildContext context, ResponsiveDimensions dimensions) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenSize = _getScreenSize(context);
+    final cachedEmail = _cachedUserEmail ?? widget.userEmail;
 
     return Drawer(
-      width: screenSize == ScreenSize.small 
-          ? screenWidth * 0.8 
-          : screenSize == ScreenSize.medium 
-              ? screenWidth * 0.6 
-              : 300,
+      width: screenSize == ScreenSize.small
+          ? screenWidth * 0.8
+          : screenSize == ScreenSize.medium
+          ? screenWidth * 0.6
+          : 300,
       child: Column(
         children: [
           DrawerHeader(
@@ -336,19 +373,19 @@ class _UserHomePageState extends State<UserHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircleAvatar(
-                    radius: screenSize == ScreenSize.small 
-                        ? 28 
-                        : screenSize == ScreenSize.medium 
-                            ? 32 
-                            : 35,
+                    radius: screenSize == ScreenSize.small
+                        ? 28
+                        : screenSize == ScreenSize.medium
+                        ? 32
+                        : 35,
                     backgroundColor: Colors.white,
                     child: Icon(
                       Icons.account_circle,
-                      size: screenSize == ScreenSize.small 
-                          ? 35 
-                          : screenSize == ScreenSize.medium 
-                              ? 40 
-                              : 45,
+                      size: screenSize == ScreenSize.small
+                          ? 35
+                          : screenSize == ScreenSize.medium
+                          ? 40
+                          : 45,
                       color: Colors.teal,
                     ),
                   ),
@@ -358,11 +395,11 @@ class _UserHomePageState extends State<UserHomePage> {
                       "Hello, ${widget.isAdmin ? 'Admin' : 'User'}",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: screenSize == ScreenSize.small 
-                            ? 16 
-                            : screenSize == ScreenSize.medium 
-                                ? 18 
-                                : 20,
+                        fontSize: screenSize == ScreenSize.small
+                            ? 16
+                            : screenSize == ScreenSize.medium
+                            ? 18
+                            : 20,
                         fontWeight: FontWeight.bold,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -372,14 +409,14 @@ class _UserHomePageState extends State<UserHomePage> {
                   SizedBox(height: 4),
                   Flexible(
                     child: Text(
-                       widget.userEmail,
+                      cachedEmail,
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: screenSize == ScreenSize.small 
-                            ? 12 
-                            : screenSize == ScreenSize.medium 
-                                ? 14 
-                                : 16,
+                        fontSize: screenSize == ScreenSize.small
+                            ? 12
+                            : screenSize == ScreenSize.medium
+                            ? 14
+                            : 16,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 2,
@@ -398,7 +435,7 @@ class _UserHomePageState extends State<UserHomePage> {
                   dimensions,
                   const Icon(Icons.notifications, color: Colors.teal),
                   "Important Information",
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
                 ),
                 _buildDrawerItem(
                   context,
@@ -415,11 +452,11 @@ class _UserHomePageState extends State<UserHomePage> {
                     ),
                   ),
                   "EPS TOPIK NEW UBT SESSION",
-                  () => Navigator.push(
+                      () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => EPSSectionPage(
-                        userIdentifier: widget.userEmail,
+                        userIdentifier: widget.userEmail!=''?widget.userEmail:cachedEmail,
                         isAdmin: widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
                       ),
                     ),
@@ -430,11 +467,11 @@ class _UserHomePageState extends State<UserHomePage> {
                   dimensions,
                   const Icon(Icons.file_copy, color: Colors.teal),
                   "Free Files & Quiz Sets",
-                  () => Navigator.push(
+                      () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => LoginUserFreeFilesQuizSets(
-                        userIdentifier:widget.userEmail,
+                        userIdentifier: cachedEmail,
                         isAdmin: widget.isAdmin,
                       ),
                     ),
@@ -445,7 +482,7 @@ class _UserHomePageState extends State<UserHomePage> {
                   dimensions,
                   const Icon(Icons.contact_mail, color: Colors.teal),
                   "Contact Us",
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
                 ),
                 if (widget.isAdmin || widget.accessedFromAdminDashboard)
                   _buildDrawerItem(
@@ -453,14 +490,14 @@ class _UserHomePageState extends State<UserHomePage> {
                     dimensions,
                     const Icon(Icons.admin_panel_settings, color: Colors.teal),
                     "Admin Dashboard",
-                    () => Navigator.pushReplacement(
+                        () => Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                         builder: (_) => AdminDashboardPage(
-                          fullName: widget.fullName,
-                          profileImage: widget.profileImage,
+                          fullName: _cachedFullName ?? widget.fullName,
+                          profileImage: _cachedProfileImage ?? widget.profileImage,
                           isAdmin: widget.isAdmin,
-                          userEmail:  widget.userEmail,
+                          userEmail: cachedEmail,
                         ),
                       ),
                     ),
@@ -470,7 +507,7 @@ class _UserHomePageState extends State<UserHomePage> {
                   dimensions,
                   const Icon(Icons.logout, color: Colors.teal),
                   "Logout",
-                  () => _handleLogout(context),
+                      () => _handleLogout(context),
                 ),
               ],
             ),
@@ -500,8 +537,7 @@ class _UserHomePageState extends State<UserHomePage> {
     );
 
     if (shouldLogout == true) {
-      final userViewModel = UserViewModel();
-      await userViewModel.removeUser(); // clear SharedPreferences safely
+      await _userViewModel.removeUser(); // clear SharedPreferences safely
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -517,14 +553,13 @@ class _UserHomePageState extends State<UserHomePage> {
     }
   }
 
-
   Widget _buildLargeButton(
-    ResponsiveDimensions dimensions,
-    Widget icon,
-    String text,
-    Color color,
-    VoidCallback onPressed,
-  ) {
+      ResponsiveDimensions dimensions,
+      Widget icon,
+      String text,
+      Color color,
+      VoidCallback onPressed,
+      ) {
     return SizedBox(
       width: dimensions.buttonWidth,
       height: dimensions.buttonHeight,
@@ -547,15 +582,15 @@ class _UserHomePageState extends State<UserHomePage> {
               height: dimensions.buttonHeight * 0.4,
               child: icon is Icon
                   ? Icon(
-                      (icon).icon,
-                      size: dimensions.iconSize,
-                      color: Colors.white,
-                    )
+                (icon).icon,
+                size: dimensions.iconSize,
+                color: Colors.white,
+              )
                   : SizedBox(
-                      width: dimensions.iconSize,
-                      height: dimensions.iconSize,
-                      child: icon,
-                    ),
+                width: dimensions.iconSize,
+                height: dimensions.iconSize,
+                child: icon,
+              ),
             ),
             SizedBox(height: 4),
             Expanded(
@@ -582,14 +617,14 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildDrawerItem(
-    BuildContext context, 
-    ResponsiveDimensions dimensions,
-    Widget leading, 
-    String title, 
-    VoidCallback onTap
-  ) {
+      BuildContext context,
+      ResponsiveDimensions dimensions,
+      Widget leading,
+      String title,
+      VoidCallback onTap
+      ) {
     final screenSize = _getScreenSize(context);
-    
+
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: 8,
@@ -604,11 +639,11 @@ class _UserHomePageState extends State<UserHomePage> {
         title: Text(
           title,
           style: TextStyle(
-            fontSize: screenSize == ScreenSize.small 
-                ? 14 
-                : screenSize == ScreenSize.medium 
-                    ? 16 
-                    : 18,
+            fontSize: screenSize == ScreenSize.small
+                ? 14
+                : screenSize == ScreenSize.medium
+                ? 16
+                : 18,
             fontWeight: FontWeight.w600,
           ),
           maxLines: 2,
