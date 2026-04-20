@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
@@ -25,7 +25,7 @@ class FolderViewModel extends ChangeNotifier {
     ).show(context);
   }
 
-  /// Fetch all folders from backend
+  /// Fetch allz folders from backend
   Future<void> fetchFolders() async {
     isLoading = true;
     notifyListeners();
@@ -42,11 +42,15 @@ class FolderViewModel extends ChangeNotifier {
             .map((json) => FolderModel.fromJson(json))
             .toList();
       }
-      _logger.i('Fetched ${folders.length} folders');
+      if (kDebugMode) {
+        _logger.i('Fetched ${folders.length} folders');
+      }
     } on TimeoutException {
       Utils.noInternet("Request timed out. Please try again later.");
     } catch (e, stack) {
-      _logger.e('⛔ Error fetching folders', error: e, stackTrace: stack);
+      if (kDebugMode) {
+        _logger.e('⛔ Error fetching folders', error: e, stackTrace: stack);
+      }
     } finally {
       isLoading = false;
       notifyListeners();
@@ -82,7 +86,9 @@ class FolderViewModel extends ChangeNotifier {
       folders.removeWhere((f) => f.name == name); // rollback UI
       notifyListeners();
     } catch (e) {
-      _logger.e('⛔ Error adding folder', error: e);
+      if (kDebugMode) {
+        _logger.e('⛔ Error adding folder', error: e);
+      }
       Utils.noInternet('Something went wrong. Please try again.');
     }
   }
@@ -114,7 +120,9 @@ class FolderViewModel extends ChangeNotifier {
     } on TimeoutException {
       Utils.noInternet("Request timed out. Please try again later.");
     } catch (e) {
-      _logger.e('⛔ Error editing folder', error: e);
+      if (kDebugMode) {
+        _logger.e('⛔ Error editing folder', error: e);
+      }
       Utils.noInternet('Something went wrong. Please try again.');
     }
   }
@@ -149,7 +157,9 @@ class FolderViewModel extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      _logger.e('⛔ Error deleting folder', error: e);
+      if (kDebugMode) {
+        _logger.e('⛔ Error deleting folder', error: e);
+      }
       Utils.noInternet('Something went wrong. Please try again.');
     }
   }

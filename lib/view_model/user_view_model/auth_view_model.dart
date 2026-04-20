@@ -5,6 +5,7 @@ import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import '../../constants/base_url.dart';
 import '../../model/user_model.dart';
@@ -37,7 +38,9 @@ class AuthViewModel with ChangeNotifier {
     setLoading(true);
 
     final url = "${BaseUrl.baseUrl}login.php";
-    logger.i("Attempting login with email: ${body['email']}");
+    if (kDebugMode) {
+      logger.i("Attempting login with email: ${body['email']}");
+    }
 
     try {
       final response = await _authService.login(url, body).timeout(
@@ -47,22 +50,29 @@ class AuthViewModel with ChangeNotifier {
         },
       );
 
-      logger.i("Login response: $response");
+      if (kDebugMode) {
+        logger.i("Login response: $response");
+      }
 
       if (response['success'] == true) {
         final user = UserModel.fromJson(response);
-         logger.i("User loggs $user.");
+        if (kDebugMode) {
+          logger.i("User logged in: $user.");
+        }
 
-        final saved = await _userViewModel.saveUser(user)
-        ;
-        if (saved) logger.i("User saved successfully in SharedPreferences.");
+        final saved = await _userViewModel.saveUser(user);
+        if (kDebugMode && saved) {
+          logger.i("User saved successfully in SharedPreferences.");
+        }
 
         setUser(ApiResponse.completed(user));
         Utils.flushBarSuccessMessage("Welcome ${user.name}", context);
 
         // Navigate based on role
         if (user.role == 'admin') {
-          logger.i("Navigating to AdminDashboardPage");
+          if (kDebugMode) {
+            logger.i("Navigating to AdminDashboardPage");
+          }
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -75,7 +85,9 @@ class AuthViewModel with ChangeNotifier {
             ),
           );
         } else {
-          logger.i("Navigating to UserHomePage");
+          if (kDebugMode) {
+            logger.i("Navigating to UserHomePage");
+          }
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -92,16 +104,22 @@ class AuthViewModel with ChangeNotifier {
           );
         }
       } else {
-        logger.w("Login failed: ${response['message']}");
+        if (kDebugMode) {
+          logger.w("Login failed: ${response['message']}");
+        }
         setUser(ApiResponse.error("Login failed"));
         Utils.flushBarErrorMessage(response['message'] ?? "Login failed", context);
       }
     } on TimeoutException catch (e) {
-      logger.e("Login timeout: $e");
+      if (kDebugMode) {
+        logger.e("Login timeout: $e");
+      }
       setUser(ApiResponse.error("Request timed out"));
       Utils.flushBarErrorMessage("Request timed out. Please check your internet connection.", context);
     } catch (e) {
-      logger.e("Login error: $e");
+      if (kDebugMode) {
+        logger.e("Login error: $e");
+      }
       setUser(ApiResponse.error(e.toString()));
       Utils.flushBarErrorMessage("Error: $e", context);
     } finally {

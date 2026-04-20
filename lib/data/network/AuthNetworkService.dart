@@ -39,6 +39,7 @@ class AuthNetworkApiService {
   Future<dynamic> postMultipartResponse(
       String url, Map<String, dynamic> fields, File? file) async {
     dynamic responseJson;
+    var logger = Logger();
     try {
       final headers = await _getHeaders();
       final request = http.MultipartRequest('POST', Uri.parse(url))
@@ -56,16 +57,16 @@ class AuthNetworkApiService {
       }
 
       if (kDebugMode) {
-        print('Multipart Request Fields: ${request.fields}');
-        print('Multipart Request Files: ${request.files.map((f) => f.filename)}');
+        logger.d('Multipart Request Fields: ${request.fields}');
+        logger.d('Multipart Request Files: ${request.files.map((f) => f.filename)}');
       }
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       if (kDebugMode) {
-        print('Response Status: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        logger.i('Response Status: ${response.statusCode}');
+        logger.d('Response Body: ${response.body}');
       }
 
       responseJson = returnResponse(response);
@@ -118,7 +119,9 @@ class AuthNetworkApiService {
               'Error communicating with server. Status code: ${response.statusCode}');
       }
     } catch (e) {
-      logger.e("Non-JSON response: ${response.body}");
+      if (kDebugMode) {
+        logger.e("Non-JSON response: ${response.body}");
+      }
 
       // Handle known duplicate email error
       if (response.body.contains("Duplicate entry")) {

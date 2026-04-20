@@ -24,7 +24,9 @@ class NetworkApiService extends BaseApiServices {
   Future getApiResponse(String url) async {
     try {
       final response = await http.get(Uri.parse(url), headers: _getHeaders()).timeout(const Duration(seconds: 15));
-      _logger.i('GET $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('GET $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -37,7 +39,9 @@ class NetworkApiService extends BaseApiServices {
     try {
       final response = await http.post(Uri.parse(url), headers: _getHeaders(), body: jsonEncode(body))
           .timeout(const Duration(seconds: 15));
-      _logger.i('POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('POST $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -53,7 +57,9 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Form-data POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Form-data POST $url: ${response.statusCode}');
+      }
 
       if (response.body.isEmpty) return {};
 
@@ -61,7 +67,9 @@ class NetworkApiService extends BaseApiServices {
       try {
         responseBody = jsonDecode(response.body);
       } on FormatException catch (e, stack) {
-        _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
+        if (kDebugMode) {
+          _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
+        }
         throw FormatException('Invalid JSON response from server');
       }
 
@@ -76,7 +84,9 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future postMultipartResponse(String url, Map<String, dynamic> fields, File? file) async {
     try {
-      _logger.d(fields);
+      if (kDebugMode) {
+        _logger.d(fields);
+      }
       var request = http.MultipartRequest('POST', Uri.parse(url));
       request.headers.addAll(_getHeaders());
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
@@ -91,7 +101,9 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Multipart POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Multipart POST $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -152,7 +164,9 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Files Multipart POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Files Multipart POST $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -193,7 +207,9 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Notice Multipart POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Notice Multipart POST $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -275,7 +291,9 @@ class NetworkApiService extends BaseApiServices {
 
   dynamic _returnResponse(http.Response response) {
     if (response.body.isEmpty) {
-      _logger.w('Empty response from server for ${response.request?.url}');
+      if (kDebugMode) {
+        _logger.w('Empty response from server for ${response.request?.url}');
+      }
       return {};
     }
 
@@ -283,7 +301,9 @@ class NetworkApiService extends BaseApiServices {
     try {
       responseBody = jsonDecode(response.body);
     } on FormatException catch (e, stack) {
-      _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
+      if (kDebugMode) {
+        _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
+      }
       throw FormatException('Invalid JSON response from server');
     }
     switch (response.statusCode) {
@@ -310,7 +330,9 @@ class NetworkApiService extends BaseApiServices {
     try {
       final response = await http.put(Uri.parse(url), headers: _getHeaders(), body: jsonEncode(data))
           .timeout(const Duration(seconds: 15));
-      _logger.i('PUT $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('PUT $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -322,7 +344,9 @@ class NetworkApiService extends BaseApiServices {
   Future getDeleteApiResponse(String url) async {
     try {
       final response = await http.delete(Uri.parse(url), headers: _getHeaders());
-      _logger.i('DELETE $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('DELETE $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
