@@ -9,21 +9,34 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:logger/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NetworkApiService extends BaseApiServices {
   final Logger _logger = Logger();
 
-  Map<String, String> _getHeaders() {
-    return {
+  Future<Map<String, String>> _getHeaders() async {
+    final SharedPreferences sp = await SharedPreferences.getInstance();
+    final String? session = sp.getString('session');
+    if (kDebugMode) {
+      print('Session: $session');
+    }
+    final headers = {
       HttpHeaders.contentTypeHeader: 'application/json',
       HttpHeaders.acceptHeader: 'application/json',
     };
+    if (session != null && session.isNotEmpty) {
+      headers['Cookie'] = 'sessionId=$session';
+    }
+
+    return headers;
   }
+
 
   @override
   Future getApiResponse(String url) async {
     try {
-      final response = await http.get(Uri.parse(url), headers: _getHeaders()).timeout(const Duration(seconds: 15));
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 15));
       if (kDebugMode) {
         _logger.i('GET $url: ${response.statusCode}');
       }
@@ -37,7 +50,8 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future getPostApiResponse(String url, dynamic body) async {
     try {
-      final response = await http.post(Uri.parse(url), headers: _getHeaders(), body: jsonEncode(body))
+      final headers = await _getHeaders();
+      final response = await http.post(Uri.parse(url), headers: headers, body: jsonEncode(body))
           .timeout(const Duration(seconds: 15));
       if (kDebugMode) {
         _logger.i('POST $url: ${response.statusCode}');
@@ -87,8 +101,9 @@ class NetworkApiService extends BaseApiServices {
       if (kDebugMode) {
         _logger.d(fields);
       }
+      final headers = await _getHeaders();
       var request = http.MultipartRequest('POST', Uri.parse(url));
-      request.headers.addAll(_getHeaders());
+      request.headers.addAll(headers);
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
 
       if (file != null) {
@@ -122,8 +137,9 @@ class NetworkApiService extends BaseApiServices {
         String? iconName,
       }) async {
     try {
+      final headers = await _getHeaders();
       var request = http.MultipartRequest('POST', Uri.parse(url));
-      request.headers.addAll(_getHeaders());
+      request.headers.addAll(headers);
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
 
       if (mainFilePath != null || mainFileBytes != null) {
@@ -181,8 +197,9 @@ class NetworkApiService extends BaseApiServices {
         required String fieldName,
       }) async {
     try {
+      final headers = await _getHeaders();
       var request = http.MultipartRequest('POST', Uri.parse(url));
-      request.headers.addAll(_getHeaders());
+      request.headers.addAll(headers);
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
 
       if (files != null && files.isNotEmpty) {
@@ -328,7 +345,8 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future getPutResponse(String url, dynamic data) async {
     try {
-      final response = await http.put(Uri.parse(url), headers: _getHeaders(), body: jsonEncode(data))
+      final headers = await _getHeaders();
+      final response = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(data))
           .timeout(const Duration(seconds: 15));
       if (kDebugMode) {
         _logger.i('PUT $url: ${response.statusCode}');
@@ -343,7 +361,8 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future getDeleteApiResponse(String url) async {
     try {
-      final response = await http.delete(Uri.parse(url), headers: _getHeaders());
+      final headers = await _getHeaders();
+      final response = await http.delete(Uri.parse(url), headers:headers);
       if (kDebugMode) {
         _logger.i('DELETE $url: ${response.statusCode}');
       }
