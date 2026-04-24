@@ -1,6 +1,6 @@
 import 'dart:async';
-
 import 'package:ema_app/data/network/AuthNetworkService.dart';
+import 'package:ema_app/endpoints/auth_endpoints.dart';
 import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
@@ -37,7 +37,7 @@ class AuthViewModel with ChangeNotifier {
     FocusScope.of(context).unfocus();
     setLoading(true);
 
-    final url = "${BaseUrl.baseUrl}login.php";
+    final url = AuthEndpoints.login;
     if (kDebugMode) {
       logger.i("Attempting login with email: ${body['email']}");
     }
@@ -66,7 +66,7 @@ class AuthViewModel with ChangeNotifier {
         }
 
         setUser(ApiResponse.completed(user));
-        Utils.flushBarSuccessMessage("Welcome ${user.name}", context);
+        Utils.flushBarSuccessMessage("Welcome ${user.fullName}", context);
 
         // Navigate based on role
         if (user.role == 'admin') {
@@ -77,7 +77,7 @@ class AuthViewModel with ChangeNotifier {
             context,
             MaterialPageRoute(
               builder: (_) => AdminDashboardPage(
-                fullName: user.name ?? '',
+                fullName: user.fullName ?? '',
                 profileImage: user.image ?? '',
                 isAdmin: true,
                 userEmail: user.email ?? '',
@@ -92,7 +92,7 @@ class AuthViewModel with ChangeNotifier {
             context,
             MaterialPageRoute(
               builder: (_) => UserHomePage(
-                fullName: user.name ?? '',
+                fullName: user.fullName ?? '',
                 profileImage: user.image ?? '',
                 isAdmin: false,
                 userEmail: user.email ?? '',

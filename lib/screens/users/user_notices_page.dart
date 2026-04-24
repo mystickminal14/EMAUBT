@@ -2,7 +2,6 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path/path.dart' as path;
 

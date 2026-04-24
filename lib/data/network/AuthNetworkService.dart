@@ -13,6 +13,7 @@ class AuthNetworkApiService {
   Future<Map<String, String>> _getHeaders() async {
     return {
       HttpHeaders.acceptHeader: "application/json",
+      HttpHeaders.contentTypeHeader: "application/json",
     };
   }
 

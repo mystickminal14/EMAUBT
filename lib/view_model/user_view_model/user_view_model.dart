@@ -10,7 +10,7 @@ class UserViewModel with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     try {
       await prefs.setString('email', user.email ?? '');
-      await prefs.setString('user_name', user.name ?? '');
+      await prefs.setString('user_name', user.fullName ?? '');
       await prefs.setString('user_role', user.role ?? '');
       await prefs.setString('user_image', user.image ?? '');
       await prefs.setBool('is_logged_in', true);
@@ -30,7 +30,7 @@ class UserViewModel with ChangeNotifier {
 
     return UserModel(
       email: prefs.getString('email'),
-      name: prefs.getString('user_name'),
+      fullName: prefs.getString('user_name'),
       role: prefs.getString('user_role'),
       image: prefs.getString('user_image'),
       success: prefs.getBool('is_logged_in'),

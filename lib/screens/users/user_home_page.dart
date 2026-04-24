@@ -65,7 +65,7 @@ class _UserHomePageState extends State<UserHomePage> {
     logg.d('kasdk ${user?.email}');
     if (user != null && user.success == true) {
       setState(() {
-        _cachedFullName = user.name ?? widget.fullName;
+        _cachedFullName = user.fullName ?? widget.fullName;
         _cachedProfileImage = user.image ?? widget.profileImage;
         _cachedUserEmail = user.email ?? widget.userEmail;
       });
@@ -77,7 +77,7 @@ class _UserHomePageState extends State<UserHomePage> {
       });
       await _userViewModel.saveUser(UserModel(
         email: widget.userEmail,
-        name: widget.fullName,
+        fullName: widget.fullName,
         role: widget.isAdmin ? 'admin' : 'user',
         image: widget.profileImage,
         success: true,

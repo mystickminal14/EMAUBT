@@ -5,7 +5,6 @@ import 'package:ema_app/screens/users/user_home_page.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-
 import '../../model/user_model.dart';
 
 class FlashScreen extends StatefulWidget {
@@ -34,18 +33,18 @@ class _FlashScreenState extends State<FlashScreen> {
     final UserModel? user = await userViewModel.getUser();
 
     if (user != null && user.success == true) {
-      logger.i("User found: ${user.email}, ${user.fullName} ${user.name}role: ${user.role}");
+      logger.i("User found: ${user.email}, ${user.fullName} ${user.fullName}role: ${user.role}");
 
       if (user.role == "admin") {
         _navigateTo(AdminDashboardPage(
-          fullName: user.fullName ?? user.name ?? '',
+          fullName: user.fullName ?? user.fullName ?? '',
           profileImage: user.image ?? '',
           isAdmin: true,
           userEmail: user.email ?? '',
         ));
       } else {
         _navigateTo(UserHomePage(
-          fullName: user.fullName ?? user.name ?? '',
+          fullName: user.fullName ?? user.fullName ?? '',
           profileImage: user.image ?? '',
           isAdmin: false,
           userEmail: user.email ?? '',

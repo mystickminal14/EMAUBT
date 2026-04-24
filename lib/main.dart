@@ -10,7 +10,7 @@ import 'package:ema_app/view_model/folders/quiz_detail_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_view_model.dart';
 import 'package:ema_app/view_model/folders/user_management_view_model.dart';
 import 'package:ema_app/view_model/grant_view_model.dart';
-import 'package:ema_app/view_model/user_view_model/auth_view_model.dart';
+import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/user_folder_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
