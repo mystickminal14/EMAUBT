@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:ema_app/model/user_model.dart';
+import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:logger/logger.dart';
-
 import '../../utils/utils.dart';
 import '../api_exception.dart';
 
@@ -27,6 +28,19 @@ class AuthNetworkApiService {
 
       if (kDebugMode) {
         logger.i("Login Response: ${response.body}");
+      }
+      final responseBody = jsonDecode(response.body);
+      final session =
+      response.headers['Set-Cookie']?.split(";")[0].split("=")[1];
+      if (session != null) {
+        UserModel user = UserModel(
+            role: responseBody['role'],
+            email: responseBody['email'],
+
+            session: session);
+        await UserViewModel().saveUser(user);
+      } else {
+        throw Exception('Incorrect username or password!!');
       }
 
       // Fix: call returnResponse instead of using responseJson variable

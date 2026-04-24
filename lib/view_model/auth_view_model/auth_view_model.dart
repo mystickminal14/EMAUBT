@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:ema_app/data/network/AuthNetworkService.dart';
 import 'package:ema_app/endpoints/auth_endpoints.dart';
 import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
+import 'package:ema_app/screens/auth/login_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
@@ -45,7 +47,8 @@ class AuthViewModel with ChangeNotifier {
       final response = await _authService.login(url, body).timeout(
         Duration(seconds: 10),
         onTimeout: () {
-          throw TimeoutException("The connection has timed out, please try again.");
+          throw TimeoutException(
+              "The connection has timed out, please try again.");
         },
       );
 
@@ -75,12 +78,13 @@ class AuthViewModel with ChangeNotifier {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => AdminDashboardPage(
-                fullName: user.fullName ?? '',
-                profileImage: user.image ?? '',
-                isAdmin: true,
-                userEmail: user.email ?? '',
-              ),
+              builder: (_) =>
+                  AdminDashboardPage(
+                    fullName: user.fullName ?? '',
+                    profileImage: user.image ?? '',
+                    isAdmin: true,
+                    userEmail: user.email ?? '',
+                  ),
             ),
           );
         } else {
@@ -90,15 +94,16 @@ class AuthViewModel with ChangeNotifier {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => UserHomePage(
-                fullName: user.fullName ?? '',
-                profileImage: user.image ?? '',
-                isAdmin: false,
-                userEmail: user.email ?? '',
-                userIdentifier: '',
-                folderId: null,
-                folderName: '',
-              ),
+              builder: (_) =>
+                  UserHomePage(
+                    fullName: user.fullName ?? '',
+                    profileImage: user.image ?? '',
+                    isAdmin: false,
+                    userEmail: user.email ?? '',
+                    userIdentifier: '',
+                    folderId: null,
+                    folderName: '',
+                  ),
             ),
           );
         }
@@ -107,14 +112,16 @@ class AuthViewModel with ChangeNotifier {
           logger.w("Login failed: ${response['message']}");
         }
         setUser(ApiResponse.error("Login failed"));
-        Utils.flushBarErrorMessage(response['message'] ?? "Login failed", context);
+        Utils.flushBarErrorMessage(
+            response['message'] ?? "Login failed", context);
       }
     } on TimeoutException catch (e) {
       if (kDebugMode) {
         logger.e("Login timeout: $e");
       }
       setUser(ApiResponse.error("Request timed out"));
-      Utils.flushBarErrorMessage("Request timed out. Please check your internet connection.", context);
+      Utils.flushBarErrorMessage(
+          "Request timed out. Please check your internet connection.", context);
     } catch (e) {
       if (kDebugMode) {
         logger.e("Login error: $e");
@@ -126,4 +133,57 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
+  Future<void> register(Map<String, dynamic> body, File image,
+      BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    setLoading(true);
+
+    try {
+      final response = await _authService.postMultipartResponse(
+        AuthEndpoints.register,
+        body,
+        image,
+      );
+
+      logger.d('Server response: $response');
+
+      if (response is Map && response['success'] == true) {
+        logger.i('Registration successful for ${body['email']}');
+
+        Utils.flushBarSuccessMessage(
+          response['message'] ?? "Registration successful",
+          context,
+        );
+
+        await Future.delayed(const Duration(seconds: 2));
+
+        if (context.mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginPage()),
+          );
+        }
+      } else {
+        final msg = (response is Map && response.containsKey('message'))
+            ? response['message']
+            : 'Registration failed';
+        logger.w('Registration failed: $msg');
+        Utils.flushBarErrorMessage(msg ?? "Registration failed", context);
+      }
+    } on TimeoutException catch (e) {
+      logger.e("Register timeout: $e");
+      Utils.flushBarErrorMessage(
+        "Request timed out. Please check your internet connection.",
+        context,
+      );
+    } on SocketException {
+      logger.e("No internet connection during registration");
+      Utils.flushBarErrorMessage("No internet connection.", context);
+    } catch (e, st) {
+      logger.e('Registration error', error: e, stackTrace: st);
+      Utils.flushBarErrorMessage("Error: ${e.toString()}", context);
+    } finally {
+      setLoading(false);
+    }
+  }
 }

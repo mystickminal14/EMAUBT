@@ -9,13 +9,13 @@ class UserViewModel with ChangeNotifier {
   Future<bool> saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
     try {
+      await prefs.setString('session', user.session ?? '');
       await prefs.setString('email', user.email ?? '');
       await prefs.setString('user_name', user.fullName ?? '');
       await prefs.setString('user_role', user.role ?? '');
       await prefs.setString('user_image', user.image ?? '');
       await prefs.setBool('is_logged_in', true);
       await prefs.setInt('login_timestamp', DateTime.now().millisecondsSinceEpoch);
-
       logger.i("User saved in SharedPreferences: ${user.email}");
       return true;
     } catch (e) {
@@ -29,6 +29,7 @@ class UserViewModel with ChangeNotifier {
     if (!prefs.containsKey('is_logged_in')) return null;
 
     return UserModel(
+      session: prefs.getString('session'),
       email: prefs.getString('email'),
       fullName: prefs.getString('user_name'),
       role: prefs.getString('user_role'),
@@ -40,5 +41,13 @@ class UserViewModel with ChangeNotifier {
   Future<bool> removeUser() async {
     final prefs = await SharedPreferences.getInstance();
     return await prefs.clear();
+  }
+  Future<bool> isAuthenticated() async {
+    final SharedPreferences sp = await SharedPreferences.getInstance();
+    return sp.getString('session') != null;
+  }
+  Future<String?> getRole() async {
+    final SharedPreferences sp = await SharedPreferences.getInstance();
+    return sp.getString('role');
   }
 }
