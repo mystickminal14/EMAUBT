@@ -7,7 +7,6 @@ import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
-import '../../constants/base_url.dart';
 import '../../model/user_model.dart';
 import '../../data/api_response.dart';
 import '../../utils/utils.dart';

@@ -36,7 +36,7 @@ class AuthNetworkApiService {
       throw FetchDataException("No Internet Connection");
     }
   }
-
+//for register
   Future<dynamic> postMultipartResponse(
       String url, Map<String, dynamic> fields, File? file) async {
     dynamic responseJson;
