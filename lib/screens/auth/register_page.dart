@@ -130,8 +130,12 @@ class _RegisterPageState extends State<RegisterPage> {
                             prefixIcon: Icon(Icons.person),
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) =>
-                          value == null || value.isEmpty ? 'Enter your name' : null,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return 'Enter your name';
+                            if (value.trim().length < 2) return 'Name must be at least 2 characters';
+                            if (value.trim().length > 100) return 'Name must be at most 100 characters';
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 15),
 
@@ -201,7 +205,10 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) return 'Enter password';
-                            if (value.length < 6) return 'At least 6 characters';
+                            if (value.length < 8) return 'At least 8 characters';
+                            if (!RegExp(r'[A-Za-z]').hasMatch(value)) return 'Must contain a letter';
+                            if (!RegExp(r'[0-9]').hasMatch(value)) return 'Must contain a number';
+                            if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) return 'Must contain a special character';
                             return null;
                           },
                         ),
@@ -222,7 +229,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty) return 'Confirm password';
+                            if (value == null || value.isEmpty) return 'Confirm your password';
                             if (value != _passwordController.text) return 'Passwords do not match';
                             return null;
                           },
