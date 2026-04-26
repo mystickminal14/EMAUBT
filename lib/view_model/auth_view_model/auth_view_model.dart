@@ -206,11 +206,11 @@ class AuthViewModel with ChangeNotifier {
         );
 
       }
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-            (route) => false, // This removes all previous routes
-      );
+      // Navigator.pushAndRemoveUntil(
+      //   context,
+      //   MaterialPageRoute(builder: (_) => const LoginPage()),
+      //       (route) => false, // This removes all previous routes
+      // );
       Utils.showApiResponse(response, context);
       // Show success message
     } catch (e) {
