@@ -62,7 +62,7 @@ class Utils {
       leftBarIndicatorColor:AppColors.primary,
       animationDuration: const Duration(milliseconds: 500),
       isDismissible: true,
-      flushbarPosition: FlushbarPosition.TOP,
+      flushbarPosition: FlushbarPosition.BOTTOM,
       flushbarStyle: FlushbarStyle.FLOATING,
       forwardAnimationCurve: Curves.easeInOut,
     ).show(context);

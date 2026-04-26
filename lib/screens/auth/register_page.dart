@@ -142,7 +142,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         _imageFile == null
                             ? ElevatedButton(
                           onPressed: _pickImage,
-                          child: const Text("Pick an Image (Optional)"),
+                          child: const Text("Pick an Image"),
                         )
                             : GestureDetector(
                           onTap: _pickImage,
