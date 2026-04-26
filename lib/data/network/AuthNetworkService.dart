@@ -19,48 +19,98 @@ class AuthNetworkApiService {
     };
   }
 
+
   Future<Map<String, dynamic>> login(String url, Map<String, dynamic> body) async {
     var logger = Logger();
+
     try {
       final headers = await _getHeaders();
+
+      if (kDebugMode) {
+        logger.i("🚀 Sending login request...");
+        logger.i("📤 Request Headers: $headers");
+        logger.i("📦 Request Body: $body");
+      }
+
       final response = await http
           .post(Uri.parse(url), headers: headers, body: jsonEncode(body))
           .timeout(const Duration(seconds: 10));
 
       if (kDebugMode) {
-        logger.i("Login Response: ${response.body}");
+        logger.i("📥 Response Status: ${response.statusCode}");
+        logger.i("📥 Response Body: ${response.body}");
+        logger.i("🍪 Response Headers: ${response.headers}");
       }
 
-      if (response.body.isEmpty) {
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          return {'success': true, 'message': 'Login successful', 'data': {}};
+      final responseBody = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : {};
+
+      final normalizedResponse =
+      normalizeApiResponse(responseBody, response.statusCode);
+
+      logger.i("ews ${responseBody}");
+      // =========================
+      // 🔐 SESSION EXTRACTION LOGIC
+      // =========================
+      String? session;
+      final setCookie = response.headers['set-cookie'];
+
+      if (kDebugMode) {
+        logger.i("🍪 Set-Cookie raw header: $setCookie");
+      }
+
+      if (setCookie != null && setCookie.isNotEmpty) {
+        final cookies = setCookie.split(',');
+
+        for (var cookie in cookies) {
+          if (cookie.contains('EMA_SESSION')) {
+            session = cookie.split(';')[0].split('=')[1];
+
+            if (kDebugMode) {
+              logger.i("✅ EMA_SESSION FOUND in cookie: $session");
+            }
+            break;
+          }
         }
-        return {'success': false, 'message': 'Empty response from server'};
+      } else {
+        if (kDebugMode) {
+          logger.w("⚠️ No Set-Cookie header received from server");
+        }
       }
 
-      final responseBody = jsonDecode(response.body);
-
-      // Normalize response to standard format first
-      final normalizedResponse = normalizeApiResponse(responseBody, response.statusCode);
-
-      // Only save user session if login was successful
+      // =========================
+      // 💾 SAVE SESSION TRACE
+      // =========================
       if (normalizedResponse['success'] == true) {
-        final session =
-        response.headers['Set-Cookie']?.split(";")[0].split("=")[1];
-        if (session != null) {
-          UserModel user = UserModel(
-              role: responseBody['role'],
-              email: responseBody['email'],
+        if (session != null && session.isNotEmpty) {
+          if (kDebugMode) {
+            logger.i("💾 Saving session to SharedPreferences...");
+          }
 
-              session: session);
-          await UserViewModel().saveUser(user);
+          UserModel user = UserModel(
+            phone: responseBody['data']['phone'],
+            role: responseBody['data']['role'],
+            email: responseBody['data']['email'],
+            image: responseBody['data']['image'],
+            fullName: responseBody['data']['full_name'],
+          );
+
+          final saved = await UserViewModel().saveUser(user, session: session);
+
+          if (kDebugMode) {
+            logger.i(saved
+                ? "✅ User + session saved successfully"
+                : "❌ Failed to save user/session");
+          }
         } else {
-          return {'success': false, 'message': 'Incorrect username or password'};
+          if (kDebugMode) {
+            logger.e("❌ Login success but session is NULL");
+          }
         }
       }
 
       return normalizedResponse;
-
     } on SocketException {
       return {'success': false, 'message': 'No Internet Connection'};
     }

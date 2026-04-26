@@ -18,15 +18,36 @@ class NetworkApiService extends BaseApiServices {
   Future<Map<String, String>> _getHeaders() async {
     final SharedPreferences sp = await SharedPreferences.getInstance();
     final String? session = sp.getString('session');
+
     if (kDebugMode) {
-      print('Session: $session');
+      if (session == null) {
+        print('❌ Session NOT found in SharedPreferences');
+      } else if (session.isEmpty) {
+        print('⚠️ Session is EMPTY');
+      } else {
+        print('✅ Session found: $session');
+      }
     }
+
     final headers = {
       HttpHeaders.contentTypeHeader: 'application/json',
       HttpHeaders.acceptHeader: 'application/json',
     };
+
     if (session != null && session.isNotEmpty) {
-      headers['Cookie'] = 'sessionId=$session';
+      headers['Cookie'] = 'EMA_SESSION=$session';
+
+      if (kDebugMode) {
+        print('🍪 Cookie header added: EMA_SESSION=$session');
+      }
+    } else {
+      if (kDebugMode) {
+        print('🚫 No session added to headers');
+      }
+    }
+
+    if (kDebugMode) {
+      print('📦 Final headers: $headers');
     }
 
     return headers;
@@ -52,11 +73,27 @@ class NetworkApiService extends BaseApiServices {
   Future getPostApiResponse(String url, dynamic body) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(Uri.parse(url), headers: headers, body: jsonEncode(body))
-          .timeout(const Duration(seconds: 15));
+
       if (kDebugMode) {
-        _logger.i('POST $url: ${response.statusCode}');
+        _logger.i('REQUEST → $url');
+        _logger.i('REQUEST HEADERS → $headers');
+        _logger.i('REQUEST BODY → $body');
       }
+
+      final response = await http
+          .post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
+      )
+          .timeout(const Duration(seconds: 15));
+
+      if (kDebugMode) {
+        _logger.i('RESPONSE STATUS → ${response.statusCode}');
+        _logger.i('RESPONSE HEADERS → ${response.headers}');
+        _logger.i('RESPONSE BODY → ${response.body}');
+      }
+
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');

@@ -24,7 +24,6 @@ class _LoginPageState extends State<LoginPage> {
         "email": _emailController.text.trim(),
         "password": _passwordController.text.trim(),
       };
-      print(body);
       Provider.of<AuthViewModel>(context, listen: false).login(body, context);
     }
   }

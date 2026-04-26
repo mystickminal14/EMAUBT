@@ -6,7 +6,6 @@ class UserModel {
   final String? image;
   final String? role;
   final bool? success;
-  final String? session;
 
   const UserModel({
     this.id,
@@ -16,7 +15,6 @@ class UserModel {
     this.image,
     this.role,
     this.success,
-    this.session
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {

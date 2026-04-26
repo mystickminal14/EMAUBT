@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:ema_app/data/network/AuthNetworkService.dart';
+import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/endpoints/auth_endpoints.dart';
 import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
 import 'package:ema_app/screens/auth/login_page.dart';
@@ -16,6 +17,7 @@ import '../../utils/utils.dart';
 class AuthViewModel with ChangeNotifier {
   final Logger logger = Logger();
   final AuthNetworkApiService _authService = AuthNetworkApiService();
+  final NetworkApiService _networkApiService = NetworkApiService();
   final UserViewModel _userViewModel = UserViewModel();
 
   ApiResponse<UserModel> userData = ApiResponse.loading();
@@ -64,8 +66,8 @@ class AuthViewModel with ChangeNotifier {
           logger.i("User logged in: $user.");
         }
 
-        final saved = await _userViewModel.saveUser(user);
-        if (kDebugMode && saved) {
+        // final saved = await _userViewModel.saveUser(user);
+        if (kDebugMode) {
           logger.i("User saved successfully in SharedPreferences.");
         }
 
@@ -173,6 +175,49 @@ class AuthViewModel with ChangeNotifier {
     } catch (e, st) {
       logger.e('Registration error', error: e, stackTrace: st);
       Utils.showApiResponse(Utils.errorResponse("Error: ${e.toString()}"), context);
+    } finally {
+      setLoading(false);
+    }
+  }
+  Future<void> logout(BuildContext context) async {
+    setLoading(true);
+
+    try {
+
+      final url = AuthEndpoints.logout;
+      final response = await _networkApiService.getPostApiResponse(url,{});
+
+      // Clear user data from SharedPreferences
+      final cleared = await _userViewModel.removeUser();
+
+      if (kDebugMode) {
+        logger.i("User logged out successfully. Data cleared: $cleared");
+      }
+
+      // Reset the user data in the ViewModel
+      setUser(ApiResponse.loading());
+
+      if (response['success'] == true) {
+        Utils.showApiResponse(response, context);
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+              (route) => false, // This removes all previous routes
+        );
+
+      }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+            (route) => false, // This removes all previous routes
+      );
+      Utils.showApiResponse(response, context);
+      // Show success message
+    } catch (e) {
+      if (kDebugMode) {
+        logger.e("Logout error: $e");
+      }
+      Utils.flushBarErrorMessage("Error during logout: $e", context);
     } finally {
       setLoading(false);
     }
