@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:ema_app/data/api_exception.dart';
 import 'package:ema_app/data/network/BaseApiService.dart';
+import 'package:ema_app/data/standard_response.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -75,7 +76,12 @@ class NetworkApiService extends BaseApiServices {
         _logger.i('Form-data POST $url: ${response.statusCode}');
       }
 
-      if (response.body.isEmpty) return {};
+      if (response.body.isEmpty) {
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'message': 'Operation successful', 'data': {}};
+        }
+        return {'success': false, 'message': 'Empty response from server'};
+      }
 
       dynamic responseBody;
       try {
@@ -84,14 +90,13 @@ class NetworkApiService extends BaseApiServices {
         if (kDebugMode) {
           _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
         }
-        throw FormatException('Invalid JSON response from server');
+        return {'success': false, 'message': 'Invalid JSON response from server'};
       }
 
-      if (response.statusCode == 200 || response.statusCode == 201) return responseBody;
-      throw FetchDataException('Error communicating with server. Status code: ${response.statusCode}');
+      return normalizeApiResponse(responseBody, response.statusCode);
     } on SocketException {
       Utils.noInternet('No internet connection');
-      throw FetchDataException("No internet Connection");
+      return {'success': false, 'message': 'No internet connection'};
     }
   }
 
@@ -306,12 +311,16 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
-  dynamic _returnResponse(http.Response response) {
+  Map<String, dynamic> _returnResponse(http.Response response) {
     if (response.body.isEmpty) {
       if (kDebugMode) {
         _logger.w('Empty response from server for ${response.request?.url}');
       }
-      return {};
+      // Return empty success response for empty body with success status
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'message': 'Operation successful', 'data': {}};
+      }
+      return {'success': false, 'message': 'Empty response from server'};
     }
 
     dynamic responseBody;
@@ -321,25 +330,11 @@ class NetworkApiService extends BaseApiServices {
       if (kDebugMode) {
         _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
       }
-      throw FormatException('Invalid JSON response from server');
+      return {'success': false, 'message': 'Invalid JSON response from server'};
     }
-    switch (response.statusCode) {
-      case 200:
-      case 201:
-        return responseBody;
-      case 400:
-        throw BadRequestException(responseBody['message'] ?? 'Bad Request');
-      case 401:
-        throw UnAuthorizeException(responseBody['message'] ?? 'Unauthorized');
-      case 403:
-        throw NoDataException(responseBody['message'] ?? 'Not Found');
-      case 404:
-        throw NoDataException(responseBody['message'] ?? 'Not Found');
-      case 500:
-        throw FetchDataException(responseBody['message'] ?? 'Internal Server Error');
-      default:
-        throw FetchDataException('Error communicating with server. Status code: ${response.statusCode}');
-    }
+
+    // Normalize response to standard format
+    return normalizeApiResponse(responseBody, response.statusCode);
   }
 
   @override

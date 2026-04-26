@@ -38,7 +38,7 @@ class FilesViewModel extends ChangeNotifier {
           .getApiResponse(url)
           .timeout(const Duration(seconds: 15));
 
-      if (response is Map<String, dynamic> && response['status'] == 'success' && response['data'] != null) {
+      if (response['success'] == true && response['data'] != null) {
         final filesModel = FilesModel.fromJson(response);
         files = filesModel.data;
       } else {
@@ -101,10 +101,11 @@ class FilesViewModel extends ChangeNotifier {
       )
           .timeout(const Duration(seconds: 15));
 
-      if (response['status'] == 'success') {
-        _showSuccessMessage(context, response['message'] ?? 'File added successfully');
+      if (response['success'] == true) {
+        Utils.showApiResponse(response, context);
         await fetchFiles(folderId); // Refresh to get real IDs and data
       } else {
+        Utils.showApiResponse(response, context);
         throw Exception(response['message'] ?? 'Failed to add file');
       }
     } catch (e, stackTrace) {
@@ -157,10 +158,11 @@ class FilesViewModel extends ChangeNotifier {
       )
           .timeout(const Duration(seconds: 15));
 
-      if (response['status'] == 'success') {
-        _showSuccessMessage(context, response['message'] ?? 'File updated successfully');
+      if (response['success'] == true) {
+        Utils.showApiResponse(response, context);
         await fetchFiles(folderId); // Refresh to sync changes
       } else {
+        Utils.showApiResponse(response, context);
         throw Exception(response['message'] ?? 'Failed to edit file');
       }
     } catch (e, stackTrace) {
@@ -196,10 +198,11 @@ class FilesViewModel extends ChangeNotifier {
           .postFormData("${BaseUrl.baseUrl}folder_details_page.php", fields)
           .timeout(const Duration(seconds: 15));
 
-      if (response['status'] == 'success') {
-        _showSuccessMessage(context, response['message'] ?? 'File deleted successfully');
+      if (response['success'] == true) {
+        Utils.showApiResponse(response, context);
         await fetchFiles(folderId); // Refresh to sync deletions
       } else {
+        Utils.showApiResponse(response, context);
         throw Exception(response['message'] ?? 'Failed to delete file');
       }
     } catch (e, stackTrace) {

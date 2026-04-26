@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/model/user_data_model.dart';
+import 'package:ema_app/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:image_picker/image_picker.dart';
@@ -52,20 +53,31 @@ class UserManagementViewModel extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
       final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}register.php');
-      final userData = UserModelData.fromJson(response);
-      if (userData.success == true && userData.users != null) {
-        users = userData.users!;
+      if (response['success'] == true) {
+        // Handle both old format (UserModelData) and new standard format
+        if (response['data'] != null) {
+          final userData = UserModelData.fromJson(response);
+          if (userData.users != null) {
+            users = userData.users!;
+          }
+        } else if (response['users'] != null) {
+          // Old format fallback
+          final userData = UserModelData.fromJson(response);
+          if (userData.users != null) {
+            users = userData.users!;
+          }
+        }
         _filterLists();
         _logger.i('Fetched ${users.length} users');
       } else {
         users = [];
         _filterLists();
-        _showErrorMessage(context, 'Failed to fetch users: ${response['message'] ?? 'Unknown error'}');
+        Utils.showApiResponse(response, context);
       }
     } catch (e) {
       users = [];
       _filterLists();
-      _showErrorMessage(context, 'Error fetching users: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error fetching users: $e'), context);
       _logger.e('Error fetching users: $e');
     } finally {
       isLoading = false;
@@ -107,12 +119,12 @@ class UserManagementViewModel extends ChangeNotifier {
 
   Future<void> addUser(BuildContext context) async {
     if (name == null || name!.isEmpty || email == null || email!.isEmpty || phone == null || phone!.isEmpty || password == null || password!.isEmpty) {
-      _showErrorMessage(context, 'Full Name, Email, Phone, and Password are required');
+      Utils.showApiResponse(Utils.errorResponse('Full Name, Email, Phone, and Password are required'), context);
       return;
     }
 
     if (users.any((user) => user.email?.toLowerCase() == email!.toLowerCase())) {
-      _showErrorMessage(context, 'Email already exists');
+      Utils.showApiResponse(Utils.errorResponse('Email already exists'), context);
       return;
     }
 
@@ -131,18 +143,17 @@ class UserManagementViewModel extends ChangeNotifier {
         fields,
         selectedImage,
       );
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context, 'User added successfully');
         _logger.i('User added successfully');
         clearFields();
         await Future.delayed(const Duration(milliseconds: 100)); // Delay to avoid disposal race
         await fetchUsers(context);
       } else {
-        _showErrorMessage(context, 'Failed to add user: ${response['message'] ?? 'Unknown error'}');
-        _logger.w('Failed to add user: ${response['message'] ?? 'Unknown error'}');
+        _logger.w('Failed to add user: ${response['message']}');
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error adding user: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error adding user: $e'), context);
       _logger.e('Error adding user: $e');
     } finally {
       isActionLoading = false;
@@ -152,7 +163,7 @@ class UserManagementViewModel extends ChangeNotifier {
 
   Future<void> editUser(BuildContext context, Users user) async {
     if (name == null || name!.isEmpty || email == null || email!.isEmpty || phone == null || phone!.isEmpty) {
-      _showErrorMessage(context, 'Full Name, Email, and Phone are required');
+      Utils.showApiResponse(Utils.errorResponse('Full Name, Email, and Phone are required'), context);
       return;
     }
 
@@ -173,18 +184,17 @@ class UserManagementViewModel extends ChangeNotifier {
         fields,
         selectedImage,
       );
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context, 'User updated successfully');
         _logger.i('User updated successfully');
         clearFields();
         await Future.delayed(const Duration(milliseconds: 100)); // Delay to avoid disposal race
         await fetchUsers(context);
       } else {
-        _showErrorMessage(context, 'Failed to update user: ${response['message'] ?? 'Unknown error'}');
-        _logger.w('Failed to update user: ${response['message'] ?? 'Unknown error'}');
+        _logger.w('Failed to update user: ${response['message']}');
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error updating user: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error updating user: $e'), context);
       _logger.e('Error updating user: $e');
     } finally {
       isActionLoading = false;
@@ -198,17 +208,16 @@ class UserManagementViewModel extends ChangeNotifier {
       notifyListeners();
       _logger.i('Deleting user: ${user.id}, ${user.fullName}');
       final response = await _apiService.getDeleteApiResponse('${BaseUrl.baseUrl}register.php?id=${user.id}');
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context, 'User deleted successfully');
         _logger.i('User deleted successfully');
         await Future.delayed(const Duration(milliseconds: 100)); // Delay to avoid disposal race
         await fetchUsers(context);
       } else {
-        _showErrorMessage(context, 'Failed to delete user: ${response['message'] ?? 'Unknown error'}');
-        _logger.w('Failed to delete user: ${response['message'] ?? 'Unknown error'}');
+        _logger.w('Failed to delete user: ${response['message']}');
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error deleting user: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error deleting user: $e'), context);
       _logger.e('Error deleting user: $e');
     } finally {
       isActionLoading = false;

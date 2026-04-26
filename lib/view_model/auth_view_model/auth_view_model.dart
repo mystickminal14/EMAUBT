@@ -57,7 +57,9 @@ class AuthViewModel with ChangeNotifier {
       }
 
       if (response['success'] == true) {
-        final user = UserModel.fromJson(response);
+        // Extract user data from the response
+        final userData = response['data'] ?? response;
+        final user = UserModel.fromJson(userData);
         if (kDebugMode) {
           logger.i("User logged in: $user.");
         }
@@ -68,7 +70,7 @@ class AuthViewModel with ChangeNotifier {
         }
 
         setUser(ApiResponse.completed(user));
-        Utils.flushBarSuccessMessage("Welcome ${user.fullName}", context);
+        Utils.showApiResponse(response, context);
 
         // Navigate based on role
         if (user.role == 'admin') {
@@ -112,8 +114,7 @@ class AuthViewModel with ChangeNotifier {
           logger.w("Login failed: ${response['message']}");
         }
         setUser(ApiResponse.error("Login failed"));
-        Utils.flushBarErrorMessage(
-            response['message'] ?? "Login failed", context);
+        Utils.showApiResponse(response, context);
       }
     } on TimeoutException catch (e) {
       if (kDebugMode) {
@@ -147,13 +148,9 @@ class AuthViewModel with ChangeNotifier {
 
       logger.d('Server response: $response');
 
-      if (response is Map && response['success'] == true) {
+      if (response['success'] == true) {
         logger.i('Registration successful for ${body['email']}');
-
-        Utils.flushBarSuccessMessage(
-          response['message'] ?? "Registration successful",
-          context,
-        );
+        Utils.showApiResponse(response, context);
 
         await Future.delayed(const Duration(seconds: 2));
 
@@ -164,24 +161,18 @@ class AuthViewModel with ChangeNotifier {
           );
         }
       } else {
-        final msg = (response is Map && response.containsKey('message'))
-            ? response['message']
-            : 'Registration failed';
-        logger.w('Registration failed: $msg');
-        Utils.flushBarErrorMessage(msg ?? "Registration failed", context);
+        logger.w('Registration failed: ${response['message']}');
+        Utils.showApiResponse(response, context);
       }
     } on TimeoutException catch (e) {
       logger.e("Register timeout: $e");
-      Utils.flushBarErrorMessage(
-        "Request timed out. Please check your internet connection.",
-        context,
-      );
+      Utils.showApiResponse(Utils.errorResponse("Request timed out. Please check your internet connection."), context);
     } on SocketException {
       logger.e("No internet connection during registration");
-      Utils.flushBarErrorMessage("No internet connection.", context);
+      Utils.showApiResponse(Utils.errorResponse("No internet connection"), context);
     } catch (e, st) {
       logger.e('Registration error', error: e, stackTrace: st);
-      Utils.flushBarErrorMessage("Error: ${e.toString()}", context);
+      Utils.showApiResponse(Utils.errorResponse("Error: ${e.toString()}"), context);
     } finally {
       setLoading(false);
     }

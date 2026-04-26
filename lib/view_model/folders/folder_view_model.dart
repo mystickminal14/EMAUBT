@@ -9,6 +9,22 @@ import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/model/folder_model.dart';
 import 'package:ema_app/utils/utils.dart';
 
+/// Shows success message using standard response format
+void _showStandardMessage(BuildContext context, Map<String, dynamic> response) {
+  if (!context.mounted) return;
+  final success = response['success'] == true;
+  final message = response['message']?.toString() ?? 'Operation completed';
+  Flushbar(
+    message: message,
+    duration: const Duration(seconds: 3),
+    backgroundColor: success ? Colors.green : Colors.red,
+    icon: Icon(
+      success ? Icons.check_circle : Icons.error,
+      color: Colors.white,
+    ),
+  ).show(context);
+}
+
 class FolderViewModel extends ChangeNotifier {
   final NetworkApiService _apiService = NetworkApiService();
   final Logger _logger = Logger();
@@ -17,6 +33,7 @@ class FolderViewModel extends ChangeNotifier {
   bool isLoading = false;
 
   void _showSuccessMessage(BuildContext context, String message) {
+    if (!context.mounted) return;
     Flushbar(
       message: message,
       duration: const Duration(seconds: 3),
@@ -73,11 +90,11 @@ class FolderViewModel extends ChangeNotifier {
           .postMultipartResponse("${BaseUrl.baseUrl}folders.php", fields, iconFile)
           .timeout(const Duration(seconds: 15));
 
-      if (response['success'] != null) {
-        _showSuccessMessage(context, response['success']);
+      if (response['success'] == true) {
+        _showStandardMessage(context, response);
         await fetchFolders();
-      } else if (response['error'] != null) {
-        Utils.noInternet(response['error']);
+      } else {
+        _showStandardMessage(context, response);
         folders.remove(tempFolder); // rollback UI
         notifyListeners();
       }
@@ -111,11 +128,9 @@ class FolderViewModel extends ChangeNotifier {
           .postMultipartResponse("${BaseUrl.baseUrl}folders.php", fields, iconFile)
           .timeout(const Duration(seconds: 15));
 
-      if (response['success'] != null) {
-        _showSuccessMessage(context, response['success']);
+      _showStandardMessage(context, response);
+      if (response['success'] == true) {
         await fetchFolders();
-      } else if (response['error'] != null) {
-        Utils.noInternet(response['error']);
       }
     } on TimeoutException {
       Utils.noInternet("Request timed out. Please try again later.");
@@ -141,11 +156,10 @@ class FolderViewModel extends ChangeNotifier {
           .postFormData("${BaseUrl.baseUrl}folders.php", fields)
           .timeout(const Duration(seconds: 15));
 
-      if (response['success'] != null) {
-        _showSuccessMessage(context, response['success']);
+      _showStandardMessage(context, response);
+      if (response['success'] == true) {
         await fetchFolders();
-      } else if (response['error'] != null) {
-        Utils.noInternet(response['error']);
+      } else {
         if (removedFolder != null) folders.insert(index, removedFolder); // rollback
         notifyListeners();
       }

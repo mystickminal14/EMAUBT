@@ -52,13 +52,12 @@ class AdminManagementViewModel extends ChangeNotifier {
       } else {
         users = [];
         _filterLists();
-        _showErrorMessage(context,
-            'Failed to fetch users: ${response['message'] ?? 'Unknown error'}');
+        Utils.showApiResponse(response, context);
       }
     } catch (e) {
       users = [];
       _filterLists();
-      _showErrorMessage(context, 'Error fetching users: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error fetching users: $e'), context);
       _logger.e('Error fetching users: $e');
     } finally {
       isLoading = false;
@@ -81,13 +80,12 @@ class AdminManagementViewModel extends ChangeNotifier {
       } else {
         admins = [];
         _filterLists();
-        _showErrorMessage(context,
-            'Error fetching admins: ${response['message'] ?? 'Unknown error'}');
+        Utils.showApiResponse(response, context);
       }
     } catch (e) {
       admins = [];
       _filterLists();
-      _showErrorMessage(context, 'Error fetching admins: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error fetching admins: $e'), context);
       _logger.e('Error fetching admins: $e');
     } finally {
       isLoading = false;
@@ -109,20 +107,17 @@ class AdminManagementViewModel extends ChangeNotifier {
         },
       );
 
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context,
-            'Admin access granted to ${response['full_name'] ?? user.fullName}');
         await Future.wait([
           fetchUsers(context),
           fetchAdmins(context),
         ]);
       } else {
-        _showErrorMessage(
-            context, 'Error: ${response['message'] ?? 'Unknown error'}');
         _logger.w('Failed to grant admin access: ${response['message']}');
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error granting admin access: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error granting admin access: $e'), context);
       _logger.e('Error granting admin access: $e');
     }
   }
@@ -139,20 +134,17 @@ class AdminManagementViewModel extends ChangeNotifier {
         },
       );
 
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context,
-            'Admin access removed from ${response['full_name'] ?? admin.fullName}');
         await Future.wait([
           fetchUsers(context),
           fetchAdmins(context),
         ]);
       } else {
-        _showErrorMessage(
-            context, 'Error: ${response['message'] ?? 'Unknown error'}');
         _logger.w('Failed to remove admin access: ${response['message']}');
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error removing admin access: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error removing admin access: $e'), context);
       _logger.e('Error removing admin access: $e');
     }
   }

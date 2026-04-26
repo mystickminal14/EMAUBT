@@ -27,7 +27,7 @@ class FreeAccessViewModel extends ChangeNotifier {
       )
           .timeout(const Duration(seconds: 15));
 
-      if (response is Map && response['status'] == 'success') {
+      if (response['success'] == true && response['data'] != null) {
         final items = List<Map<String, dynamic>>.from(response['data'])
             .map((item) => {
           ...item,
