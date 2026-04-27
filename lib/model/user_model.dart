@@ -33,7 +33,6 @@ class UserModel {
       phone: user['phone'],
       image: user['image'],
       role: user['role'],
-      success: json['success'] ?? true,
     );
   }
 
@@ -44,6 +43,5 @@ class UserModel {
     'phone': phone,
     'image': image,
     'role': role,
-    'success': success,
   };
 }

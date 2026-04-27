@@ -121,6 +121,9 @@ class AuthNetworkApiService {
     Map<String, dynamic> responseJson;
     var logger = Logger();
     try {
+      if (kDebugMode) {
+        logger.d('Multipart Request Fields: $fields');
+      }
       final headers = await _getHeaders();
       final request = http.MultipartRequest('POST', Uri.parse(url))
         ..headers.addAll(headers)
@@ -130,7 +133,7 @@ class AuthNetworkApiService {
 
       if (file != null) {
         request.files.add(await http.MultipartFile.fromPath(
-          'image',
+          'profile_image',
           file.path,
           contentType: MediaType('image', 'jpeg'),
         ));
