@@ -678,7 +678,14 @@ class _UserFormSheetState extends State<_UserFormSheet> {
         _password.text.isEmpty ? null : _password.text,
         _image,
       );
-      if (mounted) Navigator.pop(context);
+      // Wait for any flushbar/snackbar route to finish its own pop before
+      // we attempt to close the bottom sheet. Without this delay the
+      // navigator assertion fires because another_flushbar is still in the
+      // middle of its own route lifecycle.
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
