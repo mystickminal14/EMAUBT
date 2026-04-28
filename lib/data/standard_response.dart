@@ -143,7 +143,6 @@ Map<String, dynamic> normalizeApiResponse(dynamic body, int statusCode) {
   return {'success': false, 'message': message};
 }
 
-/// Human-readable fallback for each status code.
 String _defaultMessage(int code) {
   switch (code) {
     case 400: return 'Bad request';
