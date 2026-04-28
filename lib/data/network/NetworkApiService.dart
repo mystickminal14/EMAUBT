@@ -60,7 +60,7 @@ class NetworkApiService extends BaseApiServices {
       final headers = await _getHeaders();
       final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 15));
       if (kDebugMode) {
-        _logger.i('GET $url: ${response.statusCode}');
+        _logger.i('GET $url: ${response.statusCode} ${response.body}');
       }
       return _returnResponse(response);
     } on SocketException {
@@ -150,7 +150,7 @@ class NetworkApiService extends BaseApiServices {
 
       if (file != null) {
         request.files.add(await http.MultipartFile.fromPath(
-          'icon',
+          'profile_image',
           file.path,
           contentType: MediaType('image', 'jpeg'),
         ));
@@ -377,11 +377,14 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future getPutResponse(String url, dynamic data) async {
     try {
+      if (kDebugMode) {
+        _logger.i('PUT $url: $data');
+      }
       final headers = await _getHeaders();
       final response = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(data))
           .timeout(const Duration(seconds: 15));
       if (kDebugMode) {
-        _logger.i('PUT $url: ${response.statusCode}');
+        _logger.i('PUT $url: ${response.statusCode} ${response.body}');
       }
       return _returnResponse(response);
     } on SocketException {

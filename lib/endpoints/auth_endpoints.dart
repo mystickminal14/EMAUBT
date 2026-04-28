@@ -7,4 +7,3 @@ class AuthEndpoints{
   static var resetPassword = '${BaseUrl.baseUrl}/auth/reset-password';
   static var forgetPassword = '${BaseUrl.baseUrl}/auth/forget-password';
 }
-""
