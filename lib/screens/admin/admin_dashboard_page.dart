@@ -1,6 +1,7 @@
 import 'package:ema_app/screens/admin/add_edit_delete_admins.dart';
 import 'package:ema_app/give_access_page.dart';
 import 'package:ema_app/free_quiz_and_files_page.dart';
+import 'package:ema_app/screens/admin/folder_management_v2.dart';
 import 'package:ema_app/screens/admin/user_management_v2.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
@@ -97,6 +98,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ),
               );
             }),
+            _buildDashboardButton(
+                context, Icons.admin_panel_settings, "Manage Folders",
+                    () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const FolderManagementScreen()),
+                  );
+                }),
             _buildDashboardButton(context, Icons.folder_open, "Folders", () {
               Navigator.push(
                 context,

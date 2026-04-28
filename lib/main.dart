@@ -4,6 +4,7 @@ import 'package:ema_app/view_model/access_view_model.dart';
 import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
 import 'package:ema_app/view_model/folders/files_view_model.dart';
 import 'package:ema_app/view_model/folders/folder_view_model.dart';
+import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/folders/free_files_view_model.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_detail_view_model.dart';
@@ -66,6 +67,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => UserManagementViewModel()),
+        ChangeNotifierProvider(create: (_) => UpdatedFolderViewModel()),
+
         ChangeNotifierProvider(create: (_) => ManageUserViewModel()),
         ChangeNotifierProvider(create: (_) => NoticeManagementViewModel()),
         ChangeNotifierProvider(create: (_) => FreeAccessViewModel()),
