@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/data/standard_response.dart';
 import 'package:logger/logger.dart';
 
 class UserFolderViewModel with ChangeNotifier {
@@ -20,7 +21,8 @@ class UserFolderViewModel with ChangeNotifier {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['status'] == "success") {
+        final normalizedResponse = normalizeApiResponse(data, response.statusCode);
+        if (normalizedResponse['success'] == true) {
           List<Map<String, dynamic>> allFiles =
               List<Map<String, dynamic>>.from(data['data']).map((file) {
             file['id'] = int.parse(file['id'].toString());
@@ -44,7 +46,7 @@ class UserFolderViewModel with ChangeNotifier {
           files = allFiles;
           notifyListeners();
         } else {
-          throw Exception('Failed to fetch files: ${data['message']}');
+          throw Exception('Failed to fetch files: ${normalizedResponse['message']}');
         }
       } else {
         throw Exception('Server error while fetching files');
@@ -62,7 +64,8 @@ class UserFolderViewModel with ChangeNotifier {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['status'] == "success") {
+        final normalizedResponse = normalizeApiResponse(data, response.statusCode);
+        if (normalizedResponse['success'] == true) {
           List<Map<String, dynamic>> allQuizSets =
               List<Map<String, dynamic>>.from(data['data']).map((quizSet) {
             quizSet['id'] = int.parse(quizSet['id'].toString());
@@ -91,7 +94,7 @@ class UserFolderViewModel with ChangeNotifier {
           quizSets = allQuizSets;
           notifyListeners();
         } else {
-          throw Exception('Failed to fetch quiz sets: ${data['message']}');
+          throw Exception('Failed to fetch quiz sets: ${normalizedResponse['message']}');
         }
       } else {
         throw Exception('Server error while fetching quiz sets');
@@ -109,7 +112,8 @@ class UserFolderViewModel with ChangeNotifier {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['status'] == "success" && data['data'] != null) {
+        final normalizedResponse = normalizeApiResponse(data, response.statusCode);
+        if (normalizedResponse['success'] == true && data['data'] != null) {
           return data['data']['file_path'];
         }
       }

@@ -1,5 +1,6 @@
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/model/notice_model.dart';
+import 'package:ema_app/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:ema_app/constants/base_url.dart';
@@ -59,12 +60,12 @@ class NoticeManagementViewModel extends ChangeNotifier {
       } else {
         notices = [];
         _filterNotices();
-        _showErrorMessage(context, 'Failed to fetch notices');
+        Utils.showApiResponse(Utils.errorResponse('Failed to fetch notices'), context);
       }
     } catch (e) {
       notices = [];
       _filterNotices();
-      _showErrorMessage(context, 'Error fetching notices: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error fetching notices: $e'), context);
     } finally {
       isLoading = false;
       notifyListeners();
@@ -82,7 +83,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
 
   Future<void> addNotice(BuildContext context) async {
     if (title == null || title!.isEmpty) {
-      _showErrorMessage(context, 'Title is required');
+      Utils.showApiResponse(Utils.errorResponse('Title is required'), context);
       return;
     }
 
@@ -104,18 +105,13 @@ class NoticeManagementViewModel extends ChangeNotifier {
         fieldName: 'files[]',
       );
 
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context, 'Notice added successfully');
         clearFields();
         await fetchNotices(context);
-      } else {
-        _showErrorMessage(
-          context,
-          'Failed to add notice: ${response['message'] ?? 'Unknown error'}',
-        );
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error adding notice: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error adding notice: $e'), context);
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -124,7 +120,7 @@ class NoticeManagementViewModel extends ChangeNotifier {
 
   Future<void> editNotice(BuildContext context, NoticeModel notice) async {
     if (title == null || title!.isEmpty) {
-      _showErrorMessage(context, 'Title is required');
+      Utils.showApiResponse(Utils.errorResponse('Title is required'), context);
       return;
     }
 
@@ -147,18 +143,13 @@ class NoticeManagementViewModel extends ChangeNotifier {
         fieldName: 'files[]',
       );
 
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context, 'Notice updated successfully');
         clearFields();
         await fetchNotices(context);
-      } else {
-        _showErrorMessage(
-          context,
-          'Failed to update notice: ${response['message'] ?? 'Unknown error'}',
-        );
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error updating notice: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error updating notice: $e'), context);
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -174,17 +165,12 @@ class NoticeManagementViewModel extends ChangeNotifier {
         '${BaseUrl.baseUrl}notices.php?id=${Uri.encodeQueryComponent(notice.id!)}',
       );
 
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _showSuccessMessage(context, 'Notice deleted successfully');
         await fetchNotices(context);
-      } else {
-        _showErrorMessage(
-          context,
-          'Failed to delete notice: ${response['message'] ?? 'Unknown error'}',
-        );
       }
     } catch (e) {
-      _showErrorMessage(context, 'Error deleting notice: $e');
+      Utils.showApiResponse(Utils.errorResponse('Error deleting notice: $e'), context);
     } finally {
       isActionLoading = false;
       notifyListeners();

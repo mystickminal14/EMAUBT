@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/data/standard_response.dart';
 
 
 class GrantAccessFilesViewModel extends ChangeNotifier {
@@ -46,15 +47,18 @@ class GrantAccessFilesViewModel extends ChangeNotifier {
           throw Exception('Empty response from server');
         }
 
-        final data = fetchallFilesModel.fromJson(jsonDecode(response.body));
-        if (data.status == "success") {
+        final responseData = jsonDecode(response.body);
+        final normalizedResponse = normalizeApiResponse(responseData, response.statusCode);
+
+        if (normalizedResponse['success'] == true) {
+          final data = fetchallFilesModel.fromJson(responseData);
           files = data.data ?? [];
           for (var file in files) {
             _selectedFiles[file.id!] = false;
           }
           notifyListeners();
         } else {
-          throw Exception('Error fetching files: ${data.message}');
+          throw Exception('Error fetching files: ${normalizedResponse['message']}');
         }
       } else {
         throw Exception('Server error: ${response.statusCode}');
@@ -83,8 +87,11 @@ class GrantAccessFilesViewModel extends ChangeNotifier {
           throw Exception('Empty response from server');
         }
 
-        final data = AllQuizModel.fromJson(jsonDecode(response.body));
-        if (data.status == "success") {
+        final responseData = jsonDecode(response.body);
+        final normalizedResponse = normalizeApiResponse(responseData, response.statusCode);
+
+        if (normalizedResponse['success'] == true) {
+          final data = AllQuizModel.fromJson(responseData);
           List<QuizData> allQuizSets = data.data ?? [];
           allQuizSets.sort((a, b) => a.id!.compareTo(b.id!));
 
@@ -94,7 +101,7 @@ class GrantAccessFilesViewModel extends ChangeNotifier {
           }
           notifyListeners();
         } else {
-          throw Exception('Error fetching quiz sets: ${data.message}');
+          throw Exception('Error fetching quiz sets: ${normalizedResponse['message']}');
         }
       } else {
         throw Exception('Server error: ${response.statusCode}');
@@ -139,12 +146,14 @@ class GrantAccessFilesViewModel extends ChangeNotifier {
           throw Exception('Empty response from server');
         }
 
-        final data = jsonDecode(response.body);
-        if (data['status'] == "success") {
-          accessPermissions = List<Map<String, dynamic>>.from(data['data'] ?? []);
+        final responseData = jsonDecode(response.body);
+        final normalizedResponse = normalizeApiResponse(responseData, response.statusCode);
+
+        if (normalizedResponse['success'] == true) {
+          accessPermissions = List<Map<String, dynamic>>.from(normalizedResponse['data'] ?? []);
           notifyListeners();
         } else {
-          throw Exception('Error fetching access permissions: ${data['message']}');
+          throw Exception('Error fetching access permissions: ${normalizedResponse['message']}');
         }
       } else {
         throw Exception('Server error: ${response.statusCode}');

@@ -1,44 +1,47 @@
 class UserModel {
-  String? fullName;
-  String? email;
-  String? phone;
-  String? password;
-  String? image;
-  bool? success;
-  String? role;
-  String? name;
+  final int? id;
+  final String? fullName;
+  final String? email;
+  final String? phone;
+  final String? image;
+  final String? role;
+  final bool? success;
 
-  UserModel(
-      {this.fullName,
-        this.email,
-        this.phone,
-        this.password,
-        this.image,
-        this.success,
-        this.role,
-        this.name});
+  const UserModel({
+    this.id,
+    this.fullName,
+    this.email,
+    this.phone,
+    this.image,
+    this.role,
+    this.success,
+  });
 
-  UserModel.fromJson(Map<String, dynamic> json) {
-    fullName = json['full_name'];
-    email = json['email'];
-    phone = json['phone'];
-    password = json['password'];
-    image = json['image'];
-    success = json['success'];
-    role = json['role'];
-    name = json['name'];
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Support both flat (legacy) and nested data.user structure
+    final Map<String, dynamic> user =
+    (json['data'] is Map)
+        ? Map<String, dynamic>.from(json['data'])
+        : json;
+
+    return UserModel(
+      id: user['id'] is int
+          ? user['id']
+          : int.tryParse(user['id']?.toString() ?? ''),
+      fullName: user['full_name'] ?? user['name'],
+      email: user['email'],
+      phone: user['phone'],
+      image: user['image'],
+      role: user['role'],
+    );
   }
 
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['full_name'] = this.fullName;
-    data['email'] = this.email;
-    data['phone'] = this.phone;
-    data['password'] = this.password;
-    data['image'] = this.image;
-    data['success'] = this.success;
-    data['role'] = this.role;
-    data['name'] = this.name;
-    return data;
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'full_name': fullName,
+    'email': email,
+    'phone': phone,
+    'image': image,
+    'role': role,
+  };
 }

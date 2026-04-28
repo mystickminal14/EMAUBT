@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/data/standard_response.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -275,16 +276,16 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
       var response = await http.get(Uri.parse(
           '${BaseUrl.baseUrl}folder_details_page.php?action=get_files&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
+      final normalizedResponse = normalizeApiResponse(decodedResponse, response.statusCode);
 
-      if (response.statusCode == 200 &&
-          decodedResponse['status'] == 'success') {
+      if (normalizedResponse['success'] == true && decodedResponse['data'] != null) {
         setState(() {
           files = List<Map<String, dynamic>>.from(decodedResponse['data'])
               .map((file) => {...file, 'id': int.parse(file['id'].toString())})
               .toList();
         });
       } else {
-        print('Failed to fetch files: ${decodedResponse['message']}');
+        print('Failed to fetch files: ${normalizedResponse['message']}');
         // Optionally set an error message specific to this fetch if needed
       }
     } catch (e) {
@@ -297,9 +298,9 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
       var response = await http.get(Uri.parse(
           '${BaseUrl.baseUrl}folder_details_page.php?action=get_quiz_sets&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
+      final normalizedResponse = normalizeApiResponse(decodedResponse, response.statusCode);
 
-      if (response.statusCode == 200 &&
-          decodedResponse['status'] == 'success') {
+      if (normalizedResponse['success'] == true && decodedResponse['data'] != null) {
         setState(() {
           quizSets = List<Map<String, dynamic>>.from(decodedResponse['data'])
               .map((quizSet) =>
@@ -307,7 +308,7 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
               .toList();
         });
       } else {
-        print('Failed to fetch quiz sets: ${decodedResponse['message']}');
+        print('Failed to fetch quiz sets: ${normalizedResponse['message']}');
       }
     } catch (e) {
       print('Error fetching quiz sets: $e');
@@ -320,9 +321,9 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
       var response = await http.get(Uri.parse(
           '${BaseUrl.baseUrl}give_access_to_login_users.php?action=get_granted_access_items&folder_id=${widget.folderId}'));
       var decodedResponse = jsonDecode(response.body);
+      final normalizedResponse = normalizeApiResponse(decodedResponse, response.statusCode);
 
-      if (response.statusCode == 200 &&
-          decodedResponse['status'] == 'success') {
+      if (normalizedResponse['success'] == true && decodedResponse['data'] != null) {
         setState(() {
           grantedAccessItems = List<Map<String, dynamic>>.from(
                   decodedResponse['data'])
@@ -337,9 +338,9 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
         });
       } else {
         print(
-            'Failed to fetch granted access items: ${decodedResponse['message']}');
+            'Failed to fetch granted access items: ${normalizedResponse['message']}');
         // setState(() { // Optionally handle the error message specifically for this fetch
-        //   _errorMessage = "Error fetching granted access items: ${decodedResponse['message']}";
+        //   _errorMessage = "Error fetching granted access items: ${normalizedResponse['message']}";
         // });
       }
     } catch (e) {
@@ -365,15 +366,19 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
       }
 
       var decodedResponse = jsonDecode(response.body);
+      final normalizedResponse = normalizeApiResponse(decodedResponse, response.statusCode);
 
-      if (decodedResponse['status'] == 'success') {
+      if (normalizedResponse['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Access granted successfully')),
+          SnackBar(
+            content: Text(normalizedResponse['message'] ?? 'Access granted successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
         // Re-fetch content after granting access to update the lists
         _fetchContent();
       } else {
-        throw Exception(decodedResponse['message'] ?? 'Unknown error');
+        throw Exception(normalizedResponse['message'] ?? 'Unknown error');
       }
     } on TimeoutException {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -414,15 +419,19 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
       }
 
       var decodedResponse = jsonDecode(response.body);
+      final normalizedResponse = normalizeApiResponse(decodedResponse, response.statusCode);
 
-      if (decodedResponse['status'] == 'success') {
+      if (normalizedResponse['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Access revoked successfully')),
+          SnackBar(
+            content: Text(normalizedResponse['message'] ?? 'Access revoked successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
         // Re-fetch content after revoking access to update the lists
         _fetchContent();
       } else {
-        throw Exception(decodedResponse['message'] ?? 'Unknown error');
+        throw Exception(normalizedResponse['message'] ?? 'Unknown error');
       }
     } on TimeoutException {
       ScaffoldMessenger.of(context).showSnackBar(

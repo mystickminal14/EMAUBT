@@ -1,6 +1,7 @@
 import 'package:ema_app/screens/admin/add_edit_delete_admins.dart';
 import 'package:ema_app/give_access_page.dart';
 import 'package:ema_app/free_quiz_and_files_page.dart';
+import 'package:ema_app/screens/admin/user_management_v2.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
@@ -103,14 +104,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               );
             }),
             _buildDashboardButton(
-                context, Icons.admin_panel_settings, "Add/Edit/Delete Admins",
+                context, Icons.admin_panel_settings, "User Management",
                 () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const AddEditDeleteAdminsPage()),
+                    builder: (context) => const UserManagementScreen()),
               );
             }),
+            _buildDashboardButton(context, Icons.group, "Add/Edit/Delete Users",
+                    () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const AddEditDeleteUsersPage()),
+                  );
+                }),
             _buildDashboardButton(context, Icons.group, "Add/Edit/Delete Users",
                 () {
               Navigator.push(

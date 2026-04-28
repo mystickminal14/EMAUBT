@@ -35,7 +35,7 @@ class QuizSetsViewModel extends ChangeNotifier {
       final response =
       await _apiService.getApiResponse(url).timeout(const Duration(seconds: 15));
 
-      if (response is Map<String, dynamic> && response['status'] == 'success') {
+      if (response['success'] == true && response['data'] != null) {
         final quizSetModel = QuizSetModel.fromJson(response);
         quizSets = quizSetModel.data;
         _logger.i("Fetched ${quizSets.length} quiz sets for folder $folderId");
@@ -88,10 +88,11 @@ class QuizSetsViewModel extends ChangeNotifier {
       )
           .timeout(const Duration(seconds: 15));
 
-      if (response['status'] == 'success') {
-        _showSuccessMessage(context, response['message'] ?? 'Quiz set added successfully');
+      if (response['success'] == true) {
+        Utils.showApiResponse(response, context);
         await fetchQuizSets(folderId);
       } else {
+        Utils.showApiResponse(response, context);
         throw Exception(response['message'] ?? 'Failed to add quiz set');
       }
     } catch (e, stack) {
@@ -139,10 +140,11 @@ class QuizSetsViewModel extends ChangeNotifier {
       )
           .timeout(const Duration(seconds: 15));
 
-      if (response['status'] == 'success') {
-        _showSuccessMessage(context, response['message'] ?? 'Quiz set updated successfully');
+      if (response['success'] == true) {
+        Utils.showApiResponse(response, context);
         await fetchQuizSets(folderId);
       } else {
+        Utils.showApiResponse(response, context);
         throw Exception(response['message'] ?? 'Failed to edit quiz set');
       }
     } catch (e, stack) {
@@ -172,10 +174,11 @@ class QuizSetsViewModel extends ChangeNotifier {
       )
           .timeout(const Duration(seconds: 15));
 
-      if (response['status'] == 'success') {
-        _showSuccessMessage(context, response['message'] ?? 'Quiz set deleted successfully');
+      if (response['success'] == true) {
+        Utils.showApiResponse(response, context);
         await fetchQuizSets(folderId);
       } else {
+        Utils.showApiResponse(response, context);
         throw Exception(response['message'] ?? 'Failed to delete quiz set');
       }
     } catch (e, stack) {

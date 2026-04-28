@@ -3,28 +3,65 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:ema_app/data/api_exception.dart';
 import 'package:ema_app/data/network/BaseApiService.dart';
+import 'package:ema_app/data/standard_response.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:logger/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NetworkApiService extends BaseApiServices {
   final Logger _logger = Logger();
 
-  Map<String, String> _getHeaders() {
-    return {
+  Future<Map<String, String>> _getHeaders() async {
+    final SharedPreferences sp = await SharedPreferences.getInstance();
+    final String? session = sp.getString('session');
+
+    if (kDebugMode) {
+      if (session == null) {
+        print('❌ Session NOT found in SharedPreferences');
+      } else if (session.isEmpty) {
+        print('⚠️ Session is EMPTY');
+      } else {
+        print('✅ Session found: $session');
+      }
+    }
+
+    final headers = {
       HttpHeaders.contentTypeHeader: 'application/json',
       HttpHeaders.acceptHeader: 'application/json',
     };
+
+    if (session != null && session.isNotEmpty) {
+      headers['Cookie'] = 'EMA_SESSION=$session';
+
+      if (kDebugMode) {
+        print('🍪 Cookie header added: EMA_SESSION=$session');
+      }
+    } else {
+      if (kDebugMode) {
+        print('🚫 No session added to headers');
+      }
+    }
+
+    if (kDebugMode) {
+      print('📦 Final headers: $headers');
+    }
+
+    return headers;
   }
+
 
   @override
   Future getApiResponse(String url) async {
     try {
-      final response = await http.get(Uri.parse(url), headers: _getHeaders()).timeout(const Duration(seconds: 15));
-      _logger.i('GET $url: ${response.statusCode}');
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 15));
+      if (kDebugMode) {
+        _logger.i('GET $url: ${response.statusCode} ${response.body}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -35,9 +72,28 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future getPostApiResponse(String url, dynamic body) async {
     try {
-      final response = await http.post(Uri.parse(url), headers: _getHeaders(), body: jsonEncode(body))
+      final headers = await _getHeaders();
+
+      if (kDebugMode) {
+        _logger.i('REQUEST → $url');
+        _logger.i('REQUEST HEADERS → $headers');
+        _logger.i('REQUEST BODY → $body');
+      }
+
+      final response = await http
+          .post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
+      )
           .timeout(const Duration(seconds: 15));
-      _logger.i('POST $url: ${response.statusCode}');
+
+      if (kDebugMode) {
+        _logger.i('RESPONSE STATUS → ${response.statusCode}');
+        _logger.i('RESPONSE HEADERS → ${response.headers}');
+        _logger.i('RESPONSE BODY → ${response.body}');
+      }
+
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -53,37 +109,48 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Form-data POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Form-data POST $url: ${response.statusCode}');
+      }
 
-      if (response.body.isEmpty) return {};
+      if (response.body.isEmpty) {
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'message': 'Operation successful', 'data': {}};
+        }
+        return {'success': false, 'message': 'Empty response from server'};
+      }
 
       dynamic responseBody;
       try {
         responseBody = jsonDecode(response.body);
       } on FormatException catch (e, stack) {
-        _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
-        throw FormatException('Invalid JSON response from server');
+        if (kDebugMode) {
+          _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
+        }
+        return {'success': false, 'message': 'Invalid JSON response from server'};
       }
 
-      if (response.statusCode == 200 || response.statusCode == 201) return responseBody;
-      throw FetchDataException('Error communicating with server. Status code: ${response.statusCode}');
+      return normalizeApiResponse(responseBody, response.statusCode);
     } on SocketException {
       Utils.noInternet('No internet connection');
-      throw FetchDataException("No internet Connection");
+      return {'success': false, 'message': 'No internet connection'};
     }
   }
 
   @override
   Future postMultipartResponse(String url, Map<String, dynamic> fields, File? file) async {
     try {
-      _logger.d(fields);
+      if (kDebugMode) {
+        _logger.d(fields);
+      }
+      final headers = await _getHeaders();
       var request = http.MultipartRequest('POST', Uri.parse(url));
-      request.headers.addAll(_getHeaders());
+      request.headers.addAll(headers);
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
 
       if (file != null) {
         request.files.add(await http.MultipartFile.fromPath(
-          'icon',
+          'profile_image',
           file.path,
           contentType: MediaType('image', 'jpeg'),
         ));
@@ -91,7 +158,9 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Multipart POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Multipart POST $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -110,8 +179,9 @@ class NetworkApiService extends BaseApiServices {
         String? iconName,
       }) async {
     try {
+      final headers = await _getHeaders();
       var request = http.MultipartRequest('POST', Uri.parse(url));
-      request.headers.addAll(_getHeaders());
+      request.headers.addAll(headers);
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
 
       if (mainFilePath != null || mainFileBytes != null) {
@@ -152,7 +222,9 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Files Multipart POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Files Multipart POST $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -167,8 +239,9 @@ class NetworkApiService extends BaseApiServices {
         required String fieldName,
       }) async {
     try {
+      final headers = await _getHeaders();
       var request = http.MultipartRequest('POST', Uri.parse(url));
-      request.headers.addAll(_getHeaders());
+      request.headers.addAll(headers);
       request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
 
       if (files != null && files.isNotEmpty) {
@@ -193,7 +266,9 @@ class NetworkApiService extends BaseApiServices {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      _logger.i('Notice Multipart POST $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('Notice Multipart POST $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -273,44 +348,44 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
-  dynamic _returnResponse(http.Response response) {
+  Map<String, dynamic> _returnResponse(http.Response response) {
     if (response.body.isEmpty) {
-      _logger.w('Empty response from server for ${response.request?.url}');
-      return {};
+      if (kDebugMode) {
+        _logger.w('Empty response from server for ${response.request?.url}');
+      }
+      // Return empty success response for empty body with success status
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'message': 'Operation successful', 'data': {}};
+      }
+      return {'success': false, 'message': 'Empty response from server'};
     }
 
     dynamic responseBody;
     try {
       responseBody = jsonDecode(response.body);
     } on FormatException catch (e, stack) {
-      _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
-      throw FormatException('Invalid JSON response from server');
+      if (kDebugMode) {
+        _logger.e('⛔ Invalid JSON response from server: ${response.body}', error: e, stackTrace: stack);
+      }
+      return {'success': false, 'message': 'Invalid JSON response from server'};
     }
-    switch (response.statusCode) {
-      case 200:
-      case 201:
-        return responseBody;
-      case 400:
-        throw BadRequestException(responseBody['message'] ?? 'Bad Request');
-      case 401:
-        throw UnAuthorizeException(responseBody['message'] ?? 'Unauthorized');
-      case 403:
-        throw NoDataException(responseBody['message'] ?? 'Not Found');
-      case 404:
-        throw NoDataException(responseBody['message'] ?? 'Not Found');
-      case 500:
-        throw FetchDataException(responseBody['message'] ?? 'Internal Server Error');
-      default:
-        throw FetchDataException('Error communicating with server. Status code: ${response.statusCode}');
-    }
+
+    // Normalize response to standard format
+    return normalizeApiResponse(responseBody, response.statusCode);
   }
 
   @override
   Future getPutResponse(String url, dynamic data) async {
     try {
-      final response = await http.put(Uri.parse(url), headers: _getHeaders(), body: jsonEncode(data))
+      if (kDebugMode) {
+        _logger.i('PUT $url: $data');
+      }
+      final headers = await _getHeaders();
+      final response = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(data))
           .timeout(const Duration(seconds: 15));
-      _logger.i('PUT $url: ${response.statusCode}');
+      if (kDebugMode) {
+        _logger.i('PUT $url: ${response.statusCode} ${response.body}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');
@@ -321,8 +396,11 @@ class NetworkApiService extends BaseApiServices {
   @override
   Future getDeleteApiResponse(String url) async {
     try {
-      final response = await http.delete(Uri.parse(url), headers: _getHeaders());
-      _logger.i('DELETE $url: ${response.statusCode}');
+      final headers = await _getHeaders();
+      final response = await http.delete(Uri.parse(url), headers:headers);
+      if (kDebugMode) {
+        _logger.i('DELETE $url: ${response.statusCode}');
+      }
       return _returnResponse(response);
     } on SocketException {
       Utils.noInternet('No internet connection');

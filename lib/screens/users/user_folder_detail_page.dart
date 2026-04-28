@@ -142,7 +142,7 @@ class _UserFolderDetailsPageState extends State<UserFolderDetailsPage> {
     if (widget.fullName != null || widget.profileImage != null || widget.userEmail != null) {
       user = UserModel(
         email: widget.userEmail ?? user?.email ?? '',
-        name: widget.fullName ?? user?.name ?? '',
+        fullName: widget.fullName ?? user?.fullName ?? '',
         role: user?.role ?? '',
         image: widget.profileImage ?? user?.image ?? '',
         success: true,

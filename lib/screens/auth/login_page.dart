@@ -1,4 +1,4 @@
-import 'package:ema_app/view_model/user_view_model/auth_view_model.dart';
+import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'register_page.dart';
@@ -21,8 +21,8 @@ class _LoginPageState extends State<LoginPage> {
     FocusScope.of(context).unfocus();
     if (_formKey.currentState?.validate() ?? false) {
       final body = {
-        'email': _emailController.text.trim(),
-        'password': _passwordController.text.trim(),
+        "email": _emailController.text.trim(),
+        "password": _passwordController.text.trim(),
       };
       Provider.of<AuthViewModel>(context, listen: false).login(body, context);
     }

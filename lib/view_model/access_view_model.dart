@@ -94,8 +94,8 @@ class GiveAccessViewModel extends ChangeNotifier {
   Future<void> fetchFiles() async {
     try {
       final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}folder_details_page.php?action=get_all_files');
-      final filesModel = fetchallFilesModel.fromJson(response);
-      if (filesModel.status == "success" && filesModel.data != null) {
+      if (response['success'] == true && response['data'] != null) {
+        final filesModel = fetchallFilesModel.fromJson(response);
         _files = filesModel.data!.map((file) {
           return FilesData(
             id: file.id,
@@ -115,8 +115,8 @@ class GiveAccessViewModel extends ChangeNotifier {
   Future<void> fetchQuizSets() async {
     try {
       final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}folder_details_page.php?action=get_all_quiz_sets');
-      final quizModel = AllQuizModel.fromJson(response);
-      if (quizModel.status == "success" && quizModel.data != null) {
+      if (response['success'] == true && response['data'] != null) {
+        final quizModel = AllQuizModel.fromJson(response);
         _quizSets = quizModel.data!.map((quizSet) {
           return QuizData(
             id: quizSet.id,
@@ -137,8 +137,8 @@ class GiveAccessViewModel extends ChangeNotifier {
   Future<void> fetchGrantedItems() async {
     try {
       final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}grant_file_access.php?action=get_all_permissions');
-      final permissionModel = GetAllPermissionModel.fromJson(response);
-      if (permissionModel.status == "success" && permissionModel.data != null) {
+      if (response['success'] == true && response['data'] != null) {
+        final permissionModel = GetAllPermissionModel.fromJson(response);
         _grantedItems = permissionModel.data!;
         notifyListeners();
       }
@@ -150,8 +150,8 @@ class GiveAccessViewModel extends ChangeNotifier {
   Future<void> fetchActivatedItems() async {
     try {
       final response = await _apiService.getApiResponse('${BaseUrl.baseUrl}grant_file_access.php?action=get_all_activations');
-      final activationModel = GetAllActivation.fromJson(response);
-      if (activationModel.status == "success" && activationModel.data != null) {
+      if (response['success'] == true && response['data'] != null) {
+        final activationModel = GetAllActivation.fromJson(response);
         _activatedItems = activationModel.data!;
         _files = _files.map((file) {
           final isActivated = _activatedItems.any((item) => item.itemId == file.id && item.itemType == 'file');

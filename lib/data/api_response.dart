@@ -1,5 +1,3 @@
-
-
 import 'package:ema_app/data/status.dart';
 
 class ApiResponse<T> {

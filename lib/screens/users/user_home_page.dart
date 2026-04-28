@@ -5,6 +5,7 @@ import 'package:ema_app/screens/users/contactuspage.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/login_user_free_files_quiz_sets.dart';
 import 'package:ema_app/screens/users/user_notices_page.dart';
+import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'dart:io' show Platform;
 
 import 'package:logger/logger.dart';
+import 'package:provider/provider.dart';
 
 class UserHomePage extends StatefulWidget {
   final String fullName;
@@ -65,7 +67,7 @@ class _UserHomePageState extends State<UserHomePage> {
     logg.d('kasdk ${user?.email}');
     if (user != null && user.success == true) {
       setState(() {
-        _cachedFullName = user.name ?? widget.fullName;
+        _cachedFullName = user.fullName ?? widget.fullName;
         _cachedProfileImage = user.image ?? widget.profileImage;
         _cachedUserEmail = user.email ?? widget.userEmail;
       });
@@ -75,13 +77,13 @@ class _UserHomePageState extends State<UserHomePage> {
         _cachedProfileImage = widget.profileImage;
         _cachedUserEmail = widget.userEmail;
       });
-      await _userViewModel.saveUser(UserModel(
-        email: widget.userEmail,
-        name: widget.fullName,
-        role: widget.isAdmin ? 'admin' : 'user',
-        image: widget.profileImage,
-        success: true,
-      ));
+      // await _userViewModel.saveUser(UserModel(
+      //   email: widget.userEmail,
+      //   fullName: widget.fullName,
+      //   role: widget.isAdmin ? 'admin' : 'user',
+      //   image: widget.profileImage,
+      //   success: true,
+      // ));
     }
   }
 
@@ -537,19 +539,7 @@ class _UserHomePageState extends State<UserHomePage> {
     );
 
     if (shouldLogout == true) {
-      await _userViewModel.removeUser(); // clear SharedPreferences safely
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const HomePage(
-            userIdentifier: '',
-            isAdmin: false,
-            fullName: '',
-          ),
-        ),
-            (route) => false,
-      );
+      Provider.of<AuthViewModel>(context, listen: false).logout(context);
     }
   }
 
