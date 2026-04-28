@@ -7,7 +7,8 @@ class UserEndpoints {
   static var registerUser  = '${BaseUrl.baseUrl}/auth/register';
   static var updateUser    = '${BaseUrl.baseUrl}/users/';
   static var deleteUser    = '${BaseUrl.baseUrl}/users/';
-  static var removeAdmin = '${BaseUrl.baseUrl}/admin/revoke/';
-  static var makeAdmin = '${BaseUrl.baseUrl}/admin/grant/';
+  static var removeAdmin = '${BaseUrl.baseUrl}/admin/revoke';
+  static var makeAdmin = '${BaseUrl.baseUrl}/admin/grant';
+  static var changeuserPassword = '${BaseUrl.baseUrl}/admin/change-password';
 
 }

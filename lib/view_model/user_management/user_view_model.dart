@@ -340,30 +340,7 @@ _logger.d(user);
       notifyListeners();
 
       final response = await _apiService
-          .getPostApiResponse('${UserEndpoints.removeAdmin}${user.id}','');
-
-      Utils.showApiResponse(response, context);
-      if (response['success'] == true) {
-        _logger.i('remove ${user.id} admin');
-        await Future.delayed(const Duration(milliseconds: 100));
-        await fetchUsers(context, refresh: true);
-      }
-    } catch (e) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Error removing admin: $e'), context);
-      _logger.e('Remove Admin error: $e');
-    } finally {
-      isActionLoading = false;
-      notifyListeners();
-    }
-  }
-  Future<void> changeUserPassword(BuildContext context, UserModel user) async {
-    try {
-      isActionLoading = true;
-      notifyListeners();
-
-      final response = await _apiService
-          .getPostApiResponse('${UserEndpoints.removeAdmin}${user.id}','');
+          .getPostApiResponse('${UserEndpoints.removeAdmin}',{"user_id":"${user.id}"});
 
       Utils.showApiResponse(response, context);
       if (response['success'] == true) {
@@ -386,8 +363,12 @@ _logger.d(user);
       isActionLoading = true;
       notifyListeners();
 
-      final response = await _apiService
-          .getPostApiResponse('${UserEndpoints.makeAdmin}${user.id}','');
+      final response = await _apiService.getPostApiResponse(
+        UserEndpoints.makeAdmin,
+        {
+          "user_id": user.id
+        },
+      );
 
       Utils.showApiResponse(response, context);
       if (response['success'] == true) {
@@ -399,6 +380,31 @@ _logger.d(user);
       Utils.showApiResponse(
           Utils.errorResponse('Error Make Admin: $e'), context);
       _logger.e('Make Admin error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
+    }
+  }
+  Future<void> changeUserPassword(BuildContext context, dynamic body) async {
+    try {
+      isActionLoading = true;
+      notifyListeners();
+
+      final response = await _apiService.getPostApiResponse(
+        UserEndpoints.changeuserPassword,
+        body
+      );
+
+      Utils.showApiResponse(response, context);
+      if (response['success'] == true) {
+        _logger.i('Change user password of ${body['user_id']} ');
+        await Future.delayed(const Duration(milliseconds: 100));
+        await fetchUsers(context, refresh: true);
+      }
+    } catch (e) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Error change user password: $e'), context);
+      _logger.e('change user password error: $e');
     } finally {
       isActionLoading = false;
       notifyListeners();

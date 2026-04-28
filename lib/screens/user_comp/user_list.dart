@@ -1,6 +1,7 @@
 import 'package:ema_app/screens/user_comp/user_card.dart';
 import 'package:ema_app/screens/user_comp/user_form_sheet.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
+import 'package:ema_app/screens/user_comp/user_password_form.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ema_app/model/user_model.dart';
@@ -47,6 +48,7 @@ class UserList extends StatelessWidget {
             return UserCard(
               user: user,
               index: i,
+              changePassword:()=> _showChangePasswordSheet(context,vm,user),
               makeAdmin: ()=>_makeAdmin(context, vm, user),
               removeAdmin: ()=> _removeAdmin(context, vm, user),
               onEdit: () => _showEditSheet(context, vm, user),
@@ -75,6 +77,22 @@ class UserList extends StatelessWidget {
               password: password,
               image: image);
           await vm.editUser(context, user);
+        },
+      ),
+    );
+  }
+  void _showChangePasswordSheet(
+      BuildContext context, ManageUserViewModel vm, UserModel user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => UserPasswordSheet(
+        onSubmit: (password) async {
+          vm.setFields(
+              password: password,
+             );
+          await vm.changeUserPassword(context,{"user_id":user.id,"password":password});
         },
       ),
     );

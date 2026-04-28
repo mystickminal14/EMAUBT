@@ -5,6 +5,7 @@ import 'package:ema_app/model/user_model.dart';
 class UserCard extends StatelessWidget {
   final UserModel user;
   final int index;
+  final VoidCallback changePassword;
   final VoidCallback makeAdmin;
   final VoidCallback removeAdmin;
   final VoidCallback onEdit;
@@ -14,6 +15,7 @@ class UserCard extends StatelessWidget {
     super.key,
     required this.user,
     required this.index,
+    required this.changePassword,
     required this.removeAdmin,
     required this.makeAdmin,
     required this.onEdit,
@@ -57,7 +59,7 @@ class UserCard extends StatelessWidget {
               RoleBadge(isAdmin: isAdmin),
             ],
           ),
-          trailing: CardMenu(user: user,removeAdmin: removeAdmin,makeAdmin: makeAdmin, onEdit: onEdit, onDelete: onDelete),
+          trailing: CardMenu(user: user,changePassword: changePassword,removeAdmin: removeAdmin,makeAdmin: makeAdmin, onEdit: onEdit, onDelete: onDelete),
         ),
       ),
     );
@@ -117,12 +119,13 @@ class RoleBadge extends StatelessWidget {
 // ─── Popup Menu ───────────────────────────────────────────────────────────────
 class CardMenu extends StatelessWidget {
   final UserModel user;
+  final VoidCallback changePassword;
   final VoidCallback makeAdmin;
   final VoidCallback removeAdmin;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const CardMenu({super.key,required this.user, required this.makeAdmin, required this.removeAdmin, required this.onEdit, required this.onDelete});
+  const CardMenu({super.key,required this.user,required this.changePassword, required this.makeAdmin, required this.removeAdmin, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +133,7 @@ class CardMenu extends StatelessWidget {
       icon: const Icon(Icons.more_vert_rounded, color: UMTheme.textSub),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (v) {
+        if(v == "change_password") changePassword();
         if(v=='make_admin') makeAdmin();
         if(v == 'remove_admin') removeAdmin();
         if (v == 'edit') onEdit();
