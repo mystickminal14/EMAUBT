@@ -1,4 +1,5 @@
 import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
+import 'package:ema_app/screens/admin/folder_detail_screen.dart';
 import 'package:ema_app/screens/folder_comp/folder_card.dart';
 import 'package:ema_app/screens/folder_comp/folder_form_sheet.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
@@ -48,6 +49,11 @@ class FolderList extends StatelessWidget {
             return FolderCard(
               folder: folder,
               index: i,
+              onTap: ()=>{
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => FolderDetailScreen(folder: folder),
+                ))
+              },
               onEdit: () => _showEditSheet(context, vm, folder),
               onDelete: () => _confirmDelete(context, vm, folder),
             );

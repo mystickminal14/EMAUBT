@@ -113,7 +113,7 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
                 builder: (_, vm, __) {
                   // Priority: newly picked bytes > existing base64 from API
                   final Uint8List? previewBytes = vm.selectedIconBytes;
-                  final String? existingBase64 = widget.existing?.icon;
+                  final String? existingBase64 = widget.existing?.iconPath;
 
                   return Center(
                     child: Column(

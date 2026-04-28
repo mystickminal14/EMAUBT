@@ -1,5 +1,5 @@
-import 'dart:convert';
-import 'dart:typed_data';
+
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:flutter/material.dart';
@@ -35,7 +35,7 @@ class FolderCard extends StatelessWidget {
           child: ListTile(
             contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            leading: _FolderIconBox(iconBase64: folder.icon),
+            leading: _FolderIconBox(iconBase64: folder.iconPath),
             title: Text(
               folder.name ?? '—',
               style: FolderTheme.cardTitle,
@@ -52,6 +52,12 @@ class FolderCard extends StatelessWidget {
                     color: FolderTheme.textSub,
                   ),
                   const SizedBox(width: 4),
+                  Text(
+                    folder.fileCount != null
+                        ? '${folder.fileCount} file${folder.fileCount == 1 ? '' : 's'}'
+                        : 'No files',
+                    style: FolderTheme.cardSubtitle,
+                  ),
                 ],
               ),
             ),
@@ -84,31 +90,25 @@ class _FolderIconBox extends StatelessWidget {
     final raw = iconBase64;
 
     if (raw == null || raw.isEmpty) {
+      debugPrint("📁 No icon, using fallback");
       return const _FallbackIcon();
     }
 
-    // URL path
-    if (raw.startsWith('http')) {
-      return Image.network(
-        raw,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const _FallbackIcon(),
-      );
-    }
+    final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
 
-    // Base64 string
-    try {
-      final Uint8List bytes = base64Decode(raw);
-      return Image.memory(
-        bytes,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const _FallbackIcon(),
-      );
-    } catch (_) {
-      return const _FallbackIcon();
-    }
-  }
-}
+    // 🔥 PRINT IMAGE URL
+    debugPrint("🖼️ Folder Icon URL => $fullUrl");
+
+    return Image.network(
+      fullUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, error, stackTrace) {
+        debugPrint("❌ Image load failed => $fullUrl");
+        debugPrint("Error: $error");
+        return const _FallbackIcon();
+      },
+    );
+  }}
 
 class _FallbackIcon extends StatelessWidget {
   const _FallbackIcon();
