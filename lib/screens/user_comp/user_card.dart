@@ -5,6 +5,8 @@ import 'package:ema_app/model/user_model.dart';
 class UserCard extends StatelessWidget {
   final UserModel user;
   final int index;
+  final VoidCallback makeAdmin;
+  final VoidCallback removeAdmin;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -12,6 +14,8 @@ class UserCard extends StatelessWidget {
     super.key,
     required this.user,
     required this.index,
+    required this.removeAdmin,
+    required this.makeAdmin,
     required this.onEdit,
     required this.onDelete,
   });
@@ -53,7 +57,7 @@ class UserCard extends StatelessWidget {
               RoleBadge(isAdmin: isAdmin),
             ],
           ),
-          trailing: CardMenu(onEdit: onEdit, onDelete: onDelete),
+          trailing: CardMenu(user: user,removeAdmin: removeAdmin,makeAdmin: makeAdmin, onEdit: onEdit, onDelete: onDelete),
         ),
       ),
     );
@@ -112,10 +116,13 @@ class RoleBadge extends StatelessWidget {
 
 // ─── Popup Menu ───────────────────────────────────────────────────────────────
 class CardMenu extends StatelessWidget {
+  final UserModel user;
+  final VoidCallback makeAdmin;
+  final VoidCallback removeAdmin;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const CardMenu({super.key, required this.onEdit, required this.onDelete});
+  const CardMenu({super.key,required this.user, required this.makeAdmin, required this.removeAdmin, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -123,10 +130,49 @@ class CardMenu extends StatelessWidget {
       icon: const Icon(Icons.more_vert_rounded, color: UMTheme.textSub),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (v) {
+        if(v=='make_admin') makeAdmin();
+        if(v == 'remove_admin') removeAdmin();
         if (v == 'edit') onEdit();
         if (v == 'delete') onDelete();
       },
       itemBuilder: (_) => [
+        user.role == "user"
+            ? const PopupMenuItem(
+          value: 'make_admin',
+          child: Row(
+            children: [
+              Icon(Icons.admin_panel_settings_sharp,
+                  size: 18, color: UMTheme.accent),
+              SizedBox(width: 10),
+              Text(
+                'Make Admin',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        )
+            : const PopupMenuItem(
+          value: 'remove_admin',
+          child: Row(
+            children: [
+              Icon(Icons.supervised_user_circle,
+                  size: 18, color: UMTheme.accent),
+              SizedBox(width: 10),
+              Text(
+                'Remove Admin',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'change_password',
+          child: Row(children: [
+            Icon(Icons.password, size: 18, color: UMTheme.accent),
+            SizedBox(width: 10),
+            Text('Change Password', style: TextStyle(fontWeight: FontWeight.w600)),
+          ]),
+        ),
         const PopupMenuItem(
           value: 'edit',
           child: Row(children: [

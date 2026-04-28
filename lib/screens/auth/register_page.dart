@@ -139,19 +139,19 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 15),
 
-                        _imageFile == null
-                            ? ElevatedButton(
-                          onPressed: _pickImage,
-                          child: const Text("Pick an Image"),
-                        )
-                            : GestureDetector(
-                          onTap: _pickImage,
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundImage: FileImage(_imageFile!),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
+                        // _imageFile == null
+                        //     ? ElevatedButton(
+                        //   onPressed: _pickImage,
+                        //   child: const Text("Pick an Image"),
+                        // )
+                        //     : GestureDetector(
+                        //   onTap: _pickImage,
+                        //   child: CircleAvatar(
+                        //     radius: 40,
+                        //     backgroundImage: FileImage(_imageFile!),
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 20),
 
                         TextFormField(
                           controller: _emailController,

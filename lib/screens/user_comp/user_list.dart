@@ -47,6 +47,8 @@ class UserList extends StatelessWidget {
             return UserCard(
               user: user,
               index: i,
+              makeAdmin: ()=>_makeAdmin(context, vm, user),
+              removeAdmin: ()=> _removeAdmin(context, vm, user),
               onEdit: () => _showEditSheet(context, vm, user),
               onDelete: () => _confirmDelete(context, vm, user),
             );
@@ -112,6 +114,80 @@ class UserList extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+  void _removeAdmin(
+      BuildContext context, ManageUserViewModel vm, UserModel user) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Text('Remove Admin',
+            style:
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        content: Text(
+          'Remove the Admin role of this ${user.fullName ?? 'user'} permanently?',
+          style: const TextStyle(color: UMTheme.textSub, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel',
+                style: TextStyle(color: UMTheme.textSub)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              vm.removeAdmin(context, user);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+  void _makeAdmin(
+      BuildContext context, ManageUserViewModel vm, UserModel user) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Text('Make Admin',
+            style:
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        content: Text(
+          'Make the Admin role of this ${user.fullName ?? 'user'} permanently?',
+          style: const TextStyle(color: UMTheme.textSub, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel',
+                style: TextStyle(color: UMTheme.textSub)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              vm.makeAdmin(context, user);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Make'),
           ),
         ],
       ),

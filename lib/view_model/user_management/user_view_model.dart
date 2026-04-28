@@ -334,6 +334,77 @@ _logger.d(user);
     }
   }
 
+  Future<void> removeAdmin(BuildContext context, UserModel user) async {
+    try {
+      isActionLoading = true;
+      notifyListeners();
+
+      final response = await _apiService
+          .getPostApiResponse('${UserEndpoints.removeAdmin}${user.id}','');
+
+      Utils.showApiResponse(response, context);
+      if (response['success'] == true) {
+        _logger.i('remove ${user.id} admin');
+        await Future.delayed(const Duration(milliseconds: 100));
+        await fetchUsers(context, refresh: true);
+      }
+    } catch (e) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Error removing admin: $e'), context);
+      _logger.e('Remove Admin error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
+    }
+  }
+  Future<void> changeUserPassword(BuildContext context, UserModel user) async {
+    try {
+      isActionLoading = true;
+      notifyListeners();
+
+      final response = await _apiService
+          .getPostApiResponse('${UserEndpoints.removeAdmin}${user.id}','');
+
+      Utils.showApiResponse(response, context);
+      if (response['success'] == true) {
+        _logger.i('remove ${user.id} admin');
+        await Future.delayed(const Duration(milliseconds: 100));
+        await fetchUsers(context, refresh: true);
+      }
+    } catch (e) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Error removing admin: $e'), context);
+      _logger.e('Remove Admin error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> makeAdmin(BuildContext context, UserModel user) async {
+    try {
+      isActionLoading = true;
+      notifyListeners();
+
+      final response = await _apiService
+          .getPostApiResponse('${UserEndpoints.makeAdmin}${user.id}','');
+
+      Utils.showApiResponse(response, context);
+      if (response['success'] == true) {
+        _logger.i('Make Admin to  ${user.id} ');
+        await Future.delayed(const Duration(milliseconds: 100));
+        await fetchUsers(context, refresh: true);
+      }
+    } catch (e) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Error Make Admin: $e'), context);
+      _logger.e('Make Admin error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
+    }
+  }
+
   // ── Search / filter ───────────────────────────────────────────────────────
   void searchUsers(String query) {
     _searchQuery = query.trim().toLowerCase();
