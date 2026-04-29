@@ -92,7 +92,7 @@ class UserList extends StatelessWidget {
           vm.setFields(
               password: password,
              );
-          await vm.changeUserPassword(context,{"user_id":user.id,"password":password});
+          await vm.changeUserPassword(context,{"user_id":user.id,"new_password":password});
         },
       ),
     );

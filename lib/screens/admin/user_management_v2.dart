@@ -112,6 +112,19 @@ class _Header extends StatelessWidget {
       child: Consumer<ManageUserViewModel>(
         builder: (_, vm, __) => Row(
           children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: UMTheme.textMain, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                side: const BorderSide(color: UMTheme.border),
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
+            const SizedBox(width: 14),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -122,8 +135,6 @@ class _Header extends StatelessWidget {
                 ),
               ],
             ),
-            const Spacer(),
-            _RefreshButton(),
           ],
         ),
       ),
@@ -131,22 +142,22 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _RefreshButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<ManageUserViewModel>(
-      builder: (_, vm, __) => IconButton(
-        onPressed: vm.isLoading
-            ? null
-            : () => vm.fetchUsers(context, refresh: true),
-        icon: AnimatedRotation(
-          turns: vm.isLoading ? 1 : 0,
-          duration: const Duration(seconds: 1),
-          child: const Icon(Icons.refresh_rounded,
-              color: UMTheme.textSub, size: 22),
-        ),
-        tooltip: 'Refresh',
-      ),
-    );
-  }
-}
+// class _RefreshButton extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Consumer<ManageUserViewModel>(
+//       builder: (_, vm, __) => IconButton(
+//         onPressed: vm.isLoading
+//             ? null
+//             : () => vm.fetchUsers(context, refresh: true),
+//         icon: AnimatedRotation(
+//           turns: vm.isLoading ? 1 : 0,
+//           duration: const Duration(seconds: 1),
+//           child: const Icon(Icons.refresh_rounded,
+//               color: UMTheme.textSub, size: 22),
+//         ),
+//         tooltip: 'Refresh',
+//       ),
+//     );
+//   }
+// }
