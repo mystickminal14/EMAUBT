@@ -47,13 +47,30 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
 
     final vm = context.read<UpdatedFolderViewModel>();
     setState(() => _submitting = true);
+    FocusScope.of(context).unfocus();
+
     try {
       await widget.onSubmit(
         _name.text.trim(),
         vm.selectedIconBase64,
       );
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+      if (mounted) {
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (Navigator.canPop(context)) Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Something went wrong: $e'),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
