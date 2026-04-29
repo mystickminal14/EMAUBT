@@ -1,18 +1,16 @@
 import 'package:ema_app/eps_section_page.dart';
 import 'package:ema_app/model/user_model.dart';
 import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
+import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
-import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/login_user_free_files_quiz_sets.dart';
 import 'package:ema_app/screens/users/user_notices_page.dart';
 import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'dart:io' show Platform;
-
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 
@@ -39,51 +37,49 @@ class UserHomePage extends StatefulWidget {
   });
 
   @override
-  _UserHomePageState createState() => _UserHomePageState();
+  State<UserHomePage> createState() => _UserHomePageState();
 }
 
-class _UserHomePageState extends State<UserHomePage> {
+class _UserHomePageState extends State<UserHomePage>
+    with SingleTickerProviderStateMixin {
   final UserViewModel _userViewModel = UserViewModel();
   String? _cachedFullName;
   String? _cachedProfileImage;
   String? _cachedUserEmail;
 
+  late final AnimationController _fadeCtrl;
+
   @override
   void initState() {
     super.initState();
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
+    _fadeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..forward();
     _loadUser();
   }
 
   Future<void> _loadUser() async {
-    var logg=Logger();
-    logg.d(widget.userIdentifier);
-    logg.d(widget.userEmail);
+    final log = Logger();
+    log.d(widget.userIdentifier);
+    log.d(widget.userEmail);
     final UserModel? user = await _userViewModel.getUser();
-    logg.d('kasdk ${user?.email}');
+    log.d('cached ${user?.email}');
     if (user != null && user.success == true) {
       setState(() {
-        _cachedFullName = user.fullName ?? widget.fullName;
-        _cachedProfileImage = user.image ?? widget.profileImage;
-        _cachedUserEmail = user.email ?? widget.userEmail;
+        _cachedFullName     = user.fullName    ?? widget.fullName;
+        _cachedProfileImage = user.image       ?? widget.profileImage;
+        _cachedUserEmail    = user.email       ?? widget.userEmail;
       });
     } else {
       setState(() {
-        _cachedFullName = widget.fullName;
+        _cachedFullName     = widget.fullName;
         _cachedProfileImage = widget.profileImage;
-        _cachedUserEmail = widget.userEmail;
+        _cachedUserEmail    = widget.userEmail;
       });
-      // await _userViewModel.saveUser(UserModel(
-      //   email: widget.userEmail,
-      //   fullName: widget.fullName,
-      //   role: widget.isAdmin ? 'admin' : 'user',
-      //   image: widget.profileImage,
-      //   success: true,
-      // ));
     }
   }
 
@@ -97,564 +93,612 @@ class _UserHomePageState extends State<UserHomePage> {
         DeviceOrientation.landscapeRight,
       ]);
     }
+    _fadeCtrl.dispose();
     super.dispose();
   }
 
+  // ── Responsive helpers ─────────────────────────────────────────────────────
   ScreenSize _getScreenSize(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < 600) return ScreenSize.small;
-    if (width < 1024) return ScreenSize.medium;
+    final w = MediaQuery.of(context).size.width;
+    if (w < 600) return ScreenSize.small;
+    if (w < 1024) return ScreenSize.medium;
     return ScreenSize.large;
   }
 
-  ResponsiveDimensions _getResponsiveDimensions(BuildContext context) {
-    final screenSize = _getScreenSize(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    switch (screenSize) {
+  ResponsiveDimensions _getDimensions(BuildContext context) {
+    final ss = _getScreenSize(context);
+    final w  = MediaQuery.of(context).size.width;
+    final h  = MediaQuery.of(context).size.height;
+    switch (ss) {
       case ScreenSize.small:
         return ResponsiveDimensions(
-          padding: screenWidth * 0.04,
-          logoHeight: screenHeight * 0.15,
-          logoWidth: screenWidth * 0.6,
-          titleFontSize: screenWidth * 0.045,
-          buttonWidth: screenWidth * 0.42,
-          buttonHeight: screenHeight * 0.12,
-          buttonFontSize: screenWidth * 0.028,
-          iconSize: screenWidth * 0.08,
+          padding: w * 0.04,
+          logoHeight: h * 0.15, logoWidth: w * 0.6,
+          titleFontSize: w * 0.045,
+          buttonWidth: w * 0.42, buttonHeight: h * 0.12,
+          buttonFontSize: w * 0.028, iconSize: w * 0.08,
           crossAxisCount: 2,
-          childAspectRatio: 0.9,
+          childAspectRatio: 0.78, // was 0.85 — taller cards = more breathing room
         );
       case ScreenSize.medium:
         return ResponsiveDimensions(
-          padding: screenWidth * 0.03,
-          logoHeight: screenHeight * 0.18,
-          logoWidth: screenWidth * 0.4,
-          titleFontSize: screenWidth * 0.035,
-          buttonWidth: screenWidth * 0.28,
-          buttonHeight: screenHeight * 0.14,
-          buttonFontSize: screenWidth * 0.022,
-          iconSize: screenWidth * 0.06,
-          crossAxisCount: 3,
-          childAspectRatio: 0.8,
+          padding: w * 0.03,
+          logoHeight: h * 0.18, logoWidth: w * 0.4,
+          titleFontSize: w * 0.035,
+          buttonWidth: w * 0.28, buttonHeight: h * 0.14,
+          buttonFontSize: w * 0.022, iconSize: w * 0.06,
+          crossAxisCount: 3, childAspectRatio: 0.8,
         );
       case ScreenSize.large:
         return ResponsiveDimensions(
-          padding: 24.0,
-          logoHeight: 200.0,
-          logoWidth: 300.0,
-          titleFontSize: 24.0,
-          buttonWidth: 180.0,
-          buttonHeight: 140.0,
-          buttonFontSize: 13.0,
-          iconSize: 32.0,
-          crossAxisCount: 4,
-          childAspectRatio: 1.0,
+          padding: 24, logoHeight: 200, logoWidth: 300,
+          titleFontSize: 24,
+          buttonWidth: 180, buttonHeight: 140,
+          buttonFontSize: 13, iconSize: 32,
+          crossAxisCount: 4, childAspectRatio: 1.0,
         );
     }
   }
 
+  // ── Nav items ──────────────────────────────────────────────────────────────
+  List<_NavItem> _navItems(String cachedEmail) => [
+    _NavItem(
+      icon: Icons.campaign_rounded,
+      label: 'Important\nInformation',
+      color: const Color(0xFF7C6CF7),
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+    ),
+    _NavItem(
+      icon: Icons.file_copy_rounded,
+      label: 'Free Files &\nQuiz Sets',
+      color: const Color(0xFF4F8EF7),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LoginUserFreeFilesQuizSets(
+              userIdentifier: cachedEmail, isAdmin: widget.isAdmin),
+        ),
+      ),
+    ),
+    if (widget.isAdmin || widget.accessedFromAdminDashboard)
+      _NavItem(
+        icon: Icons.admin_panel_settings_rounded,
+        label: 'Admin\nDashboard',
+        color: const Color(0xFF3DB88B),
+        onTap: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminDashboardPage(
+              fullName:     _cachedFullName     ?? widget.fullName,
+              profileImage: _cachedProfileImage ?? widget.profileImage,
+              isAdmin:      widget.isAdmin,
+              userEmail:    cachedEmail,
+            ),
+          ),
+        ),
+      ),
+    _NavItem(
+      icon: Icons.quiz_rounded,
+      label: 'EPS TOPIK\nNew UBT',
+      color: const Color(0xFFF7956C),
+      assetIcon: 'assets/ema.jpg',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EPSSectionPage(
+            userIdentifier: widget.userEmail.isNotEmpty
+                ? widget.userEmail
+                : cachedEmail,
+            isAdmin: widget.isAdmin,
+            fullName: '', profileImage: '',
+            userEmail: '', folderId: null, folderName: '',
+          ),
+        ),
+      ),
+    ),
+    _NavItem(
+      icon: Icons.contact_mail_rounded,
+      label: 'Contact Us',
+      color: const Color(0xFFE06CF7),
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const ContactUsPage())),
+    ),
+    _NavItem(
+      icon: Icons.logout_rounded,
+      label: 'Logout',
+      color: const Color(0xFFE05C5C),
+      onTap: () => _handleLogout(context),
+    ),
+  ];
+
+  // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final dimensions = _getResponsiveDimensions(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final dim         = _getDimensions(context);
+    final cachedEmail = _cachedUserEmail ?? widget.userEmail;
+    final name        = _cachedFullName  ?? widget.fullName;
+    final items       = _navItems(cachedEmail);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Empower Your Future",
-          style: TextStyle(
-            fontSize: _getScreenSize(context) == ScreenSize.small
-                ? screenWidth * 0.045
-                : _getScreenSize(context) == ScreenSize.medium
-                ? screenWidth * 0.03
-                : 20.0,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.teal[700],
-        elevation: 6,
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.teal, Colors.cyanAccent],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+      backgroundColor: UMTheme.surface,
+      drawer: _Drawer(
+        name: name,
+        email: cachedEmail,
+        imageUrl: _cachedProfileImage ?? widget.profileImage,
+        isAdmin: widget.isAdmin,
+        items: items,
       ),
-      drawer: _buildDrawer(context, dimensions),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.grey[100]!, Colors.teal[50]!],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+      body: FadeTransition(
+        opacity: _fadeCtrl,
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(dimensions.padding),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    alignment: Alignment.center,
-                    height: dimensions.logoHeight,
-                    child: Image.asset(
-                      "assets/ema.jpeg",
-                      width: dimensions.logoWidth,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.image_not_supported,
-                          size: dimensions.logoWidth * 0.3,
-                          color: Colors.grey
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
-                  Text(
-                    "Welcome to EMA UBT, ${_cachedFullName ?? widget.fullName}",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal[800],
-                      fontSize: dimensions.titleFontSize,
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.03),
-                  _buildResponsiveButtonGrid(context, dimensions),
-                ],
+          child: CustomScrollView(
+            slivers: [
+              // ── App bar ─────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: _TopBar(name: name, email: cachedEmail,
+                    imageUrl: _cachedProfileImage ?? widget.profileImage),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildResponsiveButtonGrid(BuildContext context, ResponsiveDimensions dimensions) {
-    final screenSize = _getScreenSize(context);
-
-    if (screenSize == ScreenSize.large) {
-      return Container(
-        constraints: const BoxConstraints(maxWidth: 800),
-        child: GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: dimensions.crossAxisCount,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: dimensions.childAspectRatio,
-          children: _buildButtonList(dimensions),
-        ),
-      );
-    } else {
-      return Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 12,
-        runSpacing: 16,
-        children: _buildButtonList(dimensions),
-      );
-    }
-  }
-
-  List<Widget> _buildButtonList(ResponsiveDimensions dimensions) {
-    final cachedEmail = _cachedUserEmail ?? widget.userEmail;
-    return [
-      _buildLargeButton(
-        dimensions,
-        const Icon(Icons.notifications, color: Colors.white),
-        'Important Information',
-        Colors.deepPurple[600]!,
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
-      ),
-      _buildLargeButton(
-        dimensions,
-        const Icon(Icons.file_copy, color: Colors.white),
-        'Free Files & Quiz Sets',
-        Colors.blue[600]!,
-            () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => LoginUserFreeFilesQuizSets(
-              userIdentifier: cachedEmail,
-              isAdmin: widget.isAdmin,
-            ),
-          ),
-        ),
-      ),
-      if (widget.isAdmin || widget.accessedFromAdminDashboard)
-        _buildLargeButton(
-          dimensions,
-          const Icon(Icons.admin_panel_settings, color: Colors.white),
-          'Admin Dashboard',
-          Colors.teal[600]!,
-              () => Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AdminDashboardPage(
-                fullName: _cachedFullName ?? widget.fullName,
-                profileImage: _cachedProfileImage ?? widget.profileImage,
-                isAdmin: widget.isAdmin,
-                userEmail: cachedEmail,
-              ),
-            ),
-          ),
-        ),
-      _buildLargeButton(
-        dimensions,
-        Image.asset(
-          "assets/ema.jpg",
-          width: dimensions.iconSize,
-          height: dimensions.iconSize,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Icon(
-              Icons.image_not_supported,
-              size: dimensions.iconSize,
-              color: Colors.white
-          ),
-        ),
-        'EPS TOPIK NEW UBT SESSION',
-        Colors.green[600]!,
-            () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EPSSectionPage(
-              userIdentifier:widget.userEmail!=''?widget.userEmail:cachedEmail,
-              isAdmin: widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
-            ),
-          ),
-        ),
-      ),
-      _buildLargeButton(
-        dimensions,
-        const Icon(Icons.contact_mail, color: Colors.white),
-        'Contact Us',
-        Colors.red[600]!,
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
-      ),
-      _buildLargeButton(
-        dimensions,
-        const Icon(Icons.logout, color: Colors.white),
-        'Logout',
-        Colors.grey[600]!,
-            () => _handleLogout(context),
-      ),
-    ];
-  }
-
-  Widget _buildDrawer(BuildContext context, ResponsiveDimensions dimensions) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenSize = _getScreenSize(context);
-    final cachedEmail = _cachedUserEmail ?? widget.userEmail;
-
-    return Drawer(
-      width: screenSize == ScreenSize.small
-          ? screenWidth * 0.8
-          : screenSize == ScreenSize.medium
-          ? screenWidth * 0.6
-          : 300,
-      child: Column(
-        children: [
-          DrawerHeader(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.teal[700]!, Colors.cyanAccent]),
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: screenSize == ScreenSize.small
-                        ? 28
-                        : screenSize == ScreenSize.medium
-                        ? 32
-                        : 35,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.account_circle,
-                      size: screenSize == ScreenSize.small
-                          ? 35
-                          : screenSize == ScreenSize.medium
-                          ? 40
-                          : 45,
-                      color: Colors.teal,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Flexible(
-                    child: Text(
-                      "Hello, ${widget.isAdmin ? 'Admin' : 'User'}",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: screenSize == ScreenSize.small
-                            ? 16
-                            : screenSize == ScreenSize.medium
-                            ? 18
-                            : 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Flexible(
-                    child: Text(
-                      cachedEmail,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: screenSize == ScreenSize.small
-                            ? 12
-                            : screenSize == ScreenSize.medium
-                            ? 14
-                            : 16,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildDrawerItem(
-                  context,
-                  dimensions,
-                  const Icon(Icons.notifications, color: Colors.teal),
-                  "Important Information",
-                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
-                ),
-                _buildDrawerItem(
-                  context,
-                  dimensions,
-                  Image.asset(
-                    "assets/ema.jpg",
-                    width: 20,
-                    height: 20,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.image_not_supported,
-                      size: 20,
-                      color: Colors.teal,
-                    ),
-                  ),
-                  "EPS TOPIK NEW UBT SESSION",
-                      () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EPSSectionPage(
-                        userIdentifier: widget.userEmail!=''?widget.userEmail:cachedEmail,
-                        isAdmin: widget.isAdmin, fullName: '', profileImage: '', userEmail: '', folderId: null, folderName: '',
-                      ),
-                    ),
-                  ),
-                ),
-                _buildDrawerItem(
-                  context,
-                  dimensions,
-                  const Icon(Icons.file_copy, color: Colors.teal),
-                  "Free Files & Quiz Sets",
-                      () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LoginUserFreeFilesQuizSets(
-                        userIdentifier: cachedEmail,
-                        isAdmin: widget.isAdmin,
-                      ),
-                    ),
-                  ),
-                ),
-                _buildDrawerItem(
-                  context,
-                  dimensions,
-                  const Icon(Icons.contact_mail, color: Colors.teal),
-                  "Contact Us",
-                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
-                ),
-                if (widget.isAdmin || widget.accessedFromAdminDashboard)
-                  _buildDrawerItem(
-                    context,
-                    dimensions,
-                    const Icon(Icons.admin_panel_settings, color: Colors.teal),
-                    "Admin Dashboard",
-                        () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AdminDashboardPage(
-                          fullName: _cachedFullName ?? widget.fullName,
-                          profileImage: _cachedProfileImage ?? widget.profileImage,
-                          isAdmin: widget.isAdmin,
-                          userEmail: cachedEmail,
+              // ── Logo + welcome ───────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: dim.padding, vertical: 8),
+                  child: Column(
+                    children: [
+                      Container(
+                        height: dim.logoHeight,
+                        alignment: Alignment.center,
+                        child: Image.asset(
+                          'assets/ema.jpeg',
+                          width: dim.logoWidth,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(
+                              Icons.image_not_supported,
+                              size: dim.logoWidth * 0.3,
+                              color: UMTheme.textSub),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Welcome, $name 👋',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: UMTheme.textMain,
+                          fontSize: dim.titleFontSize,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('What would you like to do today?',
+                          style: UMTheme.screenSubtitle),
+                    ],
                   ),
-                _buildDrawerItem(
-                  context,
-                  dimensions,
-                  const Icon(Icons.logout, color: Colors.teal),
-                  "Logout",
-                      () => _handleLogout(context),
                 ),
-              ],
-            ),
+              ),
+
+              // ── Section label ────────────────────────────────────────────
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 20, 20, 10),
+                  child: Text('Quick Access', style: UMTheme.screenTitle),
+                ),
+              ),
+
+              // ── Grid ─────────────────────────────────────────────────────
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                    dim.padding + 4, 0, dim.padding + 4, 40),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                        (_, i) => _AnimatedCard(item: items[i], index: i,
+                        iconSize: dim.iconSize),
+                    childCount: items.length,
+                  ),
+                  gridDelegate:
+                  SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: dim.crossAxisCount,
+                    crossAxisSpacing: dim.crossAxisCount == 2 ? 14 : 16,
+                    mainAxisSpacing:  dim.crossAxisCount == 2 ? 14 : 16,
+                    childAspectRatio: dim.crossAxisCount == 2 ? 1.1 : dim.childAspectRatio,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  void _handleLogout(BuildContext context) async {
-    final shouldLogout = await showDialog<bool>(
+  // ── Logout dialog ──────────────────────────────────────────────────────────
+  Future<void> _handleLogout(BuildContext context) async {
+    final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Logout'),
-        content: const Text('Are you sure you want to logout?'),
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Text('Confirm Logout',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        content: const Text('Are you sure you want to logout?',
+            style: TextStyle(color: UMTheme.textSub, height: 1.5)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel',
+                style: TextStyle(color: UMTheme.textSub)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
             child: const Text('Logout'),
           ),
         ],
       ),
     );
-
-    if (shouldLogout == true) {
+    if (ok == true) {
       Provider.of<AuthViewModel>(context, listen: false).logout(context);
     }
   }
+}
 
-  Widget _buildLargeButton(
-      ResponsiveDimensions dimensions,
-      Widget icon,
-      String text,
-      Color color,
-      VoidCallback onPressed,
-      ) {
-    return SizedBox(
-      width: dimensions.buttonWidth,
-      height: dimensions.buttonHeight,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.all(8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 6,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: dimensions.buttonHeight * 0.4,
-              child: icon is Icon
-                  ? Icon(
-                (icon).icon,
-                size: dimensions.iconSize,
-                color: Colors.white,
-              )
-                  : SizedBox(
-                width: dimensions.iconSize,
-                height: dimensions.iconSize,
-                child: icon,
-              ),
-            ),
-            SizedBox(height: 4),
-            Expanded(
-              child: Container(
-                alignment: Alignment.center,
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: dimensions.buttonFontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    height: 1.1,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+// ─── Top bar ──────────────────────────────────────────────────────────────────
+class _TopBar extends StatelessWidget {
+  final String name;
+  final String email;
+  final String imageUrl;
+
+  const _TopBar({required this.name, required this.email, required this.imageUrl});
+
+  String _initials(String n) {
+    if (n.isEmpty) return 'U';
+    final p = n.trim().split(' ');
+    return p.length == 1
+        ? p[0][0].toUpperCase()
+        : '${p[0][0]}${p.last[0]}'.toUpperCase();
   }
 
-  Widget _buildDrawerItem(
-      BuildContext context,
-      ResponsiveDimensions dimensions,
-      Widget leading,
-      String title,
-      VoidCallback onTap
-      ) {
-    final screenSize = _getScreenSize(context);
-
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
-      child: ListTile(
-        leading: SizedBox(
-          width: 24,
-          height: 24,
-          child: leading,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: screenSize == ScreenSize.small
-                ? 14
-                : screenSize == ScreenSize.medium
-                ? 16
-                : 18,
-            fontWeight: FontWeight.w600,
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(
+        children: [
+          // Hamburger
+          Builder(
+            builder: (ctx) => IconButton(
+              onPressed: () => Scaffold.of(ctx).openDrawer(),
+              icon: const Icon(Icons.menu_rounded,
+                  color: UMTheme.textMain, size: 24),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                side: const BorderSide(color: UMTheme.border),
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        onTap: onTap,
-        tileColor: Colors.white,
-        selectedTileColor: Colors.teal[100],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 8,
-        ),
-        dense: true,
-        visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
-        minLeadingWidth: 36,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('EMA UBT', style: UMTheme.screenTitle),
+                Text('Empower Your Future',
+                    style: UMTheme.screenSubtitle),
+              ],
+            ),
+          ),
+          // Avatar
+          Container(
+            width: 42,
+            height: 42,
+            decoration: UMTheme.avatarDecoration(
+                imageUrl: imageUrl.isNotEmpty ? imageUrl : null),
+            child: imageUrl.isEmpty
+                ? Center(
+                child: Text(_initials(name),
+                    style: const TextStyle(
+                        color: UMTheme.accent,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15)))
+                : null,
+          ),
+        ],
       ),
     );
   }
 }
 
+// ─── Drawer ───────────────────────────────────────────────────────────────────
+class _Drawer extends StatelessWidget {
+  final String name;
+  final String email;
+  final String imageUrl;
+  final bool isAdmin;
+  final List<_NavItem> items;
+
+  const _Drawer({
+    required this.name,
+    required this.email,
+    required this.imageUrl,
+    required this.isAdmin,
+    required this.items,
+  });
+
+  String _initials(String n) {
+    if (n.isEmpty) return 'U';
+    final p = n.trim().split(' ');
+    return p.length == 1
+        ? p[0][0].toUpperCase()
+        : '${p[0][0]}${p.last[0]}'.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: Column(
+        children: [
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
+            decoration: BoxDecoration(
+              color: UMTheme.accent.withOpacity(0.06),
+              border: const Border(
+                  bottom: BorderSide(color: UMTheme.border)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: UMTheme.avatarDecoration(
+                      imageUrl: imageUrl.isNotEmpty ? imageUrl : null),
+                  child: imageUrl.isEmpty
+                      ? Center(
+                      child: Text(_initials(name),
+                          style: const TextStyle(
+                              color: UMTheme.accent,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18)))
+                      : null,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name.isEmpty ? 'User' : name,
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: UMTheme.textMain),
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text(email,
+                          style: UMTheme.cardSubtitle,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isAdmin
+                              ? UMTheme.adminBadgeBg
+                              : UMTheme.userBadgeBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isAdmin ? 'Admin' : 'User',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isAdmin
+                                ? UMTheme.adminBadgeText
+                                : UMTheme.userBadgeText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Nav items
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 12),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              itemBuilder: (_, i) {
+                final item = items[i];
+                return ListTile(
+                  onTap: () {
+                    Navigator.pop(context);
+                    item.onTap();
+                  },
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: item.color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: item.assetIcon != null
+                        ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(item.assetIcon!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                              item.icon,
+                              color: item.color,
+                              size: 18)),
+                    )
+                        : Icon(item.icon, color: item.color, size: 18),
+                  ),
+                  title: Text(
+                    item.label.replaceAll('\n', ' '),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: UMTheme.textMain,
+                    ),
+                  ),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  tileColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  horizontalTitleGap: 10,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Animated grid card ───────────────────────────────────────────────────────
+class _AnimatedCard extends StatelessWidget {
+  final _NavItem item;
+  final int index;
+  final double iconSize;
+
+  const _AnimatedCard(
+      {required this.item, required this.index, required this.iconSize});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 280 + (index.clamp(0, 8) * 45)),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(
+            offset: Offset(0, 20 * (1 - v)), child: child),
+      ),
+      child: _HomeCard(item: item, iconSize: iconSize),
+    );
+  }
+}
+
+class _HomeCard extends StatefulWidget {
+  final _NavItem item;
+  final double iconSize;
+  const _HomeCard({required this.item, required this.iconSize});
+
+  @override
+  State<_HomeCard> createState() => _HomeCardState();
+}
+
+class _HomeCardState extends State<_HomeCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        item.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: UMTheme.border),
+            boxShadow: [
+              BoxShadow(
+                color: item.color.withOpacity(0.10),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Icon
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: item.color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: item.assetIcon != null
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(item.assetIcon!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                          item.icon,
+                          color: item.color,
+                          size: widget.iconSize + 8)),
+                )
+                    : Icon(item.icon, color: item.color, size: widget.iconSize + 8),
+              ),
+              const SizedBox(height: 10),
+              // Label
+              Text(
+                item.label.replaceAll('\n', ' '),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: UMTheme.textMain,
+                  height: 1.3,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Data class ───────────────────────────────────────────────────────────────
+class _NavItem {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String? assetIcon;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.assetIcon,
+    required this.onTap,
+  });
+}
+
+// ─── Enums / responsive models (unchanged) ────────────────────────────────────
 enum ScreenSize { small, medium, large }
 
 class ResponsiveDimensions {
