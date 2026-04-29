@@ -94,6 +94,7 @@ class AuthNetworkApiService {
             email: responseBody['data']['email'],
             image: responseBody['data']['image'],
             fullName: responseBody['data']['full_name'],
+            csrf: responseBody['data']['csrf_token'],
           );
 
           final saved = await UserViewModel().saveUser(user, session: session);

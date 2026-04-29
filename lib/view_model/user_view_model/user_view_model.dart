@@ -14,12 +14,15 @@ class UserViewModel with ChangeNotifier {
       await prefs.setString('session', session ?? '');
 
       if (kDebugMode) {
-        logger.i("💾 SESSION SAVED: ${session}");
+        logger.i("💾 SESSION SAVED: $session");
         logger.i("📧 Email: ${user.email}");
+        logger.i("📧 CSRF: ${user.csrf}");
+
         logger.i("👤 Name: ${user.fullName}");
       }
 
       await prefs.setString('email', user.email ?? '');
+      await prefs.setString('csrf', user.csrf ?? '');
       await prefs.setString('user_name', user.fullName ?? '');
       await prefs.setString('user_role', user.role ?? '');
       await prefs.setString('user_image', user.image ?? '');

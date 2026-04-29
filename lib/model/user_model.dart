@@ -4,6 +4,7 @@ class UserModel {
   final String? email;
   final String? phone;
   final String? image;
+  final String? csrf;
   final String? role;
   final bool? success;
 
@@ -14,7 +15,7 @@ class UserModel {
     this.phone,
     this.image,
     this.role,
-    this.success,
+    this.success, this.csrf,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -30,6 +31,7 @@ class UserModel {
           : int.tryParse(user['id']?.toString() ?? ''),
       fullName: user['full_name'] ?? user['name'],
       email: user['email'],
+      csrf: user['csrf_token'],
       phone: user['phone'],
       image: user['image'],
       role: user['role'],
@@ -43,5 +45,6 @@ class UserModel {
     'phone': phone,
     'image': image,
     'role': role,
+    'csrf_token':csrf
   };
 }

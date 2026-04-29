@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:ema_app/data/api_exception.dart';
 import 'package:ema_app/data/network/BaseApiService.dart';
 import 'package:ema_app/data/standard_response.dart';
@@ -18,6 +17,7 @@ class NetworkApiService extends BaseApiServices {
   Future<Map<String, String>> _getHeaders() async {
     final SharedPreferences sp = await SharedPreferences.getInstance();
     final String? session = sp.getString('session');
+    final String? csrf = sp.getString('csrf'); // ✅ ADD THIS
 
     if (kDebugMode) {
       if (session == null) {
@@ -45,7 +45,9 @@ class NetworkApiService extends BaseApiServices {
         print('🚫 No session added to headers');
       }
     }
-
+    if (csrf != null && csrf.isNotEmpty) {
+      headers['X-CSRF-Token'] = csrf;
+    }
     if (kDebugMode) {
       print('📦 Final headers: $headers');
     }
