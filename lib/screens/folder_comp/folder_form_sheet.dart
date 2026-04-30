@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
-import 'package:ema_app/model/folder_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:flutter/material.dart';
