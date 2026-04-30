@@ -59,7 +59,7 @@ class FileModel {
   /// e.g. http://10.10.100.144:8000/uploads/icons/icon_xxx.jpg
   String? get iconUrl {
     if (iconPath == null || iconPath!.isEmpty) return null;
-    return '${BaseUrl.baseUrl}/res/icons/$iconPath';
+    return '${BaseUrl.baseUrl}/res/$iconPath';
   }
 
   /// e.g. http://10.10.100.144:8000/api/files/{id}/download
