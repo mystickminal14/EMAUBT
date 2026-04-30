@@ -3,7 +3,6 @@ import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// ─── Search Bar ───────────────────────────────────────────────────────────────
 class FolderSearchBar extends StatelessWidget {
   final TextEditingController controller;
 
@@ -21,15 +20,36 @@ class FolderSearchBar extends StatelessWidget {
           onChanged: (v) =>
               context.read<UpdatedFolderViewModel>().searchFolders(v),
           style: FolderTheme.fieldInput,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Search folders…',
             hintStyle:
-            TextStyle(color: FolderTheme.textSub, fontSize: 14),
-            prefixIcon: Icon(Icons.search_rounded,
-                color: FolderTheme.textSub, size: 20),
+            const TextStyle(color: FolderTheme.textSub, fontSize: 14),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: FolderTheme.textSub,
+              size: 20,
+            ),
             border: InputBorder.none,
             contentPadding:
-            EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (_, value, __) => value.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: FolderTheme.textSub,
+                  size: 18,
+                ),
+                onPressed: () {
+                  controller.clear();
+                  context
+                      .read<UpdatedFolderViewModel>()
+                      .searchFolders('');
+                },
+              ),
+            ),
           ),
         ),
       ),

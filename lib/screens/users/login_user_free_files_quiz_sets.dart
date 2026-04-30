@@ -2,7 +2,8 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/users/user_quiz_sets.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
-import 'package:ema_app/view_model/folders/free_files_view_model.dart';
+import 'package:ema_app/view_model/folders/new_files_vm.dart';
+import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -33,7 +34,6 @@ class _LoginUserFreeFilesQuizSetsState
   late final TextEditingController _searchCtrl;
   late final ScrollController _scrollCtrl;
   late final AnimationController _fabAnim;
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -141,7 +141,7 @@ class _LoginUserFreeFilesQuizSetsState
                 children: [
                   const Text('Free Content', style: FolderTheme.screenTitle),
                   Text(
-                    '${vm.totalFolders} folders available',
+                    '${vm.folders.length} folders available',
                     style: FolderTheme.screenSubtitle,
                   ),
                 ],
@@ -175,16 +175,33 @@ class _LoginUserFreeFilesQuizSetsState
         decoration: FolderTheme.searchDecoration,
         child: TextField(
           controller: _searchCtrl,
-          onChanged: (v) => setState(() => _searchQuery = v),
+          onChanged: (v) =>
+              context.read<UpdatedFolderViewModel>().searchFolders(v),
           style: FolderTheme.fieldInput,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Search folders…',
-            hintStyle: TextStyle(color: FolderTheme.textSub, fontSize: 14),
-            prefixIcon: Icon(Icons.search_rounded,
+            hintStyle:
+            const TextStyle(color: FolderTheme.textSub, fontSize: 14),
+            prefixIcon: const Icon(Icons.search_rounded,
                 color: FolderTheme.textSub, size: 20),
             border: InputBorder.none,
             contentPadding:
-            EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _searchCtrl,
+              builder: (_, value, __) => value.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                icon: const Icon(Icons.close_rounded,
+                    color: FolderTheme.textSub, size: 18),
+                onPressed: () {
+                  _searchCtrl.clear();
+                  context
+                      .read<UpdatedFolderViewModel>()
+                      .searchFolders('');
+                },
+              ),
+            ),
           ),
         ),
       ),
@@ -195,22 +212,14 @@ class _LoginUserFreeFilesQuizSetsState
   Widget _buildFolderList() {
     return Consumer<UpdatedFolderViewModel>(
       builder: (_, vm, __) {
-        if (vm.isLoading && vm.folders.isEmpty) {
+        if (vm.isLoading && vm.filteredFolders.isEmpty) {
           return const Center(
             child: CircularProgressIndicator(
                 color: FolderTheme.accent, strokeWidth: 2.5),
           );
         }
 
-        final folders = _searchQuery.isEmpty
-            ? vm.folders
-            : vm.folders
-            .where((f) => (f.name ?? '')
-            .toLowerCase()
-            .contains(_searchQuery.toLowerCase()))
-            .toList();
-
-        if (folders.isEmpty) {
+        if (vm.filteredFolders.isEmpty) {
           return _FolderEmptyState(
             onRetry: () => vm.fetchFolders(context, refresh: true),
           );
@@ -219,9 +228,9 @@ class _LoginUserFreeFilesQuizSetsState
         return ListView.builder(
           controller: _scrollCtrl,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-          itemCount: folders.length,
+          itemCount: vm.filteredFolders.length,
           itemBuilder: (_, i) {
-            final folder = folders[i];
+            final folder = vm.filteredFolders[i];
             return _FolderCard(
               folder: folder.toJson(),
               index: i,
@@ -405,49 +414,114 @@ class FreeForLoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) =>
-      FreeAccessViewModel()..fetchGrantedAccessItems(folderId),
-      child: Scaffold(
+    final folderIdInt = int.tryParse(folderId);
+    if (folderIdInt == null) {
+      return Scaffold(
         backgroundColor: FolderTheme.surface,
         body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              Expanded(
-                child: Consumer<FreeAccessViewModel>(
-                  builder: (context, vm, _) {
-                    if (vm.isLoading) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                            color: FolderTheme.accent, strokeWidth: 2.5),
-                      );
-                    }
-                    if (vm.errorMessage != null) {
-                      return _ErrorState(
-                        message: vm.errorMessage!,
-                        onRetry: () =>
-                            vm.fetchGrantedAccessItems(folderId),
-                      );
-                    }
-                    if (vm.files.isEmpty && vm.quizSets.isEmpty) {
-                      return const _ContentEmptyState();
-                    }
-                    return _ContentList(
-                      vm: vm,
-                      folderId: folderId,
-                      folderName: folderName,
-                      userIdentifier: userIdentifier,
-                      isAdmin: isAdmin,
-                      fullName: fullName,
-                      userEmail: userEmail,
-                    );
-                  },
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline_rounded,
+                    size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text('Invalid folder',
+                    style: FolderTheme.emptyTitle),
+                const SizedBox(height: 8),
+                Text('Folder ID must be a number: $folderId',
+                    style: FolderTheme.emptySubtitle),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: FolderTheme.accent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Go Back'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      );
+    }
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FolderFilesViewModel()),
+        ChangeNotifierProvider(create: (_) => FolderQuizSetsViewModel()),
+      ],
+      child: _FreeForLoginPageContent(
+        folderId: folderIdInt,
+        folderName: folderName,
+        userIdentifier: userIdentifier,
+        isAdmin: isAdmin,
+        fullName: fullName,
+        userEmail: userEmail,
+      ),
+    );
+  }
+}
+
+class _FreeForLoginPageContent extends StatefulWidget {
+  final int folderId;
+  final String folderName;
+  final String userIdentifier;
+  final bool isAdmin;
+  final String? fullName;
+  final String? userEmail;
+
+  const _FreeForLoginPageContent({
+    required this.folderId,
+    required this.folderName,
+    required this.userIdentifier,
+    required this.isAdmin,
+    this.fullName,
+    this.userEmail,
+  });
+
+  @override
+  State<_FreeForLoginPageContent> createState() =>
+      _FreeForLoginPageContentState();
+}
+
+class _FreeForLoginPageContentState extends State<_FreeForLoginPageContent> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context
+            .read<FolderFilesViewModel>()
+            .fetchFiles(context, widget.folderId, refresh: true);
+        context
+            .read<FolderQuizSetsViewModel>()
+            .fetchQuizSets(context, widget.folderId, refresh: true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: FolderTheme.surface,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: _ContentBody(
+                folderId: widget.folderId,
+                folderName: widget.folderName,
+                userIdentifier: widget.userIdentifier,
+                isAdmin: widget.isAdmin,
+                fullName: widget.fullName,
+                userEmail: widget.userEmail,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -485,7 +559,7 @@ class FreeForLoginPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  folderName,
+                  widget.folderName,
                   style: FolderTheme.screenTitle.copyWith(fontSize: 22),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -500,10 +574,69 @@ class FreeForLoginPage extends StatelessWidget {
   }
 }
 
+class _ContentBody extends StatelessWidget {
+  final int folderId;
+  final String folderName;
+  final String userIdentifier;
+  final bool isAdmin;
+  final String? fullName;
+  final String? userEmail;
+
+  const _ContentBody({
+    required this.folderId,
+    required this.folderName,
+    required this.userIdentifier,
+    required this.isAdmin,
+    this.fullName,
+    this.userEmail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<FolderFilesViewModel, FolderQuizSetsViewModel>(
+      builder: (context, filesVm, quizVm, _) {
+        // Show loading if both are loading and empty
+        if (filesVm.isLoading && filesVm.files.isEmpty &&
+            quizVm.isLoading && quizVm.quizSets.isEmpty) {
+          return const Center(
+            child: CircularProgressIndicator(
+                color: FolderTheme.accent, strokeWidth: 2.5),
+          );
+        }
+
+        // Show empty if both are empty and not loading
+        if (filesVm.filteredFiles.isEmpty &&
+            quizVm.filteredQuizSets.isEmpty &&
+            !filesVm.isLoading &&
+            !quizVm.isLoading) {
+          return _ContentEmptyStateWithRetry(
+            onRetry: () {
+              filesVm.fetchFiles(context, folderId, refresh: true);
+              quizVm.fetchQuizSets(context, folderId, refresh: true);
+            },
+          );
+        }
+
+        return _ContentList(
+          filesVm: filesVm,
+          quizVm: quizVm,
+          folderId: folderId,
+          folderName: folderName,
+          userIdentifier: userIdentifier,
+          isAdmin: isAdmin,
+          fullName: fullName,
+          userEmail: userEmail,
+        );
+      },
+    );
+  }
+}
+
 // ─── Content List ─────────────────────────────────────────────────────────────
 class _ContentList extends StatelessWidget {
-  final FreeAccessViewModel vm;
-  final String folderId;
+  final FolderFilesViewModel filesVm;
+  final FolderQuizSetsViewModel quizVm;
+  final int folderId;
   final String folderName;
   final String userIdentifier;
   final bool isAdmin;
@@ -511,7 +644,8 @@ class _ContentList extends StatelessWidget {
   final String? userEmail;
 
   const _ContentList({
-    required this.vm,
+    required this.filesVm,
+    required this.quizVm,
     required this.folderId,
     required this.folderName,
     required this.userIdentifier,
@@ -526,32 +660,32 @@ class _ContentList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       children: [
         // ── Quiz Sets section ──────────────────────────────────────────
-        if (vm.quizSets.isNotEmpty) ...[
+        if (quizVm.filteredQuizSets.isNotEmpty) ...[
           _SectionHeader(
             icon: Icons.quiz_rounded,
             title: 'Quiz Sets',
-            count: vm.quizSets.length,
+            count: quizVm.filteredQuizSets.length,
           ),
           const SizedBox(height: 10),
-          ...vm.quizSets.asMap().entries.map((e) => _ContentCard(
-            item: e.value,
+          ...quizVm.filteredQuizSets.asMap().entries.map((e) => _ContentCard(
+            item: e.value.toJson(),
             index: e.key,
             itemType: 'quiz_set',
             onTap: () => _openQuizSet(context, e.value),
           )),
-          if (vm.files.isNotEmpty) const SizedBox(height: 20),
+          if (filesVm.filteredFiles.isNotEmpty) const SizedBox(height: 20),
         ],
 
         // ── Files section ──────────────────────────────────────────────
-        if (vm.files.isNotEmpty) ...[
+        if (filesVm.filteredFiles.isNotEmpty) ...[
           _SectionHeader(
             icon: Icons.insert_drive_file_rounded,
             title: 'Files',
-            count: vm.files.length,
+            count: filesVm.filteredFiles.length,
           ),
           const SizedBox(height: 10),
-          ...vm.files.asMap().entries.map((e) => _ContentCard(
-            item: e.value,
+          ...filesVm.filteredFiles.asMap().entries.map((e) => _ContentCard(
+            item: e.value.toJson(),
             index: e.key,
             itemType: 'file',
             onTap: () {
@@ -563,13 +697,16 @@ class _ContentList extends StatelessWidget {
     );
   }
 
-  void _openQuizSet(BuildContext context, Map<String, dynamic> item) {
+  void _openQuizSet(BuildContext context, dynamic item) {
+    final quizSetId = item is Map ? item['id'] : item.id?.toString();
+    final quizSetName = item is Map ? item['name'] : item.name;
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => UserQuizSetsPage(
-          quizSetId: item['id'],
-          quizSetName: item['name'],
+          quizSetId: quizSetId,
+          quizSetName: quizSetName,
           userId: isAdmin
               ? ''
               : userIdentifier.isEmpty
@@ -579,7 +716,7 @@ class _ContentList extends StatelessWidget {
           userEmail:
           isAdmin ? userIdentifier : (userEmail ?? userIdentifier),
           role: isAdmin ? 'admin' : 'user',
-          folderId: folderId,
+          folderId: folderId.toString(),
           folderName: folderName,
           isAdmin: isAdmin,
           userIdentifier: userIdentifier,
@@ -589,8 +726,9 @@ class _ContentList extends StatelessWidget {
         ),
       ),
     ).then((_) {
-      Provider.of<FreeAccessViewModel>(context, listen: false)
-          .fetchGrantedAccessItems(folderId);
+      // Refresh quiz sets when returning
+      context.read<FolderQuizSetsViewModel>()
+          .fetchQuizSets(context, folderId, refresh: true);
     });
   }
 }
@@ -782,55 +920,11 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ─── Error State ──────────────────────────────────────────────────────────────
-class _ErrorState extends StatelessWidget {
-  final String message;
+// ─── Content Empty State with Retry ──────────────────────────────────────────────
+class _ContentEmptyStateWithRetry extends StatelessWidget {
   final VoidCallback onRetry;
 
-  const _ErrorState({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.08),
-              shape: BoxShape.circle,
-            ),
-            child:
-            const Icon(Icons.error_outline_rounded, size: 38, color: Colors.red),
-          ),
-          const SizedBox(height: 16),
-          Text(message,
-              style: FolderTheme.emptyTitle, textAlign: TextAlign.center),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: onRetry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: FolderTheme.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Retry',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Content Empty State ──────────────────────────────────────────────────────
-class _ContentEmptyState extends StatelessWidget {
-  const _ContentEmptyState();
+  const _ContentEmptyStateWithRetry({required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -855,6 +949,22 @@ class _ContentEmptyState extends StatelessWidget {
             'This folder has no free files or quiz sets yet.',
             style: FolderTheme.emptySubtitle,
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FolderTheme.accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+              padding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Retry',
+                style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),

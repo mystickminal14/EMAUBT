@@ -106,6 +106,7 @@ class UpdatedFolderViewModel extends ChangeNotifier {
   // ── Initial / refresh fetch ───────────────────────────────────────────────
   Future<void> fetchFolders(BuildContext context,
       {bool refresh = false}) async {
+    _lastContext = context;
     if (refresh) {
       currentPage = 1;
       totalPages = 1;
@@ -350,12 +351,29 @@ class UpdatedFolderViewModel extends ChangeNotifier {
       _logger.e('pickIcon error: $e');
     }
   }
-
+  Timer? _debounceTimer;
+  BuildContext? _lastContext;
   // ── Search / filter ───────────────────────────────────────────────────────
   void searchFolders(String query) {
     _searchQuery = query.trim().toLowerCase();
     _filterLists();
     notifyListeners();
+    _debounceSearch();
+  }
+
+  void _debounceSearch() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      final ctx = _lastContext;
+      if (ctx == null) return;
+      // Guard: don't fire if widget using this context is disposed
+      try {
+        if (ctx is Element && !ctx.mounted) return;
+      } catch (_) {
+        return;
+      }
+      fetchFolders(ctx, refresh: true);
+    });
   }
 
   void _filterLists() {
@@ -380,12 +398,19 @@ class UpdatedFolderViewModel extends ChangeNotifier {
     name = null;
     selectedIconBase64 = null;
     selectedIconBytes = null;
+    _debounceTimer?.cancel(); // ← cancel any pending search on clear
+    _searchQuery = '';
     try {
       selectedIconFile?.deleteSync();
     } catch (_) {}
     selectedIconFile = null;
-    _searchQuery = '';
     _filterLists();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel(); // ← always cancel on VM dispose
+    super.dispose();
   }
 }
