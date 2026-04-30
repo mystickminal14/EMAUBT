@@ -1,12 +1,12 @@
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/users/user_quiz_sets.dart';
+import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── Folder List Screen ───────────────────────────────────────────────────────
@@ -317,26 +317,60 @@ class _FolderIconBox extends StatelessWidget {
       height: 52,
       decoration: FolderTheme.iconContainerDecoration,
       clipBehavior: Clip.antiAlias,
-      child: (iconPath != null && iconPath!.isNotEmpty)
-          ? CachedNetworkImage(
-        imageUrl: '${BaseUrl.imageUrl}/$iconPath',
-        fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: FolderTheme.accent),
-          ),
-        ),
-        errorWidget: (_, __, ___) => const Center(
-          child: Icon(Icons.folder_rounded,
-              size: 28, color: FolderTheme.accent),
-        ),
-      )
-          : const Center(
-        child: Icon(Icons.folder_rounded,
-            size: 28, color: FolderTheme.accent),
+      child: _buildIconChild(),
+    );
+  }
+
+  Widget _buildIconChild() {
+    final raw = iconPath;
+
+    if (raw == null || raw.isEmpty) {
+      debugPrint("📁 No folder icon, using fallback");
+      return const _FallbackFolderIcon();
+    }
+
+    final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
+
+    debugPrint("🖼️ Folder Icon URL => $fullUrl");
+
+    return FutureBuilder<Map<String, String>>(
+      future: getAuthHeaders(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        return Image.network(
+          fullUrl,
+          headers: snapshot.data,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stackTrace) {
+            debugPrint("❌ Image load failed => $fullUrl");
+            debugPrint("Error: $error");
+            return const _FallbackFolderIcon();
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FallbackFolderIcon extends StatelessWidget {
+  const _FallbackFolderIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Icon(
+        Icons.folder_rounded,
+        size: 28,
+        color: FolderTheme.accent,
       ),
     );
   }
@@ -830,36 +864,64 @@ class _ContentIconBox extends StatelessWidget {
       height: 52,
       decoration: FolderTheme.iconContainerDecoration,
       clipBehavior: Clip.antiAlias,
-      child: (iconPath != null && iconPath!.isNotEmpty)
-          ? CachedNetworkImage(
-        imageUrl: '${BaseUrl.imageUrl}/$iconPath',
-        fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: FolderTheme.accent),
-          ),
-        ),
-        errorWidget: (_, __, ___) => Center(
-          child: Icon(
-            isQuiz
-                ? Icons.quiz_rounded
-                : Icons.insert_drive_file_rounded,
-            size: 28,
-            color: FolderTheme.accent,
-          ),
-        ),
-      )
-          : Center(
-        child: Icon(
-          isQuiz
-              ? Icons.quiz_rounded
-              : Icons.insert_drive_file_rounded,
-          size: 28,
-          color: FolderTheme.accent,
-        ),
+      child: _buildIconChild(),
+    );
+  }
+
+  Widget _buildIconChild() {
+    final raw = iconPath;
+
+    if (raw == null || raw.isEmpty) {
+      debugPrint("📁 No content icon, using fallback");
+      return _FallbackContentIcon(isQuiz: isQuiz);
+    }
+
+    final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
+
+    debugPrint("🖼️ Content Icon URL => $fullUrl");
+
+    return FutureBuilder<Map<String, String>>(
+      future: getAuthHeaders(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        return Image.network(
+          fullUrl,
+          headers: snapshot.data,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stackTrace) {
+            debugPrint("❌ Image load failed => $fullUrl");
+            debugPrint("Error: $error");
+            return _FallbackContentIcon(isQuiz: isQuiz);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FallbackContentIcon extends StatelessWidget {
+  final bool isQuiz;
+
+  const _FallbackContentIcon({required this.isQuiz});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Icon(
+        isQuiz
+            ? Icons.quiz_rounded
+            : Icons.insert_drive_file_rounded,
+        size: 28,
+        color: FolderTheme.accent,
       ),
     );
   }
