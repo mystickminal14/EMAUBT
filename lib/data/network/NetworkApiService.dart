@@ -181,15 +181,30 @@ class NetworkApiService extends BaseApiServices {
         String? iconName,
       }) async {
     try {
+      _logger.i("📤 Starting Multipart POST Request");
+      _logger.d("➡️ URL: $url");
+      _logger.d("📦 Fields: $fields");
+
       final headers = await _getHeaders();
+      _logger.d("🧾 Headers: $headers");
+
       var request = http.MultipartRequest('POST', Uri.parse(url));
       request.headers.addAll(headers);
-      request.fields.addAll(fields.map((key, value) => MapEntry(key, value.toString())));
+      request.fields.addAll(
+        fields.map((key, value) => MapEntry(key, value.toString())),
+      );
 
+      // ✅ Main file logging
       if (mainFilePath != null || mainFileBytes != null) {
         String extension = mainFileName?.split('.').last.toLowerCase() ??
             (mainFilePath?.split('.').last.toLowerCase() ?? 'bin');
+
         String mimeType = _getMimeType(extension);
+
+        _logger.i("📎 Attaching main file");
+        _logger.d("📄 File name: $mainFileName");
+        _logger.d("📄 Mime type: $mimeType");
+
         if (mainFileBytes != null) {
           request.files.add(http.MultipartFile.fromBytes(
             'file',
@@ -207,7 +222,9 @@ class NetworkApiService extends BaseApiServices {
         }
       }
 
+      // ✅ Icon logging
       if (iconBytes != null) {
+        _logger.i("🖼️ Attaching icon (bytes)");
         request.files.add(http.MultipartFile.fromBytes(
           'icon',
           iconBytes,
@@ -215,6 +232,7 @@ class NetworkApiService extends BaseApiServices {
           contentType: MediaType('image', 'jpeg'),
         ));
       } else if (iconFile != null) {
+        _logger.i("🖼️ Attaching icon (file)");
         request.files.add(await http.MultipartFile.fromPath(
           'icon',
           iconFile.path,
@@ -222,18 +240,119 @@ class NetworkApiService extends BaseApiServices {
         ));
       }
 
+      _logger.i("🚀 Sending request...");
+
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      if (kDebugMode) {
-        _logger.i('Files Multipart POST $url: ${response.statusCode}');
-      }
+
+      _logger.i("✅ Response received");
+      _logger.d("📥 Status Code: ${response.statusCode}");
+      _logger.d("📥 Response Body: ${response.body}");
+
       return _returnResponse(response);
+
+    } on SocketException catch (e) {
+      _logger.e("❌ No Internet Connection", error: e);
+      Utils.noInternet('No internet connection');
+      throw FetchDataException("No internet Connection");
+
+    } catch (e, stackTrace) {
+      _logger.e("🔥 Unexpected error", error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+  Future<Map<String, dynamic>> putFileMultipart(
+      String url,
+      Map<String, dynamic> fields, {
+        String? mainFilePath,
+        Uint8List? mainFileBytes,
+        String? mainFileName,
+        File? iconFile,
+        Uint8List? iconBytes,
+        String? iconName,
+      }) async {
+    try {
+      final headers = await _getHeaders();
+
+      // 🔥 IMPORTANT: Some servers require POST + _method=PUT
+      // If your backend supports real PUT, change to 'PUT'
+      var request = http.MultipartRequest('PUT', Uri.parse(url));
+
+      request.headers.addAll(headers);
+ _logger.d(fields);
+      // If your backend DOES NOT support PUT multipart, use this instead:
+      // var request = http.MultipartRequest('POST', Uri.parse(url));
+      // request.fields['_method'] = 'PUT';
+
+      request.fields.addAll(
+        fields.map((key, value) => MapEntry(key, value.toString())),
+      );
+
+      // ── Main File ─────────────────────────────
+      if (mainFilePath != null || mainFileBytes != null) {
+        String extension =
+            mainFileName?.split('.').last.toLowerCase() ??
+                (mainFilePath?.split('.').last.toLowerCase() ?? 'bin');
+
+        String mimeType = _getMimeType(extension);
+
+        if (mainFileBytes != null) {
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'file',
+              mainFileBytes,
+              filename: mainFileName ?? 'file',
+              contentType: MediaType.parse(mimeType),
+            ),
+          );
+        } else if (mainFilePath != null) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'file',
+              mainFilePath,
+              filename: mainFileName ?? mainFilePath.split('/').last,
+              contentType: MediaType.parse(mimeType),
+            ),
+          );
+        }
+      }
+
+      // ── Icon File ─────────────────────────────
+      if (iconBytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'icon',
+            iconBytes,
+            filename: iconName ?? 'icon.jpg',
+            contentType: MediaType('image', 'jpeg'),
+          ),
+        );
+      } else if (iconFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'icon',
+            iconFile.path,
+            contentType: MediaType('image', 'jpeg'),
+          ),
+        );
+      }
+
+      // ── Send Request ──────────────────────────
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (kDebugMode) {
+        _logger.i('Multipart PUT $url: ${response.statusCode}');
+        _logger.i('Response: ${response.body}');
+      }
+
+      return _returnResponse(response);
+
     } on SocketException {
       Utils.noInternet('No internet connection');
       throw FetchDataException("No internet Connection");
     }
   }
-
   Future<Map<String, dynamic>> postMultipartNoticeFiles(
       String url,
       Map<String, dynamic> fields, {
