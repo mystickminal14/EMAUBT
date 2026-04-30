@@ -28,7 +28,7 @@ class UpdatedFolderViewModel extends ChangeNotifier {
   int currentPage = 1;
   int totalPages = 1;
   int totalFolders = 0;
-  static const int perPage = 12;
+  static const int perPage = 7;
 
   bool get hasMorePages => currentPage < totalPages;
 
