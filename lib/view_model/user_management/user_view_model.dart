@@ -33,7 +33,7 @@ class ManageUserViewModel extends ChangeNotifier {
 
   // ── Filter ─────────────────────────────────────────────────────────────────
   String? roleFilter; // 'user' | 'admin' | null
-
+  Timer? _debounce;
   // ── Form fields ────────────────────────────────────────────────────────────
   File? selectedImage;
   String? name;
@@ -412,22 +412,23 @@ _logger.d(user);
   }
 
   // ── Search / filter ───────────────────────────────────────────────────────
-  void searchUsers(String query) {
-    _searchQuery = query.trim().toLowerCase();
-    _filterLists();
-    notifyListeners();
-  }
+  void searchUsers(BuildContext context, String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
 
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      _searchQuery = query.trim(); // ✅ don't lowercase for API
+
+      currentPage = 1;
+      totalPages = 1;
+      totalUsers = 0;
+      users.clear();
+      filteredUsers.clear();
+
+      await fetchUsers(context, refresh: true); // ✅ API CALL
+    });
+  }
   void _filterLists() {
-    if (_searchQuery.isEmpty) {
-      filteredUsers = List.from(users);
-    } else {
-      filteredUsers = users.where((u) {
-        final n = u.fullName?.toLowerCase() ?? '';
-        final e = u.email?.toLowerCase() ?? '';
-        return n.contains(_searchQuery) || e.contains(_searchQuery);
-      }).toList();
-    }
+    filteredUsers = List.from(users);
   }
 
   // ── Image picker ──────────────────────────────────────────────────────────

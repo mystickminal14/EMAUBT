@@ -1,7 +1,7 @@
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
+import 'package:ema_app/view_model/user_management/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ema_app/view_model/user_management/user_view_model.dart';
 
 // ─── Search Bar ───────────────────────────────────────────────────────────────
 class UserSearchBar extends StatelessWidget {
@@ -18,14 +18,18 @@ class UserSearchBar extends StatelessWidget {
         decoration: UMTheme.searchDecoration,
         child: TextField(
           controller: controller,
+          // Debounce is handled inside searchUsers() in the VM
           onChanged: (v) =>
-              context.read<ManageUserViewModel>().searchUsers(v),
+              context.read<ManageUserViewModel>().searchUsers(context, v),
           style: UMTheme.fieldInput,
           decoration: const InputDecoration(
             hintText: 'Search by name or email…',
             hintStyle: TextStyle(color: UMTheme.textSub, fontSize: 14),
-            prefixIcon:
-            Icon(Icons.search_rounded, color: UMTheme.textSub, size: 20),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: UMTheme.textSub,
+              size: 20,
+            ),
             border: InputBorder.none,
             contentPadding:
             EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -98,8 +102,7 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
           color: selected ? UMTheme.accent : UMTheme.card,
           borderRadius: BorderRadius.circular(20),
@@ -111,8 +114,7 @@ class _FilterChip extends StatelessWidget {
         child: Text(
           label,
           style: UMTheme.chipLabel.copyWith(
-            fontWeight:
-            selected ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             color: selected ? Colors.white : UMTheme.textSub,
           ),
         ),
