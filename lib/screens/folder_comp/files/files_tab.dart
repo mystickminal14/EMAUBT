@@ -1,10 +1,12 @@
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
+import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 
 class FilesTab extends StatefulWidget {
   final int folderId;
@@ -623,33 +625,64 @@ class FileCard extends StatelessWidget {
 }
 
 // ─── File Leading — custom icon or type icon ──────────────────────────────────
+
 class _FileLeading extends StatelessWidget {
   final FileModel file;
   const _FileLeading({required this.file});
 
   @override
   Widget build(BuildContext context) {
-    if (file.iconUrl != null) {
-      final imageUrl = BaseUrl.imageUrl + file.iconUrl!;
+    if (file.iconUrl != null && file.iconUrl!.isNotEmpty) {
+      final imageUrl =  file.iconUrl!;
 
       if (kDebugMode) {
         print("Icon URL: $imageUrl");
       }
 
-      return Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: FolderTheme.border, width: 1.5),
-          image: DecorationImage(
-            image: NetworkImage(file.iconUrl!),
-            fit: BoxFit.cover,
-          ),
-        ),
+      return FutureBuilder<Map<String, String>>(
+        future: getAuthHeaders(), // ✅ USE YOUR UTIL
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Container(
+              width: 48,
+              height: 48,
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
+
+          return Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: FolderTheme.border, width: 1.5),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.network(
+              imageUrl, // ✅ FIXED (was wrong before)
+              headers: snapshot.data, // 🔥 THIS FIXES 401
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Center(
+                  child: Icon(
+                    _iconData,
+                    color: _iconColor,
+                    size: 22,
+                  ),
+                );
+              },
+            ),
+          );
+        },
       );
     }
-    // Fallback: file-type coloured icon box
+
+    // ── Fallback (UNCHANGED DESIGN) ──
     return Container(
       width: 48,
       height: 48,
@@ -663,6 +696,7 @@ class _FileLeading extends StatelessWidget {
     );
   }
 
+  // ── SAME AS YOUR ORIGINAL ──
   Color get _iconColor {
     if (file.isImage)    return const Color(0xFF10B981);
     if (file.isPdf)      return const Color(0xFFEF4444);
@@ -681,7 +715,6 @@ class _FileLeading extends StatelessWidget {
     return Icons.insert_drive_file_rounded;
   }
 }
-
 // ─── Empty State ──────────────────────────────────────────────────────────────
 class _FilesEmptyState extends StatelessWidget {
   const _FilesEmptyState();

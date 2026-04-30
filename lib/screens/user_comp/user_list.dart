@@ -2,10 +2,11 @@ import 'package:ema_app/screens/user_comp/user_card.dart';
 import 'package:ema_app/screens/user_comp/user_form_sheet.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:ema_app/screens/user_comp/user_password_form.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:ema_app/model/user_model.dart';
 import 'package:ema_app/view_model/user_management/user_view_model.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 class UserList extends StatelessWidget {
   final ScrollController scrollController;
 
@@ -23,15 +24,14 @@ class UserList extends StatelessWidget {
           );
         }
 
-        if (vm.filteredUsers.isEmpty) {
+        if (!vm.isLoading && vm.filteredUsers.isEmpty) {
           return const UserEmptyState();
         }
 
         return ListView.builder(
           controller: scrollController,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-          itemCount:
-          vm.filteredUsers.length + (vm.isFetchingMore ? 1 : 0),
+          itemCount: vm.filteredUsers.length + (vm.isFetchingMore ? 1 : 0),
           itemBuilder: (_, i) {
             // Bottom pagination spinner
             if (i == vm.filteredUsers.length) {
@@ -48,9 +48,10 @@ class UserList extends StatelessWidget {
             return UserCard(
               user: user,
               index: i,
-              changePassword:()=> _showChangePasswordSheet(context,vm,user),
-              makeAdmin: ()=>_makeAdmin(context, vm, user),
-              removeAdmin: ()=> _removeAdmin(context, vm, user),
+              changePassword: () =>
+                  _showChangePasswordSheet(context, vm, user),
+              makeAdmin: () => _makeAdmin(context, vm, user),
+              removeAdmin: () => _removeAdmin(context, vm, user),
               onEdit: () => _showEditSheet(context, vm, user),
               onDelete: () => _confirmDelete(context, vm, user),
             );
@@ -81,6 +82,8 @@ class UserList extends StatelessWidget {
       ),
     );
   }
+
+  // ── Change password sheet ─────────────────────────────────────────────────
   void _showChangePasswordSheet(
       BuildContext context, ManageUserViewModel vm, UserModel user) {
     showModalBottomSheet(
@@ -89,10 +92,9 @@ class UserList extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => UserPasswordSheet(
         onSubmit: (password) async {
-          vm.setFields(
-              password: password,
-             );
-          await vm.changeUserPassword(context,{"user_id":user.id,"new_password":password});
+          vm.setFields(password: password);
+          await vm.changeUserPassword(
+              context, {'user_id': user.id, 'new_password': password});
         },
       ),
     );
@@ -104,11 +106,10 @@ class UserList extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete User',
-            style:
-            TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
         content: Text(
           'Remove ${user.fullName ?? 'this user'} permanently? '
               'This cannot be undone.',
@@ -117,8 +118,8 @@ class UserList extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: UMTheme.textSub)),
+            child:
+            const Text('Cancel', style: TextStyle(color: UMTheme.textSub)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -137,25 +138,26 @@ class UserList extends StatelessWidget {
       ),
     );
   }
+
+  // ── Remove admin confirm ──────────────────────────────────────────────────
   void _removeAdmin(
       BuildContext context, ManageUserViewModel vm, UserModel user) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Remove Admin',
-            style:
-            TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
         content: Text(
-          'Remove the Admin role of this ${user.fullName ?? 'user'} permanently?',
+          'Remove the Admin role of ${user.fullName ?? 'this user'}?',
           style: const TextStyle(color: UMTheme.textSub, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: UMTheme.textSub)),
+            child:
+            const Text('Cancel', style: TextStyle(color: UMTheme.textSub)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -174,25 +176,26 @@ class UserList extends StatelessWidget {
       ),
     );
   }
+
+  // ── Make admin confirm ────────────────────────────────────────────────────
   void _makeAdmin(
       BuildContext context, ManageUserViewModel vm, UserModel user) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Make Admin',
-            style:
-            TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
         content: Text(
-          'Make the Admin role of this ${user.fullName ?? 'user'} permanently?',
+          'Grant Admin role to ${user.fullName ?? 'this user'}?',
           style: const TextStyle(color: UMTheme.textSub, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: UMTheme.textSub)),
+            child:
+            const Text('Cancel', style: TextStyle(color: UMTheme.textSub)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -200,12 +203,12 @@ class UserList extends StatelessWidget {
               vm.makeAdmin(context, user);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
+              backgroundColor: UMTheme.accent,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Make'),
+            child: const Text('Make Admin'),
           ),
         ],
       ),

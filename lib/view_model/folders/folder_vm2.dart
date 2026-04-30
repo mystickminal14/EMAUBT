@@ -28,7 +28,7 @@ class UpdatedFolderViewModel extends ChangeNotifier {
   int currentPage = 1;
   int totalPages = 1;
   int totalFolders = 0;
-  static const int perPage = 12;
+  static const int perPage = 7;
 
   bool get hasMorePages => currentPage < totalPages;
 
@@ -342,8 +342,11 @@ class UpdatedFolderViewModel extends ChangeNotifier {
 
       // Encode to base64
       if (selectedIconBytes != null) {
-        selectedIconBase64 = base64Encode(selectedIconBytes!);
-        _logger.i('Icon base64 length: ${selectedIconBase64!.length}');
+        final base64 = base64Encode(selectedIconBytes!);
+
+        selectedIconBase64 = "data:image/jpeg;base64,$base64";
+
+        _logger.i("FINAL ICON FORMAT → ${selectedIconBase64!.substring(0, 50)}");
       }
 
       notifyListeners();

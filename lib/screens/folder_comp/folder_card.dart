@@ -2,6 +2,7 @@
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
+import 'package:ema_app/utils/get_headers.dart';
 import 'package:flutter/material.dart';
 
 class FolderCard extends StatelessWidget {
@@ -96,20 +97,35 @@ class _FolderIconBox extends StatelessWidget {
 
     final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
 
-    // 🔥 PRINT IMAGE URL
     debugPrint("🖼️ Folder Icon URL => $fullUrl");
 
-    return Image.network(
-      fullUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (_, error, stackTrace) {
-        debugPrint("❌ Image load failed => $fullUrl");
-        debugPrint("Error: $error");
-        return const _FallbackIcon();
+    return FutureBuilder<Map<String, String>>(
+      future: getAuthHeaders(), // ✅ USING YOUR UTIL
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        return Image.network(
+          fullUrl,
+          headers: snapshot.data, // 🔥 FIXES 401
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stackTrace) {
+            debugPrint("❌ Image load failed => $fullUrl");
+            debugPrint("Error: $error");
+            return const _FallbackIcon();
+          },
+        );
       },
     );
-  }}
-
+  }
+}
 class _FallbackIcon extends StatelessWidget {
   const _FallbackIcon();
 
