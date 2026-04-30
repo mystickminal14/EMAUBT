@@ -30,7 +30,7 @@ class FolderFilesViewModel extends ChangeNotifier {
 
   bool get hasMorePages => currentPage < totalPages;
 
-  // ── Upload form state ──────────────────────────────────────────────────────
+  // ── Upload / Edit form state ───────────────────────────────────────────────
   PlatformFile? selectedFile;   // the PDF / document
   File?         selectedIcon;   // icon image chosen from gallery
   String?       uploadFileName; // custom display name
@@ -271,6 +271,54 @@ class FolderFilesViewModel extends ChangeNotifier {
       Utils.showApiResponse(
           Utils.errorResponse('Error uploading file: $e'), context);
       _logger.e('uploadFile error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // ── Edit file (POST/PATCH name + optional new icon + optional new file) ────
+  /// Sends a multipart request to update an existing file record.
+  /// Only fields that have changed are sent:
+  ///   • name         — always sent (the display name)
+  ///   • icon_file    — only if the user picked a new icon (selectedIcon != null)
+  ///   • file         — only if the user picked a replacement document (selectedFile != null)
+  Future<void> editFile(
+      BuildContext context, FileModel file, int folderId) async {
+    if (uploadFileName == null || uploadFileName!.isEmpty) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Please enter a file name'), context);
+      return;
+    }
+
+    try {
+      isActionLoading = true;
+      notifyListeners();
+
+      final response = await _apiService.putFileMultipart(
+        '${FileEndpoints.editFIle}${file.id}',   // e.g. /api/files/{id}
+        <String, dynamic>{
+          'name': uploadFileName!,
+          '_method': 'PUT',                       // Laravel method-spoofing
+        },
+        // Replace file only if user picked a new one
+        mainFileBytes: selectedFile?.bytes,
+        mainFilePath:  selectedFile?.path,
+        mainFileName:  selectedFile?.name,
+        // Replace icon only if user picked a new one
+        iconFile: selectedIcon,
+      );
+
+      Utils.showApiResponse(response, context);
+      if (response['success'] == true) {
+        _logger.i('File edited: $uploadFileName');
+        clearSelectedFile();
+        await fetchFiles(context, folderId, refresh: true);
+      }
+    } catch (e) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Error editing file: $e'), context);
+      _logger.e('editFile error: $e');
     } finally {
       isActionLoading = false;
       notifyListeners();

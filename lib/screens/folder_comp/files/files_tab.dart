@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
@@ -5,6 +7,9 @@ import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
 
 
@@ -141,33 +146,51 @@ class _UploadButton extends StatelessWidget {
   }
 
   void _showUploadSheet(BuildContext context, int folderId) {
+    // Clear any leftover state from a previous session
+    context.read<FolderFilesViewModel>().clearSelectedFile();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _UploadFileSheet(folderId: folderId),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: context.read<FolderFilesViewModel>(),
+        child: _FileFormSheet(folderId: folderId, editFile: null),
+      ),
     );
   }
 }
 
-// ─── Upload File Sheet ────────────────────────────────────────────────────────
-class _UploadFileSheet extends StatefulWidget {
+// ─── Unified Upload / Edit Sheet ─────────────────────────────────────────────
+/// Pass [editFile] to open in edit mode; pass null for upload mode.
+class _FileFormSheet extends StatefulWidget {
   final int folderId;
-  const _UploadFileSheet({required this.folderId});
+  final FileModel? editFile; // null → upload mode
+
+  const _FileFormSheet({required this.folderId, required this.editFile});
 
   @override
-  State<_UploadFileSheet> createState() => _UploadFileSheetState();
+  State<_FileFormSheet> createState() => _FileFormSheetState();
 }
 
-class _UploadFileSheetState extends State<_UploadFileSheet> {
+class _FileFormSheetState extends State<_FileFormSheet> {
   late final TextEditingController _nameCtrl;
+  bool get _isEdit => widget.editFile != null;
 
   @override
   void initState() {
     super.initState();
+    // In edit mode, pre-fill with the existing name
     _nameCtrl = TextEditingController(
-      text: context.read<FolderFilesViewModel>().uploadFileName ?? '',
+      text: _isEdit
+          ? (widget.editFile!.name ?? '')
+          : (context.read<FolderFilesViewModel>().uploadFileName ?? ''),
     );
+    if (_isEdit) {
+      // Sync VM name so validation passes without the user retyping
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<FolderFilesViewModel>().setFileName(_nameCtrl.text);
+      });
+    }
   }
 
   @override
@@ -212,15 +235,22 @@ class _UploadFileSheetState extends State<_UploadFileSheet> {
                       decoration: BoxDecoration(
                           color: FolderTheme.accent.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.upload_file_rounded,
-                          color: FolderTheme.accent, size: 20),
+                      child: Icon(
+                        _isEdit
+                            ? Icons.edit_rounded
+                            : Icons.upload_file_rounded,
+                        color: FolderTheme.accent,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    const Text('Upload File',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: FolderTheme.textMain)),
+                    Text(
+                      _isEdit ? 'Edit File' : 'Upload File',
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: FolderTheme.textMain),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -252,13 +282,24 @@ class _UploadFileSheetState extends State<_UploadFileSheet> {
                               border: Border.all(
                                   color: FolderTheme.accent.withOpacity(0.3),
                                   width: 2),
+                              // In edit mode: show existing icon as fallback
                               image: vm.selectedIcon != null
                                   ? DecorationImage(
                                   image: FileImage(vm.selectedIcon!),
                                   fit: BoxFit.cover)
+                                  : (_isEdit &&
+                                  widget.editFile!.iconUrl != null &&
+                                  widget.editFile!.iconUrl!.isNotEmpty)
+                                  ? DecorationImage(
+                                  image: NetworkImage(
+                                      widget.editFile!.iconUrl!),
+                                  fit: BoxFit.cover)
                                   : null,
                             ),
-                            child: vm.selectedIcon == null
+                            child: (vm.selectedIcon == null &&
+                                !(_isEdit &&
+                                    widget.editFile!.iconUrl != null &&
+                                    widget.editFile!.iconUrl!.isNotEmpty))
                                 ? const Icon(Icons.image_outlined,
                                 size: 28, color: FolderTheme.accent)
                                 : null,
@@ -308,86 +349,214 @@ class _UploadFileSheetState extends State<_UploadFileSheet> {
                 const SizedBox(height: 16),
 
                 // ── File picker tile ──────────────────────────────────────
-                GestureDetector(
-                  onTap: () async {
-                    await vm.pickFile();
-                    // Sync name field if user hasn't typed yet
-                    if (vm.uploadFileName != null &&
-                        _nameCtrl.text.isEmpty) {
-                      _nameCtrl.text = vm.uploadFileName!;
-                    }
-                    setState(() {});
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: vm.selectedFile != null
-                          ? FolderTheme.accent.withOpacity(0.06)
-                          : FolderTheme.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: vm.selectedFile != null
-                            ? FolderTheme.accent.withOpacity(0.4)
-                            : FolderTheme.border,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
+                // In edit mode with no new file picked, show the existing
+                // server file as a read-only "current file" tile, plus a
+                // separate "Replace" tap target below it.
+                Builder(builder: (_) {
+                  // Existing server file info (edit mode only)
+                  final existingName = _isEdit
+                      ? (widget.editFile!.filePath
+                      ?.split('/')
+                      .last ??
+                      widget.editFile!.name ??
+                      'Current file')
+                      : null;
+                  final existingExt =
+                  _isEdit ? widget.editFile!.fileTypeName : null;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Current file row (edit mode, no replacement yet) ──
+                      if (_isEdit && vm.selectedFile == null) ...[
                         Container(
-                          width: 44,
-                          height: 44,
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: FolderTheme.accent.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
+                            color: FolderTheme.accent.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: FolderTheme.accent.withOpacity(0.25),
+                                width: 1.5),
                           ),
-                          child: Icon(
-                            vm.selectedFile != null
-                                ? Icons.insert_drive_file_rounded
-                                : Icons.attach_file_rounded,
-                            color: FolderTheme.accent,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: vm.selectedFile != null
-                              ? Column(
-                            crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                vm.selectedFile!.name,
-                                style: FolderTheme.cardTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: FolderTheme.accent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                    Icons.insert_drive_file_rounded,
+                                    color: FolderTheme.accent,
+                                    size: 22),
                               ),
-                              Text(
-                                _formatSize(vm.selectedFile!.size),
-                                style: FolderTheme.cardSubtitle,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      existingName!,
+                                      style: FolderTheme.cardTitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: FolderTheme.accent
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                            BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            existingExt!,
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: FolderTheme.accent),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Text('Current file',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: FolderTheme.textSub)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
-                          )
-                              : const Text(
-                            'Tap to select a file',
-                            style: TextStyle(
-                                color: FolderTheme.textSub,
-                                fontSize: 14),
                           ),
                         ),
-                        if (vm.selectedFile != null)
-                          IconButton(
-                            onPressed: vm.clearSelectedFile,
-                            icon: const Icon(Icons.close_rounded,
-                                color: FolderTheme.textSub, size: 18),
+                        const SizedBox(height: 10),
+                        // "Replace file" tap area
+                        GestureDetector(
+                          onTap: () async {
+                            await vm.pickFile();
+                            setState(() {});
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: FolderTheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                              Border.all(color: FolderTheme.border),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.swap_horiz_rounded,
+                                    color: FolderTheme.accent, size: 18),
+                                SizedBox(width: 8),
+                                Text('Replace file (optional)',
+                                    style: TextStyle(
+                                        color: FolderTheme.accent,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
                           ),
-                      ],
-                    ),
-                  ),
-                ),
+                        ),
+                      ]
+                      // ── New file picked (both upload & edit after picking) ──
+                      else
+                        GestureDetector(
+                          onTap: () async {
+                            await vm.pickFile();
+                            if (vm.uploadFileName != null &&
+                                _nameCtrl.text.isEmpty) {
+                              _nameCtrl.text = vm.uploadFileName!;
+                            }
+                            setState(() {});
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: vm.selectedFile != null
+                                  ? FolderTheme.accent.withOpacity(0.06)
+                                  : FolderTheme.surface,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: vm.selectedFile != null
+                                    ? FolderTheme.accent.withOpacity(0.4)
+                                    : FolderTheme.border,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: FolderTheme.accent.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    vm.selectedFile != null
+                                        ? Icons.insert_drive_file_rounded
+                                        : Icons.attach_file_rounded,
+                                    color: FolderTheme.accent,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: vm.selectedFile != null
+                                      ? Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        vm.selectedFile!.name,
+                                        style: FolderTheme.cardTitle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        _formatSize(
+                                            vm.selectedFile!.size),
+                                        style: FolderTheme.cardSubtitle,
+                                      ),
+                                    ],
+                                  )
+                                      : const Text(
+                                    'Tap to select a file',
+                                    style: TextStyle(
+                                        color: FolderTheme.textSub,
+                                        fontSize: 14),
+                                  ),
+                                ),
+                                if (vm.selectedFile != null)
+                                  IconButton(
+                                    onPressed: () {
+                                      vm.clearSelectedFile();
+                                      if (_isEdit) {
+                                        vm.setFileName(_nameCtrl.text);
+                                      }
+                                    },
+                                    icon: const Icon(Icons.close_rounded,
+                                        color: FolderTheme.textSub, size: 18),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 28),
 
-                // ── Upload button ─────────────────────────────────────────
+                // ── Action button ─────────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -395,13 +564,30 @@ class _UploadFileSheetState extends State<_UploadFileSheet> {
                     onPressed: vm.isActionLoading
                         ? null
                         : () async {
-                      await vm.uploadFile(context, widget.folderId);
-                      if (vm.selectedFile == null && context.mounted) {
+                      if (_isEdit) {
+                        await vm.editFile(
+                            context, widget.editFile!, widget.folderId);
+                        // Wait for flushbar to finish its own route pop
+                        // before we pop the bottom sheet, otherwise
+                        // Navigator asserts entry.currentState == popping.
                         await Future.delayed(
-                            const Duration(milliseconds: 400));
+                            const Duration(milliseconds: 600));
                         if (context.mounted &&
                             Navigator.canPop(context)) {
                           Navigator.pop(context);
+                        }
+                      } else {
+                        await vm.uploadFile(
+                            context, widget.folderId);
+                        if (vm.selectedFile == null &&
+                            context.mounted) {
+                          // Same guard — let flushbar route settle first
+                          await Future.delayed(
+                              const Duration(milliseconds: 600));
+                          if (context.mounted &&
+                              Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
                         }
                       }
                     },
@@ -419,9 +605,11 @@ class _UploadFileSheetState extends State<_UploadFileSheet> {
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2.5),
                     )
-                        : const Text('Upload File',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
+                        : Text(
+                      _isEdit ? 'Save Changes' : 'Upload File',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ],
@@ -479,6 +667,7 @@ class _FileListBody extends StatelessWidget {
             return FileCard(
               file: file,
               index: i,
+              folderId: folderId,
               onDelete: () => _confirmDelete(context, vm, file),
             );
           },
@@ -529,14 +718,89 @@ class _FileListBody extends StatelessWidget {
 class FileCard extends StatelessWidget {
   final FileModel file;
   final int index;
+  final int folderId;
   final VoidCallback onDelete;
 
   const FileCard({
     super.key,
     required this.file,
     required this.index,
+    required this.folderId,
     required this.onDelete,
   });
+
+  // ── Download helper ────────────────────────────────────────────────────────
+  Future<void> _downloadFile(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Show "starting" snack
+    messenger.showSnackBar(SnackBar(
+      content: Text('Downloading: ${file.name ?? ""}…'),
+      backgroundColor: FolderTheme.accent,
+      duration: const Duration(seconds: 2),
+    ));
+
+    try {
+      final headers = await getAuthHeaders();
+      final url     = file.downloadUrl; // uses BaseUrl + /files/{id}/download
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      if (response.statusCode != 200) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('Download failed (${response.statusCode})'),
+          backgroundColor: Colors.red.shade600,
+        ));
+        return;
+      }
+
+      // Determine file extension from filePath or name
+      final ext      = file.extension.isNotEmpty ? '.${file.extension}' : '';
+      final safeName = (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
+
+      // Save to downloads / temp directory
+      final dir      = Platform.isAndroid
+          ? Directory('/storage/emulated/0/Download')
+          : await getApplicationDocumentsDirectory();
+
+      if (!await dir.exists()) await dir.create(recursive: true);
+
+      final savePath = '${dir.path}/$safeName$ext';
+      final saved    = File(savePath);
+      await saved.writeAsBytes(response.bodyBytes);
+
+      messenger.showSnackBar(SnackBar(
+        content: Text('Saved to ${saved.path}'),
+        backgroundColor: Colors.green.shade600,
+        duration: const Duration(seconds: 3),
+      ));
+
+      // Open the file with the device's default app
+      await OpenFile.open(savePath);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Download error: $e'),
+        backgroundColor: Colors.red.shade600,
+      ));
+    }
+  }
+
+  // ── Edit helper — opens the same sheet in edit mode ────────────────────────
+  void _showEditSheet(BuildContext context) {
+    // Reset upload state, then seed name from the existing file
+    final vm = context.read<FolderFilesViewModel>();
+    vm.clearSelectedFile();
+    vm.setFileName(file.name ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChangeNotifierProvider.value(
+        value: vm,
+        child: _FileFormSheet(folderId: folderId, editFile: file),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -595,21 +859,21 @@ class FileCard extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // ── Download ────────────────────────────────────────────────
               IconButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Downloading: \${file.name ?? ""}'),
-                      backgroundColor: FolderTheme.accent,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                  // TODO: launchUrl(Uri.parse(file.downloadUrl));
-                },
+                onPressed: () => _downloadFile(context),
                 icon: const Icon(Icons.download_rounded,
                     color: FolderTheme.accent, size: 20),
                 tooltip: 'Download',
               ),
+              // ── Edit ────────────────────────────────────────────────────
+              IconButton(
+                onPressed: () => _showEditSheet(context),
+                icon: const Icon(Icons.edit_rounded,
+                    color: FolderTheme.accent, size: 20),
+                tooltip: 'Edit',
+              ),
+              // ── Delete ──────────────────────────────────────────────────
               IconButton(
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline_rounded,
