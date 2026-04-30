@@ -285,9 +285,17 @@ class FolderFilesViewModel extends ChangeNotifier {
   ///   • file         — only if the user picked a replacement document (selectedFile != null)
   Future<void> editFile(
       BuildContext context, FileModel file, int folderId) async {
-    if (uploadFileName == null || uploadFileName!.isEmpty) {
+    // ── Guard: name required ───────────────────────────────────────────────────
+    if (uploadFileName == null || uploadFileName!.trim().isEmpty) {
       Utils.showApiResponse(
           Utils.errorResponse('Please enter a file name'), context);
+      return;
+    }
+
+    // ── Guard: file must have a valid id ───────────────────────────────────────
+    if (file.id == null) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Invalid file: missing ID'), context);
       return;
     }
 
@@ -295,36 +303,73 @@ class FolderFilesViewModel extends ChangeNotifier {
       isActionLoading = true;
       notifyListeners();
 
+      final hasNewFile = selectedFile != null;
+      final hasNewIcon = selectedIcon != null;
+
+      final fields = <String, dynamic>{
+        'name': uploadFileName!.trim(),
+        '_method': 'PUT',
+      };
+
+      // ── Full data log before sending ───────────────────────────────────────
+      _logger.i('━━━━━━━━━━━━ editFile REQUEST ━━━━━━━━━━━━');
+      _logger.i('Endpoint  : ${FileEndpoints.editFIle}${file.id}');
+      _logger.i('Fields    : $fields');
+      _logger.i('hasNewFile: $hasNewFile');
+      if (hasNewFile) {
+        _logger.i('  fileName  : ${selectedFile!.name}');
+        _logger.i('  filePath  : ${selectedFile!.path}');
+        _logger.i('  fileSize  : ${selectedFile!.size} bytes');
+        _logger.i('  fileBytes : ${selectedFile!.bytes?.length ?? 0} bytes in memory');
+        _logger.i('  extension : ${selectedFile!.extension}');
+      }
+      _logger.i('hasNewIcon: $hasNewIcon');
+      if (hasNewIcon) {
+        _logger.i('  iconPath  : ${selectedIcon!.path}');
+        _logger.i('  iconExists: ${selectedIcon!.existsSync()}');
+        _logger.i('  iconSize  : ${selectedIcon!.lengthSync()} bytes');
+      }
+      _logger.i('FileModel being edited:');
+      _logger.i('  id        : ${file.id}');
+      _logger.i('  name      : ${file.name}');
+      _logger.i('  folderId  : $folderId');
+      _logger.i('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
       final response = await _apiService.putFileMultipart(
-        '${FileEndpoints.editFIle}${file.id}',   // e.g. /api/files/{id}
-        <String, dynamic>{
-          'name': uploadFileName!,
-          '_method': 'PUT',                       // Laravel method-spoofing
-        },
-        // Replace file only if user picked a new one
-        mainFileBytes: selectedFile?.bytes,
-        mainFilePath:  selectedFile?.path,
-        mainFileName:  selectedFile?.name,
-        // Replace icon only if user picked a new one
-        iconFile: selectedIcon,
+        '${FileEndpoints.editFIle}${file.id}',
+        fields,
+        mainFileBytes: hasNewFile ? selectedFile!.bytes : null,
+        mainFilePath:  hasNewFile ? selectedFile!.path  : null,
+        mainFileName:  hasNewFile ? selectedFile!.name  : null,
+        iconFile:      hasNewIcon ? selectedIcon        : null,
       );
 
+      // ── Log raw response ───────────────────────────────────────────────────
+      _logger.i('━━━━━━━━━━━━ editFile RESPONSE ━━━━━━━━━━━━');
+      _logger.i('success   : ${response['success']}');
+      _logger.i('message   : ${response['message']}');
+      _logger.i('full body : $response');
+      _logger.i('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
       Utils.showApiResponse(response, context);
+
       if (response['success'] == true) {
-        _logger.i('File edited: $uploadFileName');
+        _logger.i('File edited successfully: $uploadFileName');
         clearSelectedFile();
         await fetchFiles(context, folderId, refresh: true);
       }
-    } catch (e) {
+    } catch (e, stack) {
+      _logger.e('━━━━━━━━━━━━ editFile ERROR ━━━━━━━━━━━━');
+      _logger.e('error : $e');
+      _logger.e('stack : $stack');
+      _logger.e('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       Utils.showApiResponse(
           Utils.errorResponse('Error editing file: $e'), context);
-      _logger.e('editFile error: $e');
     } finally {
       isActionLoading = false;
       notifyListeners();
     }
   }
-
   // ── Delete file ────────────────────────────────────────────────────────────
   Future<void> deleteFile(
       BuildContext context, FileModel file, int folderId) async {
