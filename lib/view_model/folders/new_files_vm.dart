@@ -176,9 +176,13 @@ class FolderFilesViewModel extends ChangeNotifier {
     try {
       final result = await FilePicker.platform.pickFiles(type: FileType.any);
       if (result != null && result.files.isNotEmpty) {
-        selectedFile   = result.files.first;
-        uploadFileName = result.files.first.name
-            .replaceAll(RegExp(r'\.[^.]+$'), '');
+        selectedFile = result.files.first;
+        // Only auto-fill name if the user hasn't typed one yet.
+        // This preserves the name the user already entered in the field.
+        if (uploadFileName == null || uploadFileName!.isEmpty) {
+          uploadFileName = result.files.first.name
+              .replaceAll(RegExp(r'\.[^.]+$'), '');
+        }
         notifyListeners();
       }
     } catch (e) {
@@ -222,11 +226,21 @@ class FolderFilesViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Full reset — clears file, icon AND name. Used when upload succeeds or cancels.
   void clearSelectedFile() {
     selectedFile   = null;
     selectedIcon?.deleteSync();
     selectedIcon   = null;
     uploadFileName = null;
+    notifyListeners();
+  }
+
+  /// Clears only the picked file/icon — preserves [uploadFileName].
+  /// Use this before opening the edit sheet so the pre-filled name survives.
+  void clearSelectionOnly() {
+    selectedFile = null;
+    selectedIcon?.deleteSync();
+    selectedIcon = null;
     notifyListeners();
   }
 
@@ -295,11 +309,10 @@ class FolderFilesViewModel extends ChangeNotifier {
       isActionLoading = true;
       notifyListeners();
 
-      final response = await _apiService.putFileMultipart(
-        '${FileEndpoints.editFIle}${file.id}',   // e.g. /api/files/{id}
+      final response = await _apiService.postFileMultipart(
+        '${FileEndpoints.editFIle}${file.id}',
         <String, dynamic>{
           'name': uploadFileName!,
-          '_method': 'PUT',                       // Laravel method-spoofing
         },
         // Replace file only if user picked a new one
         mainFileBytes: selectedFile?.bytes,
