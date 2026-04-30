@@ -175,6 +175,7 @@ class _FileFormSheet extends StatefulWidget {
 class _FileFormSheetState extends State<_FileFormSheet> {
   late final TextEditingController _nameCtrl;
   bool get _isEdit => widget.editFile != null;
+  bool _editSuccess = false; // set to true on successful edit, used to close sheet
 
   @override
   void initState() {
@@ -472,8 +473,8 @@ class _FileFormSheetState extends State<_FileFormSheet> {
                         GestureDetector(
                           onTap: () async {
                             await vm.pickFile();
-                            if (vm.uploadFileName != null &&
-                                _nameCtrl.text.isEmpty) {
+                            // Only sync to name field if user hasn't typed anything yet
+                            if (_nameCtrl.text.isEmpty && vm.uploadFileName != null) {
                               _nameCtrl.text = vm.uploadFileName!;
                             }
                             setState(() {});
@@ -788,7 +789,7 @@ class FileCard extends StatelessWidget {
   void _showEditSheet(BuildContext context) {
     // Reset upload state, then seed name from the existing file
     final vm = context.read<FolderFilesViewModel>();
-    vm.clearSelectedFile();
+    vm.clearSelectionOnly();   // preserve nothing — name set below
     vm.setFileName(file.name ?? '');
 
     showModalBottomSheet(
