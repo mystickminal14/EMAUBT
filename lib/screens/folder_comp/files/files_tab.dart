@@ -2,7 +2,7 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -40,7 +40,6 @@ class _FilesTabState extends State<FilesTab>
     if (!_scrollCtrl.hasClients) return;
     if (_scrollCtrl.position.pixels <
         _scrollCtrl.position.maxScrollExtent - 200) return;
-
     final vm = context.read<FolderFilesViewModel>();
     if (vm.isFetchingMore || vm.isLoading || !vm.hasMorePages) return;
     vm.fetchNextPage(context, widget.folderId);
@@ -58,38 +57,28 @@ class _FilesTabState extends State<FilesTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Consumer<FolderFilesViewModel>(
-      builder: (_, vm, __) {
-        return Column(
-          children: [
-            // Search + upload row
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  Expanded(child: _SearchBar(controller: _searchCtrl)),
-                  const SizedBox(width: 10),
-                  _UploadButton(folderId: widget.folderId),
-                ],
-              ),
-            ),
-            // Upload preview
-            if (vm.selectedFile != null)
-              _UploadPreviewTile(
-                file: vm.selectedFile!,
-                folderId: widget.folderId,
-              ),
-            const SizedBox(height: 8),
-            // File list
-            Expanded(
-              child: _FileListBody(
-                scrollController: _scrollCtrl,
-                folderId: widget.folderId,
-              ),
-            ),
-          ],
-        );
-      },
+    return Column(
+      children: [
+        // Search + upload row
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Row(
+            children: [
+              Expanded(child: _SearchBar(controller: _searchCtrl)),
+              const SizedBox(width: 10),
+              _UploadButton(folderId: widget.folderId),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // File list
+        Expanded(
+          child: _FileListBody(
+            scrollController: _scrollCtrl,
+            folderId: widget.folderId,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -97,7 +86,6 @@ class _FilesTabState extends State<FilesTab>
 // ─── Search Bar ───────────────────────────────────────────────────────────────
 class _SearchBar extends StatelessWidget {
   final TextEditingController controller;
-
   const _SearchBar({required this.controller});
 
   @override
@@ -107,14 +95,13 @@ class _SearchBar extends StatelessWidget {
       decoration: FolderTheme.searchDecoration,
       child: TextField(
         controller: controller,
-        onChanged: (v) =>
-            context.read<FolderFilesViewModel>().searchFiles(v),
+        onChanged: (v) => context.read<FolderFilesViewModel>().searchFiles(v),
         style: FolderTheme.fieldInput,
         decoration: const InputDecoration(
           hintText: 'Search files…',
           hintStyle: TextStyle(color: FolderTheme.textSub, fontSize: 13),
-          prefixIcon: Icon(Icons.search_rounded,
-              color: FolderTheme.textSub, size: 18),
+          prefixIcon:
+          Icon(Icons.search_rounded, color: FolderTheme.textSub, size: 18),
           border: InputBorder.none,
           contentPadding:
           EdgeInsets.symmetric(vertical: 12, horizontal: 12),
@@ -124,107 +111,320 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ─── Upload Button ────────────────────────────────────────────────────────────
+// ─── Upload Button — opens bottom sheet ──────────────────────────────────────
 class _UploadButton extends StatelessWidget {
   final int folderId;
-
   const _UploadButton({required this.folderId});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FolderFilesViewModel>(
       builder: (_, vm, __) => ElevatedButton.icon(
-        onPressed: vm.isActionLoading ? null : () => vm.pickFile(),
+        onPressed: vm.isActionLoading
+            ? null
+            : () => _showUploadSheet(context, folderId),
         style: ElevatedButton.styleFrom(
           backgroundColor: FolderTheme.accent,
           foregroundColor: Colors.white,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          padding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           elevation: 0,
         ),
         icon: const Icon(Icons.upload_rounded, size: 18),
-        label: const Text(
-          'Upload',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-        ),
+        label: const Text('Upload',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
       ),
+    );
+  }
+
+  void _showUploadSheet(BuildContext context, int folderId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _UploadFileSheet(folderId: folderId),
     );
   }
 }
 
-// ─── Upload Preview Tile ──────────────────────────────────────────────────────
-class _UploadPreviewTile extends StatelessWidget {
-  final PlatformFile file;
+// ─── Upload File Sheet ────────────────────────────────────────────────────────
+class _UploadFileSheet extends StatefulWidget {
   final int folderId;
+  const _UploadFileSheet({required this.folderId});
 
-  const _UploadPreviewTile({required this.file, required this.folderId});
+  @override
+  State<_UploadFileSheet> createState() => _UploadFileSheetState();
+}
+
+class _UploadFileSheetState extends State<_UploadFileSheet> {
+  late final TextEditingController _nameCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(
+      text: context.read<FolderFilesViewModel>().uploadFileName ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<FolderFilesViewModel>(
-      builder: (_, vm, __) => Container(
-        margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: FolderTheme.accent.withOpacity(0.07),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: FolderTheme.accent.withOpacity(0.3)),
+    return Padding(
+      padding:
+      EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: FolderTheme.accent.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.insert_drive_file_rounded,
-                  color: FolderTheme.accent, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    file.name,
-                    style: FolderTheme.cardTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Consumer<FolderFilesViewModel>(
+          builder: (_, vm, __) => SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: FolderTheme.border,
+                        borderRadius: BorderRadius.circular(2)),
                   ),
-                  Text(
-                    _formatSize(file.size),
-                    style: FolderTheme.cardSubtitle,
+                ),
+                const SizedBox(height: 20),
+
+                // Title
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                          color: FolderTheme.accent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.upload_file_rounded,
+                          color: FolderTheme.accent, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Upload File',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: FolderTheme.textMain)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // ── Icon picker ───────────────────────────────────────────
+                Row(
+                  children: [
+                    const Text('Icon',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: FolderTheme.textSub)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () async {
+                        await vm.pickIcon();
+                        if (vm.selectedIcon != null) {
+                          setState(() {});
+                        }
+                      },
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: FolderTheme.accent.withOpacity(0.08),
+                              border: Border.all(
+                                  color: FolderTheme.accent.withOpacity(0.3),
+                                  width: 2),
+                              image: vm.selectedIcon != null
+                                  ? DecorationImage(
+                                  image: FileImage(vm.selectedIcon!),
+                                  fit: BoxFit.cover)
+                                  : null,
+                            ),
+                            child: vm.selectedIcon == null
+                                ? const Icon(Icons.image_outlined,
+                                size: 28, color: FolderTheme.accent)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                  color: FolderTheme.accent,
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.camera_alt_rounded,
+                                  size: 12, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── File name field ───────────────────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: FolderTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: FolderTheme.border),
                   ),
-                ],
-              ),
+                  child: TextField(
+                    controller: _nameCtrl,
+                    onChanged: vm.setFileName,
+                    style: FolderTheme.fieldInput,
+                    decoration: const InputDecoration(
+                      labelText: 'File Name',
+                      labelStyle: TextStyle(
+                          fontSize: 13, color: FolderTheme.textSub),
+                      prefixIcon: Icon(Icons.drive_file_rename_outline_rounded,
+                          color: FolderTheme.accent, size: 20),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ── File picker tile ──────────────────────────────────────
+                GestureDetector(
+                  onTap: () async {
+                    await vm.pickFile();
+                    // Sync name field if user hasn't typed yet
+                    if (vm.uploadFileName != null &&
+                        _nameCtrl.text.isEmpty) {
+                      _nameCtrl.text = vm.uploadFileName!;
+                    }
+                    setState(() {});
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: vm.selectedFile != null
+                          ? FolderTheme.accent.withOpacity(0.06)
+                          : FolderTheme.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: vm.selectedFile != null
+                            ? FolderTheme.accent.withOpacity(0.4)
+                            : FolderTheme.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: FolderTheme.accent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            vm.selectedFile != null
+                                ? Icons.insert_drive_file_rounded
+                                : Icons.attach_file_rounded,
+                            color: FolderTheme.accent,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: vm.selectedFile != null
+                              ? Column(
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                vm.selectedFile!.name,
+                                style: FolderTheme.cardTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                _formatSize(vm.selectedFile!.size),
+                                style: FolderTheme.cardSubtitle,
+                              ),
+                            ],
+                          )
+                              : const Text(
+                            'Tap to select a file',
+                            style: TextStyle(
+                                color: FolderTheme.textSub,
+                                fontSize: 14),
+                          ),
+                        ),
+                        if (vm.selectedFile != null)
+                          IconButton(
+                            onPressed: vm.clearSelectedFile,
+                            icon: const Icon(Icons.close_rounded,
+                                color: FolderTheme.textSub, size: 18),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ── Upload button ─────────────────────────────────────────
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: vm.isActionLoading
+                        ? null
+                        : () async {
+                      await vm.uploadFile(context, widget.folderId);
+                      if (vm.selectedFile == null && context.mounted) {
+                        await Future.delayed(
+                            const Duration(milliseconds: 400));
+                        if (context.mounted &&
+                            Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: FolderTheme.accent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: vm.isActionLoading
+                        ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2.5),
+                    )
+                        : const Text('Upload File',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            if (vm.isActionLoading)
-              const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                    color: FolderTheme.accent, strokeWidth: 2.5),
-              )
-            else ...[
-              IconButton(
-                onPressed: () => vm.uploadFile(context, folderId),
-                icon: const Icon(Icons.cloud_upload_rounded,
-                    color: FolderTheme.accent, size: 22),
-                tooltip: 'Upload',
-              ),
-              IconButton(
-                onPressed: vm.clearSelectedFile,
-                icon: const Icon(Icons.close_rounded,
-                    color: FolderTheme.textSub, size: 20),
-                tooltip: 'Cancel',
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -261,7 +461,7 @@ class _FileListBody extends StatelessWidget {
 
         return ListView.builder(
           controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
           itemCount:
           vm.filteredFiles.length + (vm.isFetchingMore ? 1 : 0),
           itemBuilder: (_, i) {
@@ -349,7 +549,8 @@ class FileCard extends StatelessWidget {
         child: ListTile(
           contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          leading: _FileIconBox(file: file),
+          // Show custom icon if available, otherwise file-type icon
+          leading: _FileLeading(file: file),
           title: Text(
             file.name ?? '—',
             style: FolderTheme.cardTitle,
@@ -360,33 +561,60 @@ class FileCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               children: [
-                Text(file.formattedSize, style: FolderTheme.cardSubtitle),
-                const SizedBox(width: 8),
                 Container(
-                  width: 3,
-                  height: 3,
-                  decoration: const BoxDecoration(
-                    color: FolderTheme.textSub,
-                    shape: BoxShape.circle,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: FolderTheme.accent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
                   child: Text(
-                    file.fileType ?? '',
-                    style: FolderTheme.cardSubtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    file.fileTypeName,
+                    style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: FolderTheme.accent),
                   ),
                 ),
+                if (file.createdAt != null) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      file.createdAt!.split(' ').first,
+                      style: FolderTheme.cardSubtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          trailing: IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline_rounded,
-                color: Colors.red, size: 20),
-            tooltip: 'Delete',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Downloading: \${file.name ?? ""}'),
+                      backgroundColor: FolderTheme.accent,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                  // TODO: launchUrl(Uri.parse(file.downloadUrl));
+                },
+                icon: const Icon(Icons.download_rounded,
+                    color: FolderTheme.accent, size: 20),
+                tooltip: 'Download',
+              ),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded,
+                    color: Colors.red, size: 20),
+                tooltip: 'Delete',
+              ),
+            ],
           ),
         ),
       ),
@@ -394,40 +622,61 @@ class FileCard extends StatelessWidget {
   }
 }
 
-// ─── File Icon Box ────────────────────────────────────────────────────────────
-class _FileIconBox extends StatelessWidget {
+// ─── File Leading — custom icon or type icon ──────────────────────────────────
+class _FileLeading extends StatelessWidget {
   final FileModel file;
-
-  const _FileIconBox({required this.file});
+  const _FileLeading({required this.file});
 
   @override
   Widget build(BuildContext context) {
+    if (file.iconUrl != null) {
+      final imageUrl = BaseUrl.imageUrl + file.iconUrl!;
+
+      if (kDebugMode) {
+        print("Icon URL: $imageUrl");
+      }
+
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: FolderTheme.border, width: 1.5),
+          image: DecorationImage(
+            image: NetworkImage(file.iconUrl!),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+    // Fallback: file-type coloured icon box
     return Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: _bgColor.withOpacity(0.12),
+        color: _iconColor.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _bgColor.withOpacity(0.25), width: 1.5),
+        border:
+        Border.all(color: _iconColor.withOpacity(0.25), width: 1.5),
       ),
-      child: Icon(_icon, color: _bgColor, size: 24),
+      child: Icon(_iconData, color: _iconColor, size: 24),
     );
   }
 
-  Color get _bgColor {
-    if (file.isImage) return const Color(0xFF10B981);
-    if (file.isPdf) return const Color(0xFFEF4444);
-    if (file.isAudio) return const Color(0xFF8B5CF6);
-    if (file.isVideo) return const Color(0xFFF59E0B);
+  Color get _iconColor {
+    if (file.isImage)    return const Color(0xFF10B981);
+    if (file.isPdf)      return const Color(0xFFEF4444);
+    if (file.isAudio)    return const Color(0xFF8B5CF6);
+    if (file.isVideo)    return const Color(0xFFF59E0B);
     if (file.isDocument) return const Color(0xFF3B82F6);
     return FolderTheme.accent;
   }
 
-  IconData get _icon {
-    if (file.isImage) return Icons.image_rounded;
-    if (file.isPdf) return Icons.picture_as_pdf_rounded;
-    if (file.isAudio) return Icons.audio_file_rounded;
-    if (file.isVideo) return Icons.video_file_rounded;
+  IconData get _iconData {
+    if (file.isImage)    return Icons.image_rounded;
+    if (file.isPdf)      return Icons.picture_as_pdf_rounded;
+    if (file.isAudio)    return Icons.audio_file_rounded;
+    if (file.isVideo)    return Icons.video_file_rounded;
     if (file.isDocument) return Icons.description_rounded;
     return Icons.insert_drive_file_rounded;
   }
@@ -456,10 +705,8 @@ class _FilesEmptyState extends StatelessWidget {
           const SizedBox(height: 16),
           const Text('No files found', style: FolderTheme.emptyTitle),
           const SizedBox(height: 6),
-          const Text(
-            'Upload a file using the button above.',
-            style: FolderTheme.emptySubtitle,
-          ),
+          const Text('Tap Upload to add a file.',
+              style: FolderTheme.emptySubtitle),
         ],
       ),
     );

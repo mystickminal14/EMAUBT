@@ -1,12 +1,12 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/endpoints/file_endpoints.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
 
 class FolderFilesViewModel extends ChangeNotifier {
@@ -14,27 +14,28 @@ class FolderFilesViewModel extends ChangeNotifier {
   final NetworkApiService _apiService = NetworkApiService();
 
   // ── State ──────────────────────────────────────────────────────────────────
-  bool isLoading = false;
+  bool isLoading      = false;
   bool isActionLoading = false;
-  bool isFetchingMore = false;
+  bool isFetchingMore  = false;
 
-  List<FileModel> files = [];
+  List<FileModel> files         = [];
   List<FileModel> filteredFiles = [];
   String _searchQuery = '';
 
   // ── Pagination ─────────────────────────────────────────────────────────────
   int currentPage = 1;
-  int totalPages = 1;
-  int totalFiles = 0;
+  int totalPages  = 1;
+  int totalFiles  = 0;
   static const int perPage = 15;
 
   bool get hasMorePages => currentPage < totalPages;
 
-  // ── Upload state ───────────────────────────────────────────────────────────
-  PlatformFile? selectedFile;
-  double uploadProgress = 0.0;
+  // ── Upload form state ──────────────────────────────────────────────────────
+  PlatformFile? selectedFile;   // the PDF / document
+  File?         selectedIcon;   // icon image chosen from gallery
+  String?       uploadFileName; // custom display name
 
-  // ── Parse files ────────────────────────────────────────────────────────────
+  // ── Parse helpers ──────────────────────────────────────────────────────────
   List<FileModel> _parseFiles(Map<String, dynamic> response) {
     try {
       final data = response['data'];
@@ -42,13 +43,15 @@ class FolderFilesViewModel extends ChangeNotifier {
         final rawList = data['files'];
         if (rawList is List) {
           return rawList
-              .map((e) => FileModel.fromJson(Map<String, dynamic>.from(e as Map)))
+              .map((e) => FileModel.fromJson(
+              Map<String, dynamic>.from(e as Map)))
               .toList();
         }
       }
       if (data is List) {
         return data
-            .map((e) => FileModel.fromJson(Map<String, dynamic>.from(e as Map)))
+            .map((e) => FileModel.fromJson(
+            Map<String, dynamic>.from(e as Map)))
             .toList();
       }
     } catch (e) {
@@ -57,40 +60,36 @@ class FolderFilesViewModel extends ChangeNotifier {
     return [];
   }
 
-  // ── Parse pagination ───────────────────────────────────────────────────────
   void _parsePagination(Map<String, dynamic> response) {
     try {
-      final data = response['data'] as Map<String, dynamic>? ?? {};
+      final data       = response['data'] as Map<String, dynamic>? ?? {};
       final pagination = data['pagination'] as Map<String, dynamic>? ?? {};
-      totalFiles = (pagination['total'] as num?)?.toInt() ?? totalFiles;
+      totalFiles  = (pagination['total']        as num?)?.toInt() ?? totalFiles;
       currentPage = (pagination['current_page'] as num?)?.toInt() ?? currentPage;
-      totalPages = (pagination['last_page'] as num?)?.toInt() ?? totalPages;
+      totalPages  = (pagination['last_page']    as num?)?.toInt() ?? totalPages;
     } catch (e) {
       _logger.e('Error parsing pagination: $e');
     }
   }
 
-  // ── Build URL ──────────────────────────────────────────────────────────────
+  /// Builds: /api/folder/{folderId}/files?page=1&per_page=15&search=...
   String _buildUrl(int folderId, int page) {
-    final uri = Uri.parse('${FileEndpoints.fileDetail}').replace(
-      path: '/api/files',
+    return Uri.parse(FileEndpoints.folderFiles(folderId)).replace(
       queryParameters: {
-        'folder_id': folderId.toString(),
-        'page': page.toString(),
+        'page':     page.toString(),
         'per_page': perPage.toString(),
         if (_searchQuery.isNotEmpty) 'search': _searchQuery,
       },
-    );
-    return uri.toString();
+    ).toString();
   }
 
-  // ── Fetch files by folder ──────────────────────────────────────────────────
+  // ── GET files ──────────────────────────────────────────────────────────────
   Future<void> fetchFiles(BuildContext context, int folderId,
       {bool refresh = false}) async {
     if (refresh) {
       currentPage = 1;
-      totalPages = 1;
-      totalFiles = 0;
+      totalPages  = 1;
+      totalFiles  = 0;
       files.clear();
       filteredFiles.clear();
     }
@@ -99,9 +98,8 @@ class FolderFilesViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final url = _buildUrl(folderId, currentPage);
-      _logger.i('fetchFiles → $url');
-      final response = await _apiService.getApiResponse(url);
+      final response =
+      await _apiService.getApiResponse(_buildUrl(folderId, currentPage));
 
       if (response['success'] == true) {
         _parsePagination(response);
@@ -131,19 +129,16 @@ class FolderFilesViewModel extends ChangeNotifier {
   // ── Load next page ─────────────────────────────────────────────────────────
   Future<void> fetchNextPage(BuildContext context, int folderId) async {
     if (isFetchingMore || isLoading || !hasMorePages) return;
-
     isFetchingMore = true;
     notifyListeners();
 
     try {
-      final nextPage = currentPage + 1;
-      final url = _buildUrl(folderId, nextPage);
-      final response = await _apiService.getApiResponse(url);
+      final response =
+      await _apiService.getApiResponse(_buildUrl(folderId, currentPage + 1));
 
       if (response['success'] == true) {
         _parsePagination(response);
-        final fetched = _parseFiles(response);
-        files.addAll(fetched);
+        files.addAll(_parseFiles(response));
         _filterLists();
       } else {
         Utils.showApiResponse(response, context);
@@ -158,12 +153,32 @@ class FolderFilesViewModel extends ChangeNotifier {
     }
   }
 
-  // ── Pick file ──────────────────────────────────────────────────────────────
+  // ── Pick PDF / document then auto-upload ─────────────────────────────────
+  Future<void> pickAndUploadFile(BuildContext context, int folderId) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.any);
+      if (result == null || result.files.isEmpty) return;
+
+      selectedFile   = result.files.first;
+      uploadFileName = result.files.first.name
+          .replaceAll(RegExp(r'\.[^.]+$'), '');
+      notifyListeners();
+
+      // Auto-upload immediately after picking
+      await uploadFile(context, folderId);
+    } catch (e) {
+      _logger.e('pickAndUploadFile error: $e');
+    }
+  }
+
+  // ── Pick PDF / document (manual, kept for compatibility) ──────────────────
   Future<void> pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(type: FileType.any);
       if (result != null && result.files.isNotEmpty) {
-        selectedFile = result.files.first;
+        selectedFile   = result.files.first;
+        uploadFileName = result.files.first.name
+            .replaceAll(RegExp(r'\.[^.]+$'), '');
         notifyListeners();
       }
     } catch (e) {
@@ -171,39 +186,84 @@ class FolderFilesViewModel extends ChangeNotifier {
     }
   }
 
-  void clearSelectedFile() {
-    selectedFile = null;
-    uploadProgress = 0.0;
+  // ── Pick icon image from gallery ───────────────────────────────────────────
+  Future<void> pickIcon() async {
+    try {
+      final picker     = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile == null) return;
+
+      // Compress before upload
+      final compressedBytes = await FlutterImageCompress.compressWithFile(
+        pickedFile.path,
+        quality:   85,
+        minWidth:  512,
+        minHeight: 512,
+        format:    CompressFormat.jpeg,
+      );
+
+      if (compressedBytes != null) {
+        final tempDir = await Directory.systemTemp.createTemp();
+        final file    = File(
+            '${tempDir.path}/icon_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await file.writeAsBytes(compressedBytes);
+        selectedIcon = file;
+      } else {
+        selectedIcon = File(pickedFile.path);
+      }
+      notifyListeners();
+    } catch (e) {
+      _logger.e('pickIcon error: $e');
+    }
+  }
+
+  void setFileName(String value) {
+    uploadFileName = value.trim();
     notifyListeners();
   }
 
-  // ── Upload file ────────────────────────────────────────────────────────────
+  void clearSelectedFile() {
+    selectedFile   = null;
+    selectedIcon?.deleteSync();
+    selectedIcon   = null;
+    uploadFileName = null;
+    notifyListeners();
+  }
+
+  // ── Upload file (POST with name + icon + file + folder_id) ────────────────
   Future<void> uploadFile(BuildContext context, int folderId) async {
     if (selectedFile == null) {
       Utils.showApiResponse(
           Utils.errorResponse('Please select a file first'), context);
       return;
     }
+    if (uploadFileName == null || uploadFileName!.isEmpty) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Please enter a file name'), context);
+      return;
+    }
 
     try {
       isActionLoading = true;
-      uploadProgress = 0.0;
       notifyListeners();
 
-      final fields = <String, dynamic>{
-        'folder_id': folderId.toString(),
-      };
-
-      final response = await _apiService.postMultipartNoticeFiles(
+      final response = await _apiService.postFileMultipart(
         FileEndpoints.uploadFile,
-        fields,
-        files: [selectedFile!],
-        fieldName: 'file',
+        <String, dynamic>{
+          'folder_id': folderId.toString(),
+          'name':      uploadFileName!,
+        },
+        // The actual document
+        mainFileBytes: selectedFile!.bytes,
+        mainFilePath:  selectedFile!.path,
+        mainFileName:  selectedFile!.name,
+        // Optional icon
+        iconFile: selectedIcon,
       );
 
       Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _logger.i('File uploaded successfully');
+        _logger.i('File uploaded: $uploadFileName');
         clearSelectedFile();
         await fetchFiles(context, folderId, refresh: true);
       }
