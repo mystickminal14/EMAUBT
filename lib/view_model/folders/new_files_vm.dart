@@ -26,7 +26,7 @@ class FolderFilesViewModel extends ChangeNotifier {
   int currentPage = 1;
   int totalPages  = 1;
   int totalFiles  = 0;
-  static const int perPage = 15;
+  static const int perPage = 8;
 
   bool get hasMorePages => currentPage < totalPages;
 
