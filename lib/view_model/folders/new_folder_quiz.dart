@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/endpoints/quiz_endpoints.dart';
 import 'package:ema_app/model/folder_mode_v2/new_quiz_set_model.dart';
@@ -184,9 +183,11 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
         if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (passingScore != null) 'passing_score': passingScore,
         'is_published': isPublished,
+        // FIX: always send selectedIconBase64 which is already in "data:image/jpeg;base64,..." format
         if (selectedIconBase64 != null && selectedIconBase64!.isNotEmpty)
           'icon': selectedIconBase64,
       };
+      _logger.d("addQuizSet body icon prefix → ${selectedIconBase64?.substring(0, 50)}");
 
       final response = await _apiService.getPostApiResponse(
           QuizSetEndpoints.createQuizSet, body);
@@ -226,9 +227,11 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
         if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (passingScore != null) 'passing_score': passingScore,
         'is_published': isPublished,
+        // FIX: always send selectedIconBase64 which is already in "data:image/jpeg;base64,..." format
         if (selectedIconBase64 != null && selectedIconBase64!.isNotEmpty)
           'icon': selectedIconBase64,
       };
+      _logger.d("editQuizSet body icon prefix → ${selectedIconBase64?.substring(0, 50)}");
 
       final response = await _apiService.getPutResponse(
         '${QuizSetEndpoints.updateQuizSet}${quizSet.id}',
@@ -316,8 +319,11 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
         }
       }
 
+      // FIX: Encode to base64 with data URI prefix — "data:image/jpeg;base64,<data>"
       if (selectedIconBytes != null) {
-        selectedIconBase64 = base64Encode(selectedIconBytes!);
+        final base64Str = base64Encode(selectedIconBytes!);
+        selectedIconBase64 = 'data:image/jpeg;base64,$base64Str';
+        _logger.i('pickIcon → icon set, prefix: ${selectedIconBase64!.substring(0, 30)}...');
       }
 
       notifyListeners();
@@ -351,14 +357,18 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
     int? durationMinutes,
     int? passingScore,
     bool? isPublished,
+    // FIX: iconBase64 is optional — if null, do NOT overwrite existing selectedIconBase64
     String? iconBase64,
+    bool overwriteIcon = true,
   }) {
     this.name = name;
     this.description = description;
     this.durationMinutes = durationMinutes;
     this.passingScore = passingScore;
     this.isPublished = isPublished ?? false;
-    selectedIconBase64 = iconBase64;
+    if (overwriteIcon) {
+      selectedIconBase64 = iconBase64;
+    }
     notifyListeners();
   }
 
