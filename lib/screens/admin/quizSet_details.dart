@@ -128,7 +128,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<QuizSetDetailViewModel>().fetchQuestions(context,widget.quizSetId);
+      context.read<QuizSetDetailViewModel>().fetchQuestions(widget.quizSetId);
     });
   }
 

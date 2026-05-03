@@ -1,348 +1,320 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-
-import 'package:ema_app/data/network/NetworkApiService.dart';
-import 'package:ema_app/endpoints/quiz_endpoints.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:ema_app/model/question_model.dart';
-import 'package:ema_app/utils/utils.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import 'dart:convert';
+import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/utils/utils.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 
 class QuizSetDetailViewModel extends ChangeNotifier {
   final Logger _logger = Logger();
-  final NetworkApiService _apiService = NetworkApiService();
-
-  // ── State ──────────────────────────────────────────────────────────────────
-  bool isLoading       = false;
-  bool isActionLoading = false;
-  bool isFetchingMore  = false;
-
-  List<QuestionModel> questions         = [];
-  List<QuestionModel> filteredQuestions = [];
-  String _searchQuery = '';
-
-  // ── Pagination ─────────────────────────────────────────────────────────────
-  int currentPage    = 1;
-  int totalPages     = 1;
-  int totalQuestions = 0;
-  static const int perPage = 15;
-
-  bool get hasMorePages => currentPage < totalPages;
-
-  // ── Upload / form state ────────────────────────────────────────────────────
-  PlatformFile? selectedQuestionFile;
-  List<PlatformFile?> selectedChoiceFiles = List.filled(4, null);
-
+  bool _isFetching = false;
+  List<QuestionModel> questions = [];
+  bool isLoading = false;
+  bool isSaving = false;
   double saveProgress = 0.0;
-  bool   isSaving     = false;
 
-  // ── Parse helpers ──────────────────────────────────────────────────────────
-  List<QuestionModel> _parseQuestions(Map<String, dynamic> response) {
-    try {
-      final data = response['data'];
-      if (data is Map<String, dynamic>) {
-        final rawList = data['questions'];
-        if (rawList is List) {
-          return rawList
-              .map((e) => QuestionModel.fromJson(
-              Map<String, dynamic>.from(e as Map)))
-              .toList();
-        }
-      }
-      // Flat list fallback
-      final rawList = response['questions'];
-      if (rawList is List) {
-        return rawList
-            .map((e) =>
-            QuestionModel.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList();
-      }
-    } catch (e) {
-      _logger.e('Error parsing questions: $e');
-    }
-    return [];
+  void _showSuccessMessage(BuildContext context, String message) {
+    Flushbar(
+      message: message,
+      duration: const Duration(seconds: 3),
+      backgroundColor: Colors.green,
+      icon: const Icon(Icons.check_circle, color: Colors.white),
+    ).show(context);
   }
 
-  void _parsePagination(Map<String, dynamic> response) {
-    try {
-      final data       = response['data'] as Map<String, dynamic>? ?? {};
-      final pagination = data['pagination'] as Map<String, dynamic>? ?? data;
-
-      totalQuestions =
-          (pagination['total_items'] as num?)?.toInt() ??
-              (pagination['total']      as num?)?.toInt() ??
-              totalQuestions;
-
-      final lastPage =
-          (pagination['total_pages'] as num?)?.toInt() ??
-              (pagination['last_page']   as num?)?.toInt();
-
-      if (lastPage != null && lastPage > 0) totalPages = lastPage;
-
-      _logger.i(
-          'Pagination → page $currentPage/$totalPages '
-              'total $totalQuestions hasMore: $hasMorePages');
-    } catch (e) {
-      _logger.e('Error parsing pagination: $e');
-    }
-  }
-
-  // ── Build URL ──────────────────────────────────────────────────────────────
-  String _buildUrl(int quizSetId, int page) {
-    return Uri.parse(QuizSetEndpoints.questionsList(quizSetId)).replace(
-      queryParameters: {
-        'page':     page.toString(),
-        'per_page': perPage.toString(),
-        if (_searchQuery.isNotEmpty) 'search': _searchQuery,
-      },
-    ).toString();
-  }
-
-  // ── Fetch questions ────────────────────────────────────────────────────────
-  Future<void> fetchQuestions(BuildContext context, int quizSetId,
-      {bool refresh = false}) async {
-    _lastContext  = context;
-    _lastQuizSetId = quizSetId;
-
-    if (refresh) {
-      currentPage    = 1;
-      totalPages     = 1;
-      totalQuestions = 0;
-      questions.clear();
-      filteredQuestions.clear();
-    }
-
+  // ========================= FETCH QUESTIONS ==============================
+  Future<void> fetchQuestions(int quizSetId) async {
+    if (_isFetching) return;
+    _isFetching = true;
     isLoading = true;
+    questions.clear();
+    _logger.i("📥 Starting fetchQuestions for quizSetId: $quizSetId");
     notifyListeners();
 
     try {
-      final url = _buildUrl(quizSetId, currentPage);
-      _logger.i('fetchQuestions → $url');
-      final response = await _apiService.getApiResponse(url);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final url =
+          "${BaseUrl.baseUrl}quiz_set_detail_page.php?quiz_set_id=$quizSetId&_=$timestamp";
+      _logger.i("🔗 Fetch URL: $url");
 
-      if (response['success'] == true) {
-        _parsePagination(response);
-        questions = _parseQuestions(response);
-        _filterLists();
-      } else {
-        if (refresh) {
-          questions = [];
-          _filterLists();
+      final response = await http
+          .get(Uri.parse(url), headers: {'Content-Type': 'application/json'})
+          .timeout(const Duration(seconds: 15));
+
+      _logger.i("✅ Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true &&
+            data['questions'] != null &&
+            data['questions'] is List) {
+          questions = (data['questions'] as List)
+              .map((q) => QuestionModel.fromJson(q))
+              .toList();
+          _logger.i("🧾 Fetched ${questions.length} questions successfully");
+        } else {
+          _logger.w("⚠️ Invalid or empty question list response");
+          Utils.noInternet('Failed to load questions.');
         }
-        Utils.showApiResponse(response, context);
+      } else {
+        _logger.w("⚠️ Failed to fetch questions: ${response.statusCode}");
+        Utils.noInternet('Failed to load questions.');
       }
-    } catch (e) {
-      if (refresh) {
-        questions = [];
-        _filterLists();
-      }
-      Utils.showApiResponse(
-          Utils.errorResponse('Error fetching questions: $e'), context);
-      _logger.e('fetchQuestions error: $e');
+    } on TimeoutException {
+      _logger.w("⏱️ Timeout fetching questions");
+      Utils.noInternet("Request timed out. Please try again later.");
+    } catch (e, stack) {
+      _logger.e('⛔ Error fetching questions', error: e, stackTrace: stack);
+      Utils.noInternet('Error loading questions: $e');
     } finally {
       isLoading = false;
+      _isFetching = false;
+      _logger.i("🏁 Fetch complete. Total questions: ${questions.length}");
       notifyListeners();
     }
   }
 
-  // ── Load next page ─────────────────────────────────────────────────────────
-  Future<void> fetchNextPage(BuildContext context, int quizSetId) async {
-    if (isFetchingMore || isLoading || !hasMorePages) return;
-
-    isFetchingMore = true;
-    notifyListeners();
-
-    final nextPage = currentPage + 1;
-
+  // ========================= FILE UPLOAD ==============================
+  Future<String?> uploadFile(
+      File? file,
+      BuildContext context,
+      String fileKey,
+      Function(double) onProgress,
+      int quizSetId,
+      ) async {
+    if (file == null) return null;
     try {
-      final response =
-      await _apiService.getApiResponse(_buildUrl(quizSetId, nextPage));
-
-      if (response['success'] == true) {
-        currentPage = nextPage;
-        _parsePagination(response);
-        questions.addAll(_parseQuestions(response));
-        _filterLists();
-      } else {
-        Utils.showApiResponse(response, context);
+      if (!await file.exists()) {
+        throw Exception('File does not exist: ${file.path}');
       }
-    } catch (e) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Error loading more questions: $e'), context);
-      _logger.e('fetchNextPage error: $e');
-    } finally {
-      isFetchingMore = false;
-      notifyListeners();
-    }
-  }
 
-  // ── File upload ────────────────────────────────────────────────────────────
-  Future<String?> _uploadFile({
-    required PlatformFile? platformFile,
-    required File? ioFile,
-    required int quizSetId,
-    required String fileKey,
-    required void Function(double) onProgress,
-  }) async {
-    // Prefer PlatformFile (from file_picker); fall back to raw File
-    final hasFile = platformFile != null || ioFile != null;
-    if (!hasFile) return null;
-
-    try {
-      final ext = (platformFile?.name ?? ioFile!.path)
-          .split('.')
-          .last
-          .toLowerCase();
+      final ext = file.path.split('.').last.toLowerCase();
       final imageExts = ['jpg', 'jpeg', 'png', 'gif'];
-      final isImage   = imageExts.contains(ext);
+      bool shouldCompress = imageExts.contains(ext) &&
+          !kIsWeb &&
+          !(Platform.isWindows || Platform.isLinux);  // Skip on Windows/Linux (unsupported), allow on macOS/mobile/web
 
-      Uint8List? bytes;
-      String?    filePath;
-      String?    fileName;
-
-      if (platformFile != null) {
-        bytes    = platformFile.bytes;
-        filePath = platformFile.path;
-        fileName = platformFile.name;
+      File? uploadFile = file;
+      if (shouldCompress) {
+        _logger.i("🗜️ Compressing image: ${file.path}");
+        final tempDir = await getTemporaryDirectory();
+        final targetPath =
+            '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+        final Uint8List? compressedBytes =
+        await FlutterImageCompress.compressWithFile(
+          file.path,
+          minWidth: 1024,
+          minHeight: 1024,
+          quality: 85,
+          format: ext == 'png' ? CompressFormat.png : CompressFormat.jpeg,
+        );
+        if (compressedBytes != null && compressedBytes.isNotEmpty) {
+          await File(targetPath).writeAsBytes(compressedBytes);
+          uploadFile = File(targetPath);
+          _logger.i(
+              "✅ Compression success. New size: ${compressedBytes.length} bytes");
+        } else {
+          _logger.w("⚠️ Image compression failed, uploading original file");
+        }
+      } else if (imageExts.contains(ext)) {
+        _logger.i("🖥️ Skipping compression on unsupported platform: ${file.path}");
       } else {
-        filePath = ioFile!.path;
-        fileName = ioFile.path.split(Platform.pathSeparator).last;
+        _logger.i("📄 Non-image file, skipping compression: ${file.path}");
       }
 
-      // Compress images where supported
-      if (isImage && !kIsWeb && !(Platform.isWindows || Platform.isLinux)) {
-        _logger.i('🗜️ Compressing image: $filePath');
-        Uint8List? compressed;
+      final fileSize = await uploadFile.length();
+      _logger.i("🚀 Uploading file: ${uploadFile.path} (${fileSize} bytes)");
 
-        if (bytes != null) {
-          compressed = await FlutterImageCompress.compressWithList(
-            bytes,
-            quality:   85,
-            minWidth:  1024,
-            minHeight: 1024,
-            format: ext == 'png' ? CompressFormat.png : CompressFormat.jpeg,
-          );
-        } else if (filePath != null) {
-          compressed = await FlutterImageCompress.compressWithFile(
-            filePath,
-            quality:   85,
-            minWidth:  1024,
-            minHeight: 1024,
-            format: ext == 'png' ? CompressFormat.png : CompressFormat.jpeg,
-          );
-        }
+      var request = http.MultipartRequest(
+          'POST', Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'));
+      request.fields['quiz_set_id'] = quizSetId.toString();
+      request.fields['action'] = 'upload';
+      request.fields['file_key'] = fileKey;
 
-        if (compressed != null && compressed.isNotEmpty) {
-          bytes = compressed;
-          _logger.i('✅ Compressed to ${compressed.length} bytes');
-        }
-      }
-
-      // Build multipart upload
-      final response = await _apiService.postFileMultipart(
-        QuizSetEndpoints.uploadQuestionFile,
-        {'quiz_set_id': quizSetId.toString(), 'file_key': fileKey},
-        mainFileBytes: bytes,
-        mainFilePath:  filePath,
-        mainFileName:  fileName,
-        onProgress:    onProgress,
+      int byteCount = 0;
+      final stream = uploadFile.openRead().transform(
+        StreamTransformer<List<int>, List<int>>.fromHandlers(
+          handleData: (data, sink) {
+            byteCount += data.length;
+            final progress = (byteCount / fileSize).clamp(0.0, 1.0);
+            onProgress(progress);
+            _logger.i(
+                "📤 Upload progress for $fileKey: ${(progress * 100).toStringAsFixed(1)}%");
+            sink.add(data);
+          },
+        ),
       );
 
-      if (response['success'] == true) {
-        final name = response['filename'] as String?;
-        _logger.i('🎉 Uploaded $fileKey → $name');
-        return name;
+      final multipartFile = http.MultipartFile(
+        fileKey,
+        stream,
+        fileSize,
+        filename: uploadFile.path.split(Platform.pathSeparator).last,  // Use platform separator for filename
+      );
+      request.files.add(multipartFile);
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      _logger.i("✅ Upload response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse['success'] == true) {
+          _logger.i("🎉 File uploaded successfully: ${jsonResponse['filename']}");
+          return jsonResponse['filename'];
+        } else {
+          throw Exception(jsonResponse['error'] ?? 'Unknown upload error');
+        }
       } else {
-        throw Exception(response['error'] ?? 'Upload failed');
+        throw Exception('Upload failed (${response.statusCode})');
       }
     } catch (e, stack) {
-      _logger.e('⛔ Upload error for $fileKey', error: e, stackTrace: stack);
-      Utils.showApiResponse(
-          Utils.errorResponse('Failed to upload file: $e'), _lastContext!);
+      _logger.e('⛔ Upload error', error: e, stackTrace: stack);
+      Utils.noInternet('Failed to upload file: $e');
       return null;
     }
   }
 
-  // ── Add question ───────────────────────────────────────────────────────────
   Future<void> addQuestion(
       BuildContext context,
       Map<String, dynamic> questionData,
       File? questionFile,
       List<File?> choiceFiles,
       ) async {
+    final tempId = DateTime.now().millisecondsSinceEpoch;
+    final Map<String, Choice> choices = {
+      'A': Choice.fromJson(questionData['choices']['A']),
+      'B': Choice.fromJson(questionData['choices']['B']),
+      'C': Choice.fromJson(questionData['choices']['C']),
+      'D': Choice.fromJson(questionData['choices']['D']),
+    };
+
+    final tempQuestion = QuestionModel(
+      id: tempId,
+      quizSetId: questionData['quiz_set_id'],
+      question: questionData['question'],
+      optionalText: questionData['optional_text'],
+      questionFile: questionFile?.path ?? '',
+      questionType: questionData['question_type'],
+      choices: choices,
+      correctAnswer: questionData['correct_answer'],
+      formatting: questionData['formatting'],
+    );
+
+    questions.add(tempQuestion);
+    _logger.i("🟢 Temporarily added question: $tempQuestion");
+    notifyListeners();
+
     try {
-      isSaving     = true;
+      isSaving = true;
       saveProgress = 0.0;
       notifyListeners();
 
-      _logger.i('🚀 addQuestion → uploading files…');
+      _logger.i("🚀 Starting addQuestion upload process");
 
-      final questionFileName = await _uploadFile(
-        platformFile: selectedQuestionFile,
-        ioFile:       questionFile,
-        quizSetId:    questionData['quiz_set_id'],
-        fileKey:      'question_file',
-        onProgress: (p) {
-          saveProgress = p * 0.25;
+      final questionFileName = await uploadFile(
+        questionFile,
+        context,
+        'question',
+            (progress) {
+          saveProgress = (saveProgress * 0.3) + (progress * 0.7);  // Simple weighted progress
           notifyListeners();
         },
-      ) ?? questionData['question_file'] ?? '';
+        questionData['quiz_set_id'],
+      ) ??
+          '';
 
       final choiceFileNames = await Future.wait(
-        List.generate(4, (i) async {
-          final name = await _uploadFile(
-            platformFile: selectedChoiceFiles.length > i
-                ? selectedChoiceFiles[i]
-                : null,
-            ioFile:    choiceFiles.length > i ? choiceFiles[i] : null,
-            quizSetId: questionData['quiz_set_id'],
-            fileKey:   'choice_${String.fromCharCode(65 + i)}',
-            onProgress: (p) {
-              saveProgress = 0.25 + (i / 4.0 + p / 4.0) * 0.5;
+        choiceFiles.asMap().entries.map((entry) async {
+          final i = entry.key;
+          final file = entry.value;
+          return await uploadFile(
+            file,
+            context,
+            'choice_$i',
+                (progress) {
+              saveProgress += (1.0 / 4.0) * progress;  // Distribute across choices
               notifyListeners();
             },
-          );
-          return name ??
-              questionData['choices'][String.fromCharCode(65 + i)]
-              ['choice_file'] ??
+            questionData['quiz_set_id'],
+          ) ??
               '';
         }),
       );
 
-      final body = _buildQuestionBody(
-        questionData:    questionData,
-        questionFile:    questionFileName,
-        choiceFileNames: choiceFileNames,
-        action:          'add',
-      );
+      final newQuestion = {
+        'quiz_set_id': questionData['quiz_set_id'],
+        'question': questionData['question'],
+        'optional_text': questionData['optional_text'],
+        'question_file': questionFileName,
+        'question_type': questionData['question_type'],
+        'choices': {
+          'A': {
+            'choice_text': questionData['choices']['A']['choice_text'],
+            'choice_file': choiceFileNames[0],
+            'word_formatting': questionData['choices']['A']['word_formatting'],
+          },
+          'B': {
+            'choice_text': questionData['choices']['B']['choice_text'],
+            'choice_file': choiceFileNames[1],
+            'word_formatting': questionData['choices']['B']['word_formatting'],
+          },
+          'C': {
+            'choice_text': questionData['choices']['C']['choice_text'],
+            'choice_file': choiceFileNames[2],
+            'word_formatting': questionData['choices']['C']['word_formatting'],
+          },
+          'D': {
+            'choice_text': questionData['choices']['D']['choice_text'],
+            'choice_file': choiceFileNames[3],
+            'word_formatting': questionData['choices']['D']['word_formatting'],
+          },
+        },
+        'correct_answer': questionData['correct_answer'],
+        'formatting': questionData['formatting'],
+      };
 
-      _logger.i('📡 addQuestion POST: $body');
-      final response = await _apiService.getPostApiResponse(
-          QuizSetEndpoints.addQuestions(id), body);
+      _logger.i("📡 Sending add question request: $newQuestion");
 
-      Utils.showApiResponse(response, context);
-      if (response['success'] == true) {
-        saveProgress = 100.0;
-        clearFileSelections();
-        await fetchQuestions(context, questionData['quiz_set_id'],
-            refresh: true);
+      final response = await http.post(
+        Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'action': 'add', ...newQuestion}),
+      ).timeout(const Duration(seconds: 30));
+
+      _logger.i("✅ Add question response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
+          _showSuccessMessage(context, 'Question added successfully');
+          await fetchQuestions(questionData['quiz_set_id']);
+        } else {
+          throw Exception(jsonResponse['error'] ?? 'Failed to add question');
+        }
+      } else {
+        throw Exception('HTTP Error: ${response.statusCode}');
       }
-    } catch (e) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Error adding question: $e'), context);
-      _logger.e('addQuestion error: $e');
+    } catch (e, stack) {
+      questions.removeWhere((q) => q.id == tempId);
+      _logger.e('⛔ Error adding question', error: e, stackTrace: stack);
+      Utils.noInternet('Error adding question: $e');
     } finally {
       isSaving = false;
+      saveProgress = 100.0;
       notifyListeners();
     }
   }
 
-  // ── Edit question ──────────────────────────────────────────────────────────
+  // ========================= EDIT QUESTION ==============================
   Future<void> editQuestion(
       BuildContext context,
       int id,
@@ -350,272 +322,185 @@ class QuizSetDetailViewModel extends ChangeNotifier {
       File? questionFile,
       List<File?> choiceFiles,
       ) async {
-    // Optimistic update
     final index = questions.indexWhere((q) => q.id == id);
-    QuestionModel? snapshot;
+    QuestionModel? oldQuestion;
     if (index != -1) {
-      snapshot = questions[index];
+      oldQuestion = questions[index];
+      final Map<String, Choice> choices = {
+        'A': Choice.fromJson(questionData['choices']['A']),
+        'B': Choice.fromJson(questionData['choices']['B']),
+        'C': Choice.fromJson(questionData['choices']['C']),
+        'D': Choice.fromJson(questionData['choices']['D']),
+      };
       questions[index] = QuestionModel(
-        id:           id,
-        quizSetId:    questionData['quiz_set_id'],
-        question:     questionData['question'],
+        id: id,
+        quizSetId: questionData['quiz_set_id'],
+        question: questionData['question'],
         optionalText: questionData['optional_text'],
-        questionFile: questionFile?.path ?? snapshot.questionFile,
+        questionFile: questionFile?.path ?? oldQuestion.questionFile,
         questionType: questionData['question_type'],
-        choices: {
-          'A': Choice.fromJson(questionData['choices']['A']),
-          'B': Choice.fromJson(questionData['choices']['B']),
-          'C': Choice.fromJson(questionData['choices']['C']),
-          'D': Choice.fromJson(questionData['choices']['D']),
-        },
+        choices: choices,
         correctAnswer: questionData['correct_answer'],
-        formatting:    questionData['formatting'],
+        formatting: questionData['formatting'],
       );
+      _logger.i("✏️ Temporarily updated question $id");
       notifyListeners();
     }
 
     try {
-      isSaving     = true;
+      isSaving = true;
       saveProgress = 0.0;
       notifyListeners();
 
-      _logger.i('🚀 editQuestion $id → uploading files…');
+      _logger.i("🚀 Starting editQuestion process for ID: $id");
 
-      final questionFileName = await _uploadFile(
-        platformFile: selectedQuestionFile,
-        ioFile:       questionFile,
-        quizSetId:    questionData['quiz_set_id'],
-        fileKey:      'question_file',
-        onProgress: (p) {
-          saveProgress = p * 0.25;
-          notifyListeners();
-        },
-      ) ?? questionData['question_file'] ?? '';
+      String questionFileName = questionData['question_file'] ?? '';
+      if (questionFile != null) {
+        questionFileName = await uploadFile(
+          questionFile,
+          context,
+          'question',
+              (progress) {
+            saveProgress = (saveProgress * 0.3) + (progress * 0.7);
+            notifyListeners();
+          },
+          questionData['quiz_set_id'],
+        ) ??
+            questionFileName;
+      }
 
       final choiceFileNames = await Future.wait(
-        List.generate(4, (i) async {
-          final key = String.fromCharCode(65 + i);
-          final name = await _uploadFile(
-            platformFile: selectedChoiceFiles.length > i
-                ? selectedChoiceFiles[i]
-                : null,
-            ioFile:    choiceFiles.length > i ? choiceFiles[i] : null,
-            quizSetId: questionData['quiz_set_id'],
-            fileKey:   'choice_$key',
-            onProgress: (p) {
-              saveProgress = 0.25 + (i / 4.0 + p / 4.0) * 0.5;
-              notifyListeners();
-            },
-          );
-          return name ?? questionData['choices'][key]['choice_file'] ?? '';
+        choiceFiles.asMap().entries.map((entry) async {
+          final i = entry.key;
+          final file = entry.value;
+          final choiceKey = String.fromCharCode(65 + i);
+          String existingFile = questionData['choices'][choiceKey]['choice_file'] ?? '';
+          if (file != null) {
+            existingFile = await uploadFile(
+              file,
+              context,
+              'choice_$i',
+                  (progress) {
+                saveProgress += (1.0 / 4.0) * progress;
+                notifyListeners();
+              },
+              questionData['quiz_set_id'],
+            ) ??
+                existingFile;
+          }
+          return existingFile;
         }),
       );
 
-      final body = _buildQuestionBody(
-        questionData:    questionData,
-        questionFile:    questionFileName,
-        choiceFileNames: choiceFileNames,
-        action:          'edit',
-        id:              id,
-      );
+      final updatedQuestion = {
+        'id': id,
+        'quiz_set_id': questionData['quiz_set_id'],
+        'question': questionData['question'],
+        'optional_text': questionData['optional_text'],
+        'question_file': questionFileName,
+        'question_type': questionData['question_type'],
+        'choices': {
+          'A': {
+            'choice_text': questionData['choices']['A']['choice_text'],
+            'choice_file': choiceFileNames[0],
+            'word_formatting': questionData['choices']['A']['word_formatting'],
+          },
+          'B': {
+            'choice_text': questionData['choices']['B']['choice_text'],
+            'choice_file': choiceFileNames[1],
+            'word_formatting': questionData['choices']['B']['word_formatting'],
+          },
+          'C': {
+            'choice_text': questionData['choices']['C']['choice_text'],
+            'choice_file': choiceFileNames[2],
+            'word_formatting': questionData['choices']['C']['word_formatting'],
+          },
+          'D': {
+            'choice_text': questionData['choices']['D']['choice_text'],
+            'choice_file': choiceFileNames[3],
+            'word_formatting': questionData['choices']['D']['word_formatting'],
+          },
+        },
+        'correct_answer': questionData['correct_answer'],
+        'formatting': questionData['formatting'],
+      };
 
-      _logger.i('📡 editQuestion POST: $body');
-      final response = await _apiService.getPostApiResponse(
-          QuizSetEndpoints.updateQuestions(id), body);
+      _logger.i("📡 Sending edit question request: $updatedQuestion");
 
-      Utils.showApiResponse(response, context);
-      if (response['success'] == true) {
-        saveProgress = 100.0;
-        clearFileSelections();
-        await fetchQuestions(context, questionData['quiz_set_id'],
-            refresh: true);
-      } else {
-        // Revert optimistic update on failure
-        if (snapshot != null && index != -1) {
-          questions[index] = snapshot;
-          notifyListeners();
+      final response = await http.post(
+        Uri.parse('${BaseUrl.baseUrl}/quiz_set_detail_page.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'action': 'edit', ...updatedQuestion}),
+      ).timeout(const Duration(seconds: 30));
+
+      _logger.i("✅ Edit response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
+          _showSuccessMessage(context, 'Question updated successfully');
+          await fetchQuestions(questionData['quiz_set_id']);
+        } else {
+          throw Exception(jsonResponse['error'] ?? 'Failed to edit question');
         }
+      } else {
+        throw Exception('HTTP Error: ${response.statusCode}');
       }
-    } catch (e) {
-      if (snapshot != null && index != -1) {
-        questions[index] = snapshot;
+    } catch (e, stack) {
+      if (oldQuestion != null && index != -1) {
+        questions[index] = oldQuestion;
+        _logger.w("↩️ Reverted changes for question $id");
         notifyListeners();
       }
-      Utils.showApiResponse(
-          Utils.errorResponse('Error editing question: $e'), context);
-      _logger.e('editQuestion error: $e');
+      _logger.e('⛔ Error editing question', error: e, stackTrace: stack);
+      Utils.noInternet('Error editing question: $e');
     } finally {
       isSaving = false;
+      saveProgress = 100.0;
       notifyListeners();
     }
   }
 
-  // ── Delete question ────────────────────────────────────────────────────────
+  // ========================= DELETE QUESTION ==============================
   Future<void> deleteQuestion(
       BuildContext context, int quizSetId, int id) async {
-    // Optimistic removal
     final index = questions.indexWhere((q) => q.id == id);
-    QuestionModel? snapshot;
+    QuestionModel? removedQuestion;
     if (index != -1) {
-      snapshot = questions[index];
+      removedQuestion = questions[index];
       questions.removeAt(index);
-      filteredQuestions.removeWhere((q) => q.id == id);
+      _logger.i("🗑️ Temporarily removed question ID: $id");
       notifyListeners();
     }
 
     try {
-      isActionLoading = true;
-      notifyListeners();
+      final response = await http.post(
+        Uri.parse('${BaseUrl.baseUrl}quiz_set_detail_page.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'action': 'delete', 'id': id}),
+      ).timeout(const Duration(seconds: 15));
 
-      final response = await _apiService.getDeleteApiResponse(
-          '${QuizSetEndpoints.deleteQuestions(id)}');
+      _logger.i("✅ Delete response: ${response.statusCode} - ${response.body}");
 
-      Utils.showApiResponse(response, context);
-      if (response['success'] == true) {
-        await fetchQuestions(context, quizSetId, refresh: true);
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
+          _showSuccessMessage(context, 'Question deleted successfully');
+          await fetchQuestions(quizSetId);
+        } else {
+          throw Exception(jsonResponse['error'] ?? 'Failed to delete question');
+        }
       } else {
-        // Revert on failure
-        if (snapshot != null && index != -1) {
-          questions.insert(index, snapshot);
-          _filterLists();
-          notifyListeners();
-        }
+        throw Exception('HTTP Error: ${response.statusCode}');
       }
-    } catch (e) {
-      if (snapshot != null && index != -1) {
-        questions.insert(index, snapshot);
-        _filterLists();
+    } catch (e, stack) {
+      if (removedQuestion != null && index != -1) {
+        questions.insert(index, removedQuestion);
+        _logger.w("↩️ Restored deleted question ID: $id");
         notifyListeners();
       }
-      Utils.showApiResponse(
-          Utils.errorResponse('Error deleting question: $e'), context);
-      _logger.e('deleteQuestion error: $e');
-    } finally {
-      isActionLoading = false;
-      notifyListeners();
+      _logger.e('⛔ Error deleting question', error: e, stackTrace: stack);
+      Utils.noInternet('Error deleting question: $e');
     }
-  }
-
-  // ── Body builder (DRY) ─────────────────────────────────────────────────────
-  Map<String, dynamic> _buildQuestionBody({
-    required Map<String, dynamic> questionData,
-    required String questionFile,
-    required List<String> choiceFileNames,
-    required String action,
-    int? id,
-  }) {
-    return {
-      if (id != null) 'id': id,
-      'action':        action,
-      'quiz_set_id':   questionData['quiz_set_id'],
-      'question':      questionData['question'],
-      'optional_text': questionData['optional_text'],
-      'question_file': questionFile,
-      'question_type': questionData['question_type'],
-      'correct_answer': questionData['correct_answer'],
-      'formatting':    questionData['formatting'],
-      'choices': {
-        for (int i = 0; i < 4; i++)
-          String.fromCharCode(65 + i): {
-            'choice_text': questionData['choices']
-            [String.fromCharCode(65 + i)]['choice_text'],
-            'choice_file': choiceFileNames[i],
-            'word_formatting': questionData['choices']
-            [String.fromCharCode(65 + i)]['word_formatting'],
-          },
-      },
-    };
-  }
-
-  // ── File selection helpers ─────────────────────────────────────────────────
-  Future<void> pickQuestionFile() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.any);
-      if (result != null && result.files.isNotEmpty) {
-        selectedQuestionFile = result.files.first;
-        notifyListeners();
-      }
-    } catch (e) {
-      _logger.e('pickQuestionFile error: $e');
-    }
-  }
-
-  Future<void> pickChoiceFile(int index) async {
-    try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.any);
-      if (result != null && result.files.isNotEmpty) {
-        if (selectedChoiceFiles.length <= index) {
-          selectedChoiceFiles = List.filled(4, null);
-        }
-        selectedChoiceFiles[index] = result.files.first;
-        notifyListeners();
-      }
-    } catch (e) {
-      _logger.e('pickChoiceFile[$index] error: $e');
-    }
-  }
-
-  void clearQuestionFile() {
-    selectedQuestionFile = null;
-    notifyListeners();
-  }
-
-  void clearChoiceFile(int index) {
-    if (index < selectedChoiceFiles.length) {
-      selectedChoiceFiles[index] = null;
-      notifyListeners();
-    }
-  }
-
-  void clearFileSelections() {
-    selectedQuestionFile = null;
-    selectedChoiceFiles  = List.filled(4, null);
-    saveProgress         = 0.0;
-    notifyListeners();
-  }
-
-  // ── Search / filter ────────────────────────────────────────────────────────
-  Timer?        _debounceTimer;
-  BuildContext? _lastContext;
-  int?          _lastQuizSetId;
-
-  void searchQuestions(String query) {
-    _searchQuery = query.trim().toLowerCase();
-    _filterLists();
-    notifyListeners();
-    _debounceSearch();
-  }
-
-  void _debounceSearch() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      final ctx       = _lastContext;
-      final quizSetId = _lastQuizSetId;
-      if (ctx == null || quizSetId == null) return;
-      try {
-        if (ctx is Element && !ctx.mounted) return;
-      } catch (_) {
-        return;
-      }
-      fetchQuestions(ctx, quizSetId, refresh: true);
-    });
-  }
-
-  void _filterLists() {
-    if (_searchQuery.isEmpty) {
-      filteredQuestions = List.from(questions);
-    } else {
-      filteredQuestions = questions.where((q) {
-        final text = q.question?.toLowerCase() ?? '';
-        return text.contains(_searchQuery);
-      }).toList();
-    }
-  }
-
-  // ── Dispose ────────────────────────────────────────────────────────────────
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
   }
 }
