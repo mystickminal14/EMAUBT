@@ -3,7 +3,7 @@ import 'dart:ffi';
 import 'dart:typed_data';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_quiz_set_model.dart';
-import 'package:ema_app/screens/admin/admin_quiz_set_detail_page.dart';
+import 'package:ema_app/screens/admin/quizSet_details.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
