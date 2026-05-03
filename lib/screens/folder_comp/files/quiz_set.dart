@@ -20,7 +20,7 @@ class QuizSetsTab extends StatefulWidget {
 
 class _QuizSetsTabState extends State<QuizSetsTab>
     with AutomaticKeepAliveClientMixin {
-  late final TextEditingController _searchCtrl;er
+  late final TextEditingController _searchCtrl;
   late final ScrollController _scrollCtrl;
 
   @override
