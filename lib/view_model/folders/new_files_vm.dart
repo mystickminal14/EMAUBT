@@ -64,14 +64,16 @@ class FolderFilesViewModel extends ChangeNotifier {
     try {
       final data       = response['data'] as Map<String, dynamic>? ?? {};
       final pagination = data['pagination'] as Map<String, dynamic>? ?? {};
-      totalFiles  = (pagination['total']        as num?)?.toInt() ?? totalFiles;
-      currentPage = (pagination['current_page'] as num?)?.toInt() ?? currentPage;
-      totalPages  = (pagination['last_page']    as num?)?.toInt() ?? totalPages;
+
+      totalFiles = (pagination['total_items'] as num?)?.toInt() ?? totalFiles;  // ← was 'total'
+      final lastPage = (pagination['total_pages'] as num?)?.toInt();             // ← was 'last_page'
+      if (lastPage != null && lastPage > 0) totalPages = lastPage;
+
+      _logger.i('Pagination → page $currentPage/$totalPages total $totalFiles hasMore: $hasMorePages');
     } catch (e) {
       _logger.e('Error parsing pagination: $e');
     }
   }
-
   /// Builds: /api/folder/{folderId}/files?page=1&per_page=15&search=...
   String _buildUrl(int folderId, int page) {
     return Uri.parse(FileEndpoints.folderFiles(folderId)).replace(
@@ -132,11 +134,14 @@ class FolderFilesViewModel extends ChangeNotifier {
     isFetchingMore = true;
     notifyListeners();
 
+    final nextPage = currentPage + 1; // ← own it here
+
     try {
       final response =
-      await _apiService.getApiResponse(_buildUrl(folderId, currentPage + 1));
+      await _apiService.getApiResponse(_buildUrl(folderId, nextPage));
 
       if (response['success'] == true) {
+        currentPage = nextPage; // ← set it here, not in _parsePagination
         _parsePagination(response);
         files.addAll(_parseFiles(response));
         _filterLists();

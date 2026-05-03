@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/utils/get_headers.dart';
@@ -45,9 +44,11 @@ class _FilesTabState extends State<FilesTab>
 
   void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
+    debugPrint('scroll: ${_scrollCtrl.position.pixels} / ${_scrollCtrl.position.maxScrollExtent}');
     if (_scrollCtrl.position.pixels <
-        _scrollCtrl.position.maxScrollExtent - 200) return;
+    _scrollCtrl.position.maxScrollExtent - 200) return;
     final vm = context.read<FolderFilesViewModel>();
+    debugPrint('hasMore: ${vm.hasMorePages} | fetching: ${vm.isFetchingMore} | loading: ${vm.isLoading}');
     if (vm.isFetchingMore || vm.isLoading || !vm.hasMorePages) return;
     vm.fetchNextPage(context, widget.folderId);
   }

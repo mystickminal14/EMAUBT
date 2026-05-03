@@ -66,7 +66,6 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
     try {
       final data = response['data'] as Map<String, dynamic>? ?? {};
       totalQuizSets = (data['total'] as num?)?.toInt() ?? totalQuizSets;
-      currentPage = (data['page'] as num?)?.toInt() ?? currentPage;
       final perPageVal = (data['per_page'] as num?)?.toInt() ?? perPage;
       if (totalQuizSets > 0 && perPageVal > 0) {
         totalPages = (totalQuizSets / perPageVal).ceil();
@@ -141,15 +140,16 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
     isFetchingMore = true;
     notifyListeners();
 
+    final nextPage = currentPage + 1; // ← compute before the call
+
     try {
-      final nextPage = currentPage + 1;
       final url = _buildUrl(folderId, nextPage);
       final response = await _apiService.getApiResponse(url);
 
       if (response['success'] == true) {
-        _parsePagination(response);
-        final fetched = _parseQuizSets(response);
-        quizSets.addAll(fetched);
+        currentPage = nextPage; // ← increment explicitly
+        _parsePagination(response); // still updates totalQuizSets / totalPages
+        quizSets.addAll(_parseQuizSets(response));
         _filterLists();
       } else {
         Utils.showApiResponse(response, context);
