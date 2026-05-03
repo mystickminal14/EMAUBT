@@ -909,6 +909,6 @@ class _FormField extends StatelessWidget {
           const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
       ),
-    );
+    )
   }
 }
