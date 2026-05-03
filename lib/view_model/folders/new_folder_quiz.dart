@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:ema_app/data/network/NetworkApiService.dart';
@@ -42,11 +41,6 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
   Uint8List? selectedIconBytes;
   String? selectedIconBase64;
 
-  @override
-  void dispose() {
-    _debounceTimer?.cancel(); // ← add
-    super.dispose();
-  }
   // ── Parse quiz sets ────────────────────────────────────────────────────────
   List<QuizSetModel> _parseQuizSets(Map<String, dynamic> response) {
     try {
@@ -97,8 +91,6 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
   // ── Fetch quiz sets ────────────────────────────────────────────────────────
   Future<void> fetchQuizSets(BuildContext context, int folderId,
       {bool refresh = false}) async {
-    _lastContext  = context;
-    _lastFolderId = folderId;
     if (refresh) {
       currentPage = 1;
       totalPages = 1;
@@ -229,6 +221,7 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       notifyListeners();
 
       final body = <String, dynamic>{
+        'folder_id':folderId,
         'name': name!.trim(),
         if (description != null && description!.isNotEmpty)
           'description': description,
@@ -239,9 +232,9 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
         if (selectedIconBase64 != null && selectedIconBase64!.isNotEmpty)
           'icon': selectedIconBase64,
       };
-      _logger.d("editQuizSet body icon prefix → ${selectedIconBase64?.substring(0, 50)}");
+      // _logger.d("editQuizSet body icon prefix → ${selectedIconBase64?.substring(0, 50)}");
 
-      final response = await _apiService.getPutResponse(
+      final response = await _apiService.getPostApiResponse(
         '${QuizSetEndpoints.updateQuizSet}${quizSet.id}',
         body,
       );
@@ -339,30 +332,14 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       _logger.e('pickIcon error: $e');
     }
   }
-  Timer? _debounceTimer;
-  BuildContext? _lastContext;
-  int? _lastFolderId;
+
   // ── Search / filter ────────────────────────────────────────────────────────
   void searchQuizSets(String query) {
     _searchQuery = query.trim().toLowerCase();
-    _filterLists();       // instant local filter
+    _filterLists();
     notifyListeners();
-    _debounceSearch();    // API call after 500ms pause
   }
-  void _debounceSearch() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      final ctx      = _lastContext;
-      final folderId = _lastFolderId;
-      if (ctx == null || folderId == null) return;
-      try {
-        if (ctx is Element && !ctx.mounted) return;
-      } catch (_) {
-        return;
-      }
-      fetchQuizSets(ctx, folderId, refresh: true);
-    });
-  }
+
   void _filterLists() {
     if (_searchQuery.isEmpty) {
       filteredQuizSets = List.from(quizSets);
@@ -395,6 +372,7 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
     }
     notifyListeners();
   }
+
   void clearFields() {
     name = null;
     description = null;
@@ -403,7 +381,6 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
     isPublished = false;
     selectedIconBase64 = null;
     selectedIconBytes = null;
-    _debounceTimer?.cancel(); // ← add
     try {
       selectedIconFile?.deleteSync();
     } catch (_) {}

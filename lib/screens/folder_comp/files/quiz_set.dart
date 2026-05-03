@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:typed_data';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_quiz_set_model.dart';
+import 'package:ema_app/screens/admin/admin_quiz_set_detail_page.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +20,7 @@ class QuizSetsTab extends StatefulWidget {
 
 class _QuizSetsTabState extends State<QuizSetsTab>
     with AutomaticKeepAliveClientMixin {
-  late final TextEditingController _searchCtrl;
+  late final TextEditingController _searchCtrl;er
   late final ScrollController _scrollCtrl;
 
   @override
@@ -332,42 +334,53 @@ class QuizSetCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: FolderTheme.cardDecoration,
-        child: ListTile(
-          contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          leading: _QuizSetIconBox(iconPath: quizSet.iconPath),
-          title: Text(
-            quizSet.name ?? '—',
-            style: FolderTheme.cardTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                _InfoChip(
-                  icon: Icons.help_outline_rounded,
-                  label:
-                  '${quizSet.questionCount ?? 0} Q${(quizSet.questionCount ?? 0) == 1 ? '' : 's'}',
-                ),
-                if (quizSet.durationMinutes != null)
-                  _InfoChip(
-                    icon: Icons.timer_outlined,
-                    label: '${quizSet.durationMinutes}m',
-                  ),
-                if (quizSet.passingScore != null)
-                  _InfoChip(
-                    icon: Icons.check_circle_outline_rounded,
-                    label: 'Pass: ${quizSet.passingScore}%',
-                  ),
-                _PublishedBadge(isPublished: quizSet.isPublished ?? false),
-              ],
+        child: GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => QuizSetDetailPage(
+                quizSetId:quizSet.id! ,
+                quizSetName: quizSet.name!,
+              ),
             ),
           ),
-          trailing: _QuizSetCardMenu(onEdit: onEdit, onDelete: onDelete),
+          child: ListTile(
+            contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            leading: _QuizSetIconBox(iconPath: quizSet.iconPath),
+            title: Text(
+              quizSet.name ?? '—',
+              style: FolderTheme.cardTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  _InfoChip(
+                    icon: Icons.help_outline_rounded,
+                    label:
+                    '${quizSet.questionCount ?? 0} Q${(quizSet.questionCount ?? 0) == 1 ? '' : 's'}',
+                  ),
+                  if (quizSet.durationMinutes != null)
+                    _InfoChip(
+                      icon: Icons.timer_outlined,
+                      label: '${quizSet.durationMinutes}m',
+                    ),
+                  if (quizSet.passingScore != null)
+                    _InfoChip(
+                      icon: Icons.check_circle_outline_rounded,
+                      label: 'Pass: ${quizSet.passingScore}%',
+                    ),
+                  _PublishedBadge(isPublished: quizSet.isPublished ?? false),
+                ],
+              ),
+            ),
+            trailing: _QuizSetCardMenu(onEdit: onEdit, onDelete: onDelete),
+          ),
         ),
       ),
     );
@@ -909,6 +922,6 @@ class _FormField extends StatelessWidget {
           const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
       ),
-    )
+    );
   }
 }
