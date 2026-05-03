@@ -107,15 +107,20 @@ class _QuizSetsTabState extends State<QuizSetsTab>
 
   void _showFormSheet(
       BuildContext context, FolderQuizSetsViewModel vm, QuizSetModel? existing) {
-    // Pre-populate fields if editing
     if (existing != null) {
+      // Seed existing values — for icon, pass overwriteIcon: true so existing
+      // server icon is shown, but any freshly-picked icon already in vm is replaced.
       vm.setFields(
         name: existing.name,
         description: existing.description,
         durationMinutes: existing.durationMinutes,
         passingScore: existing.passingScore,
         isPublished: existing.isPublished ?? false,
+        iconBase64: existing.iconPath, // seed existing icon from server
+        overwriteIcon: true,
       );
+      // Also clear any stale picked bytes so the preview uses the server icon
+      vm.selectedIconBytes = null;
     } else {
       vm.clearFields();
     }
@@ -129,13 +134,19 @@ class _QuizSetsTabState extends State<QuizSetsTab>
         child: QuizSetFormSheet(
           existing: existing,
           onSubmit: (data) async {
+            // FIX: capture icon BEFORE setFields so it is never lost
+            final currentIcon = vm.selectedIconBase64;
+
             vm.setFields(
               name: data['name'],
               description: data['description'],
               durationMinutes: data['duration_minutes'],
               passingScore: data['passing_score'],
               isPublished: data['is_published'],
+              iconBase64: currentIcon, // ← preserve whatever icon is active
+              overwriteIcon: true,
             );
+
             if (existing == null) {
               await vm.addQuizSet(context, widget.folderId);
             } else {
@@ -234,7 +245,8 @@ class _QuizSetListBody extends StatelessWidget {
         return ListView.builder(
           controller: scrollController,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-          itemCount: vm.filteredQuizSets.length + (vm.isFetchingMore ? 1 : 0),
+          itemCount:
+          vm.filteredQuizSets.length + (vm.isFetchingMore ? 1 : 0),
           itemBuilder: (_, i) {
             if (i == vm.filteredQuizSets.length) {
               return const Padding(
@@ -382,18 +394,38 @@ class _QuizSetIconBox extends StatelessWidget {
   Widget _buildChild() {
     if (iconPath == null || iconPath!.isEmpty) {
       return const Center(
-        child: Icon(Icons.quiz_rounded,
-            size: 28, color: FolderTheme.accent),
+        child: Icon(Icons.quiz_rounded, size: 28, color: FolderTheme.accent),
       );
     }
 
-    final fullUrl = '${BaseUrl.imageUrl}/$iconPath';
+    // FIX: Handle "data:image/jpeg;base64,<data>" URI format
+    if (iconPath!.startsWith('data:')) {
+      try {
+        final commaIndex = iconPath!.indexOf(',');
+        if (commaIndex != -1) {
+          final base64Str = iconPath!.substring(commaIndex + 1);
+          final bytes = base64Decode(base64Str);
+          return Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const Center(
+              child:
+              Icon(Icons.quiz_rounded, size: 28, color: FolderTheme.accent),
+            ),
+          );
+        }
+      } catch (_) {}
+    }
+
+    // Fallback: URL-based icon (legacy)
+    final url = iconPath!.startsWith('http')
+        ? iconPath!
+        : '${BaseUrl.imageUrl}/$iconPath';
     return Image.network(
-      fullUrl,
+      url,
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => const Center(
-        child: Icon(Icons.quiz_rounded,
-            size: 28, color: FolderTheme.accent),
+        child: Icon(Icons.quiz_rounded, size: 28, color: FolderTheme.accent),
       ),
     );
   }
@@ -440,7 +472,9 @@ class _PublishedBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: isPublished ? const Color(0xFF059669) : Colors.orange.shade700,
+          color: isPublished
+              ? const Color(0xFF059669)
+              : Colors.orange.shade700,
         ),
       ),
     );
@@ -475,8 +509,7 @@ class _QuizSetCardMenu extends StatelessWidget {
         const PopupMenuItem(
           value: 'delete',
           child: Row(children: [
-            Icon(Icons.delete_outline_rounded,
-                size: 18, color: Colors.red),
+            Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
             SizedBox(width: 10),
             Text('Delete',
                 style: TextStyle(
@@ -579,6 +612,8 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
         'duration_minutes': int.tryParse(_duration.text),
         'passing_score': int.tryParse(_passingScore.text),
         'is_published': _isPublished,
+        // NOTE: icon is NOT passed here — it lives in the VM's selectedIconBase64
+        // and is captured directly in _showFormSheet's onSubmit callback.
       });
       await Future.delayed(const Duration(milliseconds: 400));
       if (mounted && Navigator.canPop(context)) Navigator.pop(context);
@@ -643,8 +678,10 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
               // Icon picker
               Consumer<FolderQuizSetsViewModel>(
                 builder: (_, vm, __) {
+                  // Newly picked bytes take priority for preview
                   final Uint8List? previewBytes = vm.selectedIconBytes;
-                  final String? existingBase64 = widget.existing?.iconPath;
+                  // Existing icon from server (only shown when no new pick)
+                  final String? existingIconPath = widget.existing?.iconPath;
 
                   return Center(
                     child: Column(
@@ -658,19 +695,22 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
                                 height: 90,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: FolderTheme.accent.withOpacity(0.08),
+                                  color:
+                                  FolderTheme.accent.withOpacity(0.08),
                                   border: Border.all(
-                                    color: FolderTheme.accent.withOpacity(0.3),
+                                    color:
+                                    FolderTheme.accent.withOpacity(0.3),
                                     width: 2,
                                   ),
                                   image: _buildPreviewImage(
-                                      previewBytes, existingBase64),
+                                      previewBytes, existingIconPath),
                                 ),
                                 child: (previewBytes == null &&
-                                    (existingBase64 == null ||
-                                        existingBase64.isEmpty))
+                                    (existingIconPath == null ||
+                                        existingIconPath.isEmpty))
                                     ? const Icon(Icons.quiz_rounded,
-                                    size: 40, color: FolderTheme.accent)
+                                    size: 40,
+                                    color: FolderTheme.accent)
                                     : null,
                               ),
                               Positioned(
@@ -682,8 +722,10 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
                                     color: FolderTheme.accent,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.camera_alt_rounded,
-                                      size: 14, color: Colors.white),
+                                  child: const Icon(
+                                      Icons.camera_alt_rounded,
+                                      size: 14,
+                                      color: Colors.white),
                                 ),
                               ),
                             ],
@@ -747,16 +789,16 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
               // Published toggle
               Container(
                 decoration: FolderTheme.fieldDecoration(),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
                     const Icon(Icons.publish_rounded,
                         color: FolderTheme.accent, size: 20),
                     const SizedBox(width: 12),
                     const Expanded(
-                      child: Text('Published',
-                          style: FolderTheme.fieldInput),
+                      child:
+                      Text('Published', style: FolderTheme.fieldInput),
                     ),
                     Switch(
                       value: _isPublished,
@@ -801,25 +843,35 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
     );
   }
 
+  // ── Build preview image for the icon circle ────────────────────────────────
   DecorationImage? _buildPreviewImage(
-      Uint8List? pickedBytes, String? existingBase64) {
+      Uint8List? pickedBytes, String? existingIconPath) {
+    // Newly picked icon bytes take top priority — show immediately
     if (pickedBytes != null) {
       return DecorationImage(
           image: MemoryImage(pickedBytes), fit: BoxFit.cover);
     }
-    if (existingBase64 != null && existingBase64.isNotEmpty) {
+
+    if (existingIconPath == null || existingIconPath.isEmpty) return null;
+
+    // FIX: Handle "data:image/jpeg;base64,<data>" URI format from server
+    if (existingIconPath.startsWith('data:')) {
       try {
-        final bytes = base64Decode(existingBase64);
-        return DecorationImage(
-            image: MemoryImage(bytes), fit: BoxFit.cover);
-      } catch (_) {
-        if (existingBase64.startsWith('http')) {
+        final commaIndex = existingIconPath.indexOf(',');
+        if (commaIndex != -1) {
+          final bytes =
+          base64Decode(existingIconPath.substring(commaIndex + 1));
           return DecorationImage(
-              image: NetworkImage(existingBase64), fit: BoxFit.cover);
+              image: MemoryImage(bytes), fit: BoxFit.cover);
         }
-      }
+      } catch (_) {}
     }
-    return null;
+
+    // Fallback: URL-based icon (legacy)
+    final url = existingIconPath.startsWith('http')
+        ? existingIconPath
+        : '${BaseUrl.imageUrl}/$existingIconPath';
+    return DecorationImage(image: NetworkImage(url), fit: BoxFit.cover);
   }
 }
 
