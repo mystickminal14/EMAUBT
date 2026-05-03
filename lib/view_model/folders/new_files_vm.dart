@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/endpoints/file_endpoints.dart';
@@ -88,6 +89,8 @@ class FolderFilesViewModel extends ChangeNotifier {
   // ── GET files ──────────────────────────────────────────────────────────────
   Future<void> fetchFiles(BuildContext context, int folderId,
       {bool refresh = false}) async {
+    _lastContext  = context;   // ← save for debounce
+    _lastFolderId = folderId;  // ← save for debounce
     if (refresh) {
       currentPage = 1;
       totalPages  = 1;
@@ -237,9 +240,9 @@ class FolderFilesViewModel extends ChangeNotifier {
     selectedIcon?.deleteSync();
     selectedIcon   = null;
     uploadFileName = null;
+    _debounceTimer?.cancel(); // ← cancel pending search on clear
     notifyListeners();
   }
-
   /// Clears only the picked file/icon — preserves [uploadFileName].
   /// Use this before opening the edit sheet so the pre-filled name survives.
   void clearSelectionOnly() {
@@ -368,10 +371,29 @@ class FolderFilesViewModel extends ChangeNotifier {
   }
 
   // ── Search / filter ────────────────────────────────────────────────────────
+  Timer? _debounceTimer;
+  BuildContext? _lastContext;
+  int? _lastFolderId;
+
   void searchFiles(String query) {
     _searchQuery = query.trim().toLowerCase();
-    _filterLists();
+    _filterLists();       // instant local filter for snappy UI
     notifyListeners();
+    _debounceSearch();    // then hit the API after 500ms pause
+  }
+  void _debounceSearch() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      final ctx      = _lastContext;
+      final folderId = _lastFolderId;
+      if (ctx == null || folderId == null) return;
+      try {
+        if (ctx is Element && !ctx.mounted) return;
+      } catch (_) {
+        return;
+      }
+      fetchFiles(ctx, folderId, refresh: true);
+    });
   }
 
   void _filterLists() {
@@ -383,5 +405,12 @@ class FolderFilesViewModel extends ChangeNotifier {
         return n.contains(_searchQuery);
       }).toList();
     }
+  }
+
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 }
