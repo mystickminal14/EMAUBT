@@ -34,6 +34,12 @@ class ManageUserViewModel extends ChangeNotifier {
   // ── Filter ─────────────────────────────────────────────────────────────────
   String? roleFilter; // 'user' | 'admin' | null
   Timer? _debounce;
+
+  // ── Set role filter and fetch ──────────────────────────────────────────────
+  void setRoleFilter(BuildContext context, String? role) {
+    roleFilter = role;
+    fetchUsers(context, refresh: true);
+  }
   // ── Form fields ────────────────────────────────────────────────────────────
   File? selectedImage;
   String? name;
