@@ -69,21 +69,26 @@ class _GiveAccessPageState extends State<GiveAccessPage>
           ],
         ),
       ),
-        body: Consumer2<AccessControlViewModel, ManageUserViewModel>(
-          builder: (context, accessVM, userVM, child) => accessVM.isLoading || userVM.isLoading
-              ? const Center(
-              child: CircularProgressIndicator(
-                  color: FolderTheme.accent, strokeWidth: 2.5))
-              : TabBarView(
-            controller: _tabController,
-            physics: const BouncingScrollPhysics(),
-            children: [
-              UsersAdminsTab(viewModel: accessVM, userViewModel: userVM),
-              // FilesQuizSetsTab(viewModel: accessVM),
-              // ActivatedGrantedTab(viewModel: accessVM),
-            ],
-          ),
+      body: Consumer2<AccessControlViewModel, ManageUserViewModel>(
+        builder: (context, accessVM, userVM, child) => Stack(
+          children: [
+            TabBarView(
+              controller: _tabController,
+              physics: const BouncingScrollPhysics(),
+              children: [
+                UsersAdminsTab(viewModel: accessVM, userViewModel: userVM),
+                // FilesQuizSetsTab(viewModel: accessVM),
+                // ActivatedGrantedTab(viewModel: accessVM),
+              ],
+            ),
+            if (accessVM.isLoading || userVM.isLoading)
+              const Center(
+                child: CircularProgressIndicator(
+                    color: FolderTheme.accent, strokeWidth: 2.5),
+              ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -118,19 +123,19 @@ class _UsersAdminsTabState extends State<UsersAdminsTab>
     _innerTabController = TabController(
       length: 2,
       vsync: this,
-      animationDuration: Duration.zero,
     );
     _innerTabController.addListener(_onInnerTabChanged);
   }
 
 // In _UsersAdminsTabState, add this to initState:
   void _onInnerTabChanged() {
-    if (_innerTabController.indexIsChanging) return;
-
-    setState(() {}); // ← ADD THIS to rebuild the header UI
+    if (!_innerTabController.indexIsChanging) return;
 
     final userVM = context.read<ManageUserViewModel>();
-    userVM.roleFilter = _innerTabController.index == 0 ? 'user' : 'admin';
+
+    userVM.roleFilter =
+    _innerTabController.index == 0 ? 'user' : 'admin';
+
     userVM.fetchUsers(context, refresh: true);
   }
 
