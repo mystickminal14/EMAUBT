@@ -4,6 +4,8 @@ class QuizSetModel {
   String? name;
   String? description;
   String? iconPath;
+  String? access_type;
+  String? status;
   int? questionCount;
   int? durationMinutes;
   int? passingScore;
@@ -16,6 +18,8 @@ class QuizSetModel {
     this.name,
     this.description,
     this.iconPath,
+    this.access_type,
+    this.status,
     this.questionCount,
     this.durationMinutes,
     this.passingScore,
@@ -29,6 +33,8 @@ class QuizSetModel {
     name = json['name'];
     description = json['description'];
     iconPath = json['icon_path'];
+    access_type = json['access_type'];
+    status = json['status'];
     questionCount = json['question_count'];
     durationMinutes = json['duration_minutes'];
     passingScore = json['passing_score'];
@@ -43,6 +49,8 @@ class QuizSetModel {
     data['name'] = name;
     data['description'] = description;
     data['icon_path'] = iconPath;
+    data['access_type'] = access_type;
+    data['status'] = status;
     data['question_count'] = questionCount;
     data['duration_minutes'] = durationMinutes;
     data['passing_score'] = passingScore;

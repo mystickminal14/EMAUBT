@@ -406,6 +406,11 @@ class FolderFilesViewModel extends ChangeNotifier {
       }).toList();
     }
   }
+  void reset() {
+    files = [];        // or whatever your backing list is
+    isLoading = false;
+    notifyListeners();
+  }
 
 
   @override

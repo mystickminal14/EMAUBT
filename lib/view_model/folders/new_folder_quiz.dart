@@ -372,6 +372,11 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
     }
     notifyListeners();
   }
+  void reset() {
+    quizSets = [];        // or whatever your backing list is
+    isLoading = false;
+    notifyListeners();
+  }
 
   void clearFields() {
     name = null;
