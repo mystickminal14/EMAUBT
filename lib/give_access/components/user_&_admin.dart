@@ -37,7 +37,6 @@ class _UsersAdminsTabState extends State<UsersAdminsTab>
     _innerTabController.addListener(_onInnerTabChanged);
   }
 
-// In _UsersAdminsTabState, add this to initState:
   void _onInnerTabChanged() {
     if (!_innerTabController.indexIsChanging) return;
 
@@ -69,7 +68,7 @@ class _UsersAdminsTabState extends State<UsersAdminsTab>
         Container(
           margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           decoration: BoxDecoration(
-            color: FolderTheme.card,          // use your card background
+            color: FolderTheme.card,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: FolderTheme.border),
           ),
@@ -101,8 +100,8 @@ class _UsersAdminsTabState extends State<UsersAdminsTab>
         // ── Header ──
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-          child: ListenableBuilder(  // ← CHANGE from Consumer<ManageUserViewModel>
-            listenable: _innerTabController, // ← listens to tab controller directly
+          child: ListenableBuilder(
+            listenable: _innerTabController,
             builder: (_, __) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -427,6 +426,7 @@ class _GrantButton extends StatelessWidget {
     );
   }
 }
+
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -463,7 +463,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-
 // ─── Grant Access Dialog ──────────────────────────────────────────────────────
 
 void _showGrantAccessDialog(BuildContext context, dynamic entity, bool isAdmin,
@@ -493,7 +492,7 @@ void _showGrantAccessDialog(BuildContext context, dynamic entity, bool isAdmin,
         ],
       ),
       content: Text(
-        'Grant access to ${isAdmin ? 'admin' : 'user'} ${entity.fullName}?',
+        'Grant access to ${isAdmin ? 'admin' : 'user'} ${entity.fullName ?? entity['full_name']}?',
         style: const TextStyle(
             color: FolderTheme.textSub, height: 1.5, fontSize: 14),
       ),
@@ -510,7 +509,11 @@ void _showGrantAccessDialog(BuildContext context, dynamic entity, bool isAdmin,
               context,
               MaterialPageRoute(
                 builder: (context) => GrantAccessFilesPage(
-                    entity: entity.toJson(), isAdmin: isAdmin),
+                    userId: entity.id,           // ✅ Use property getter
+                    userEmail: entity.email,     // ✅ Use property getter
+                    userName: entity.fullName,   // ✅ Use property getter
+                    isAdmin: isAdmin
+                ),
               ),
             ).then((result) {
               // if (result == true) viewModel.fetchGrantedItems();

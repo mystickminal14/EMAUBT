@@ -1,6 +1,8 @@
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/endpoints/access_endpoints.dart';
 import 'package:ema_app/utils/utils.dart';
+import 'package:ema_app/view_model/folders/new_files_vm.dart';
+import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 
@@ -248,9 +250,6 @@ class UserGrantedQuizSet {
   final int durationMinutes;
   final int passingScore;
   final bool isPublished;
-  final int createdBy;
-  final String createdAt;
-  final String updatedAt;
   final String folderName;
   final String? folderIconPath;
 
@@ -267,9 +266,6 @@ class UserGrantedQuizSet {
     required this.durationMinutes,
     required this.passingScore,
     required this.isPublished,
-    required this.createdBy,
-    required this.createdAt,
-    required this.updatedAt,
     required this.folderName,
     this.folderIconPath,
   });
@@ -288,9 +284,6 @@ class UserGrantedQuizSet {
         durationMinutes: (json['duration_minutes'] as num).toInt(),
         passingScore: (json['passing_score'] as num).toInt(),
         isPublished: json['is_published'] as bool,
-        createdBy: (json['created_by'] as num).toInt(),
-        createdAt: json['created_at'] as String,
-        updatedAt: json['updated_at'] as String,
         folderName: json['folder_name'] as String,
         folderIconPath: json['folder_icon_path'] as String?,
       );
@@ -330,16 +323,14 @@ class AccessControlViewModel extends ChangeNotifier {
   List<FolderQuizSetModel> folderQuizSets = [];
   int? _currentFolderId;
 
+  // ── Selection tracking for UI ──────────────────────────────────────────
+  final Map<int, bool> selectedFiles = {};
+  final Map<int, bool> selectedQuizSets = {};
+  final TextEditingController accessTimesController = TextEditingController();
+
   // ══════════════════════════════════════════════════════════════════════════
   // USER-GRANT INSPECTION — Granted Files
   // GET /api/admin/users/{userId}/files/granted?page=N&per_page=20
-  //
-  // Response shape:
-  // { "success": true, "data": { "files": [...], "pagination": {...}, "total": N } }
-  //
-  // Add to AccessEndpoints:
-  //   static String userGrantedFiles(int uid) =>
-  //       '/api/admin/users/$uid/files/granted';
   // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedFile> grantedFiles = [];
   PaginationMeta? grantedFilesPagination;
@@ -406,10 +397,6 @@ class AccessControlViewModel extends ChangeNotifier {
   // ══════════════════════════════════════════════════════════════════════════
   // USER-GRANT INSPECTION — Not-Granted Files
   // GET /api/admin/users/{userId}/files/not-granted?page=N&per_page=20
-  //
-  // Add to AccessEndpoints:
-  //   static String userNotGrantedFiles(int uid) =>
-  //       '/api/admin/users/$uid/files/not-granted';
   // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedFile> notGrantedFiles = [];
   PaginationMeta? notGrantedFilesPagination;
@@ -475,10 +462,6 @@ class AccessControlViewModel extends ChangeNotifier {
   // ══════════════════════════════════════════════════════════════════════════
   // USER-GRANT INSPECTION — Granted Quiz Sets
   // GET /api/admin/users/{userId}/quiz-sets/granted?page=N&per_page=20
-  //
-  // Add to AccessEndpoints:
-  //   static String userGrantedQuizSets(int uid) =>
-  //       '/api/admin/users/$uid/quiz-sets/granted';
   // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedQuizSet> grantedQuizSets = [];
   PaginationMeta? grantedQuizSetsPagination;
@@ -541,6 +524,10 @@ class AccessControlViewModel extends ChangeNotifier {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // USER-GRANT INSPECTION — Not-Granted Quiz Sets
+  // GET /api/admin/users/{userId}/quiz-sets/not-granted?page=N&per_page=20
+  // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedQuizSet> notGrantedQuizSets = [];
   PaginationMeta? notGrantedQuizSetsPagination;
   bool isNotGrantedQuizSetsLoading = false;
@@ -616,78 +603,105 @@ class AccessControlViewModel extends ChangeNotifier {
     ]);
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // Refresh all data (for pull-to-refresh)
+  // ══════════════════════════════════════════════════════════════════════════
+  Future<void> refreshAllData(int userId) async {
+    await fetchAllUserGrantData(userId, refresh: true);
+  }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // PATCH /api/admin/files/{fileId}/assign-type
+  // Load more methods for pagination
   // ══════════════════════════════════════════════════════════════════════════
-  Future<void> updateFileAssignType(
-      BuildContext context,
-      int fileId,
-      String type,
-      ) async {
-    final prevList = List<FolderFileModel>.from(folderFiles);
-    folderFiles = folderFiles
-        .map((f) => f.id == fileId ? f.copyWith(assignType: type) : f)
-        .toList();
-    notifyListeners();
+  void loadMoreGrantedFiles() {
+    if (grantedFilesPagination?.hasNextPage == true &&
+        !isGrantedFilesLoadingMore &&
+        !isGrantedFilesLoading) {
+      // The fetchGrantedFiles method will automatically load the next page
+      // since _grantedFilesPage is already incremented
+      fetchGrantedFiles(0); // userId is not needed for pagination, but we need to pass something
+    }
+  }
 
-    try {
-      final response = await _apiService.getPostApiResponse(
-        AccessEndpoints.fileAssignType(fileId),
-        {'access_type': type},
-      );
+  void loadMoreNotGrantedFiles() {
+    if (notGrantedFilesPagination?.hasNextPage == true &&
+        !isNotGrantedFilesLoadingMore &&
+        !isNotGrantedFilesLoading) {
+      fetchNotGrantedFiles(0);
+    }
+  }
 
-      if (response['success'] == true) {
-        _logger.i('File $fileId assign_type → $type');
-      } else {
-        folderFiles = prevList;
-        notifyListeners();
-        Utils.showApiResponse(response, context);
-      }
-    } catch (e) {
-      folderFiles = prevList;
-      notifyListeners();
-      Utils.showApiResponse(
-          Utils.errorResponse('Failed to update file access type: $e'),
-          context);
-      _logger.e('updateFileAssignType error: $e');
+  void loadMoreGrantedQuizSets() {
+    if (grantedQuizSetsPagination?.hasNextPage == true &&
+        !isGrantedQuizSetsLoadingMore &&
+        !isGrantedQuizSetsLoading) {
+      fetchGrantedQuizSets(0);
+    }
+  }
+
+  void loadMoreNotGrantedQuizSets() {
+    if (notGrantedQuizSetsPagination?.hasNextPage == true &&
+        !isNotGrantedQuizSetsLoadingMore &&
+        !isNotGrantedQuizSetsLoading) {
+      fetchNotGrantedQuizSets(0);
     }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // PATCH /api/admin/quiz-sets/{quizSetId}/assign-type
+  // Selection management methods
   // ══════════════════════════════════════════════════════════════════════════
-  Future<void> updateQuizSetAssignType(
-      BuildContext context,
-      int quizSetId,
-      String type,
-      ) async {
-    final prevList = List<FolderQuizSetModel>.from(folderQuizSets);
-    folderQuizSets = folderQuizSets
-        .map((q) => q.id == quizSetId ? q.copyWith(assignType: type) : q)
-        .toList();
+  void toggleFileSelection(int fileId, bool isSelected) {
+    selectedFiles[fileId] = isSelected;
     notifyListeners();
+  }
 
+  void toggleQuizSetSelection(int quizSetId, bool isSelected) {
+    selectedQuizSets[quizSetId] = isSelected;
+    notifyListeners();
+  }
+
+  void clearSelections() {
+    selectedFiles.clear();
+    selectedQuizSets.clear();
+    notifyListeners();
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // POST /api/access/grant (Single item grant/revoke)
+  // ══════════════════════════════════════════════════════════════════════════
+  Future<void> grantAccess(
+      BuildContext context, {
+        required int userId,
+        required int itemId,
+        required String itemType,
+        required String action,
+      }) async {
     try {
+      isActionLoading = true;
+      notifyListeners();
+
       final response = await _apiService.getPostApiResponse(
-        AccessEndpoints.quizSetAssignType(quizSetId),
-        {'access_type': type},
+        AccessEndpoints.grant,
+        {
+          'user_id': userId,
+          'item_id': itemId,
+          'item_type': itemType,
+          'action': action,
+        },
       );
 
+      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _logger.i('Quiz set $quizSetId assign_type → $type');
-      } else {
-        folderQuizSets = prevList;
-        notifyListeners();
-        Utils.showApiResponse(response, context);
+        _logger
+            .i('Access ${action}ed — user $userId, item $itemId ($itemType)');
       }
     } catch (e) {
-      folderQuizSets = prevList;
-      notifyListeners();
       Utils.showApiResponse(
-          Utils.errorResponse('Failed to update quiz set access type: $e'),
-          context);
-      _logger.e('updateQuizSetAssignType error: $e');
+          Utils.errorResponse('Error ${action}ing access: $e'), context);
+      _logger.e('grantAccess error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
     }
   }
 
@@ -807,43 +821,82 @@ class AccessControlViewModel extends ChangeNotifier {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // POST /api/access/grant
+  // PATCH /api/admin/files/{fileId}/assign-type
   // ══════════════════════════════════════════════════════════════════════════
-  Future<void> grantAccess(
-      BuildContext context, {
-        required int userId,
-        required int itemId,
-        required String itemType,
-        required int accessTimes,
-        required String action,
-      }) async {
-    try {
-      isActionLoading = true;
-      notifyListeners();
+  Future<void> updateFileAssignType(
+      BuildContext context,
+      FolderFilesViewModel filesVM,
+      int folderId,
+      int fileId,
+      String type,
+      ) async {
+    final prevList = List<FolderFileModel>.from(folderFiles);
+    folderFiles = folderFiles
+        .map((f) => f.id == fileId ? f.copyWith(assignType: type) : f)
+        .toList();
+    notifyListeners();
 
+    try {
       final response = await _apiService.getPostApiResponse(
-        AccessEndpoints.grant,
-        {
-          'user_id': userId,
-          'item_id': itemId,
-          'item_type': itemType,
-          'access_times': accessTimes,
-          'action': action,
-        },
+        AccessEndpoints.fileAssignType(fileId),
+        {'access_type': type},
       );
 
-      Utils.showApiResponse(response, context);
       if (response['success'] == true) {
-        _logger
-            .i('Access ${action}ed — user $userId, item $itemId ($itemType)');
+        filesVM.fetchFiles(context, folderId);
+        _logger.i('File $fileId assign_type → $type');
+      } else {
+        folderFiles = prevList;
+        notifyListeners();
+        Utils.showApiResponse(response, context);
       }
     } catch (e) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Error granting access: $e'), context);
-      _logger.e('grantAccess error: $e');
-    } finally {
-      isActionLoading = false;
+      folderFiles = prevList;
       notifyListeners();
+      Utils.showApiResponse(
+          Utils.errorResponse('Failed to update file access type: $e'),
+          context);
+      _logger.e('updateFileAssignType error: $e');
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PATCH /api/admin/quiz-sets/{quizSetId}/assign-type
+  // ══════════════════════════════════════════════════════════════════════════
+  Future<void> updateQuizSetAssignType(
+      BuildContext context,
+      FolderQuizSetsViewModel quizVM,
+      int folderId,
+      int quizSetId,
+      String type,
+      ) async {
+    final prevList = List<FolderQuizSetModel>.from(folderQuizSets);
+    folderQuizSets = folderQuizSets
+        .map((q) => q.id == quizSetId ? q.copyWith(assignType: type) : q)
+        .toList();
+    notifyListeners();
+
+    try {
+      final response = await _apiService.getPostApiResponse(
+        AccessEndpoints.quizSetAssignType(quizSetId),
+        {'access_type': type},
+      );
+
+      if (response['success'] == true) {
+        quizVM.fetchQuizSets(context, folderId);
+        _logger.i('Quiz set $quizSetId assign_type → $type');
+      } else {
+        folderQuizSets = prevList;
+        notifyListeners();
+        Utils.showApiResponse(response, context);
+      }
+    } catch (e) {
+      folderQuizSets = prevList;
+      notifyListeners();
+      Utils.showApiResponse(
+          Utils.errorResponse('Failed to update quiz set access type: $e'),
+          context);
+      _logger.e('updateQuizSetAssignType error: $e');
     }
   }
 
@@ -892,6 +945,15 @@ class AccessControlViewModel extends ChangeNotifier {
     notGrantedQuizSetsPagination = null;
     _notGrantedQuizSetsPage = 1;
 
+    clearSelections();
+    accessTimesController.clear();
+
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    accessTimesController.dispose();
+    super.dispose();
   }
 }

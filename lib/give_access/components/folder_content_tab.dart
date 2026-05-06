@@ -571,7 +571,7 @@ class _FolderContentDetailScreenState
                           iconPath: file.iconPath,
                           onTypeChanged: (type) =>
                               accessVM.updateFileAssignType(
-                                  context, file.id!, type),
+                                  context,filesVM,widget.folder.id!, file.id!, type),
                         );
                       },
                     ),
@@ -601,7 +601,7 @@ class _FolderContentDetailScreenState
                           iconPath: quiz.iconPath,
                           onTypeChanged: (type) =>
                               accessVM.updateQuizSetAssignType(
-                                  context, quiz.id!, type),
+                                  context,quizVM,widget.folder.id!, quiz.id!, type),
                         );
                       },
                     ),
