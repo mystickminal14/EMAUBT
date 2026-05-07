@@ -381,7 +381,7 @@ class QuizSetCard extends StatelessWidget {
                       icon: Icons.check_circle_outline_rounded,
                       label: 'Pass: ${quizSet.passingScore}%',
                     ),
-                  _PublishedBadge(isPublished: quizSet.isPublished ?? false),
+                  _PublishedBadge(isPublished: quizSet.status ?? "Draft"),
                 ],
               ),
             ),
@@ -472,7 +472,7 @@ class _InfoChip extends StatelessWidget {
 
 // ─── Published Badge ──────────────────────────────────────────────────────────
 class _PublishedBadge extends StatelessWidget {
-  final bool isPublished;
+  final String isPublished;
 
   const _PublishedBadge({required this.isPublished});
 
@@ -481,17 +481,17 @@ class _PublishedBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: isPublished
+        color: isPublished == "published"
             ? const Color(0xFF10B981).withOpacity(0.12)
             : Colors.orange.withOpacity(0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        isPublished ? 'Published' : 'Draft',
+        isPublished,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: isPublished
+          color: isPublished == "published"
               ? const Color(0xFF059669)
               : Colors.orange.shade700,
         ),
