@@ -161,7 +161,7 @@ class NetworkApiService extends BaseApiServices {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       if (kDebugMode) {
-        _logger.i('Multipart POST $url: ${response.statusCode}');
+        _logger.i('Multipart POST $url: ${response.statusCode} ${response.body}');
       }
       return _returnResponse(response);
     } on SocketException {
