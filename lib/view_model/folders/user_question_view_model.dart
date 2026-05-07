@@ -370,6 +370,7 @@ class UserQuizViewModel extends ChangeNotifier {
   }
 
   // ── Start quiz ─────────────────────────────────────────────
+// ── Start quiz ─────────────────────────────────────────────
   Future<bool> startQuizAttempt(int quizSetId) async {
     try {
       if (_isDisposed) return false;
@@ -377,9 +378,32 @@ class UserQuizViewModel extends ChangeNotifier {
         _logger.w('startQuizAttempt called but allQuestions is empty');
         return false;
       }
+
       status = QuizLoadStatus.inProgress;
+      statusMessage = 'Starting quiz...';
+      safeNotify();
+
+      final response = await _api.getPostApiResponse(
+        '${BaseUrl.baseUrl}/quiz-sets/$quizSetId/start',
+        {'question_count': allQuestions.length},
+      );
+
+      if (_isDisposed) return false;
+
+      if (response['success'] != true) {
+        throw Exception(response['message'] ?? 'Failed to start quiz attempt');
+      }
+
+      final data = response['data'] as Map<String, dynamic>? ?? {};
+      final attempt = data['attempt'] as Map<String, dynamic>? ?? {};
+      attemptId = (attempt['id'] as num?)?.toInt();
+
+      if (attemptId == null) {
+        throw Exception('Server did not return a valid attempt ID');
+      }
+
+      _logger.i('Quiz attempt started — attemptId: $attemptId');
       statusMessage = 'Quiz in progress';
-      attemptId = DateTime.now().millisecondsSinceEpoch;
       safeNotify();
       return true;
     } catch (e) {
@@ -387,11 +411,11 @@ class UserQuizViewModel extends ChangeNotifier {
       if (_isDisposed) return false;
       status = QuizLoadStatus.error;
       errorMessage = e.toString();
+      statusMessage = 'Failed to start quiz: $e';
       safeNotify();
       return false;
     }
   }
-
   // ── Submit quiz ────────────────────────────────────────────
   Future<Map<String, dynamic>?> submitQuiz(
       int quizSetId, int timeTakenSeconds) async {
