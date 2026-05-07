@@ -6,10 +6,19 @@ class QuizSetEndpoints {
   static const String quizSetDetail = '${BaseUrl.baseUrl}/quiz-sets/'; // append {id}
   static const String updateQuizSet = '${BaseUrl.baseUrl}/quiz-sets/'; // append {id}
   static const String deleteQuizSet = '${BaseUrl.baseUrl}/quiz-sets/'; // append {id}
-  static String questionsList (id) =>  '${BaseUrl.baseUrl}/quiz-sets/${id}/questions';
-  static String addQuestions (id) =>  '${BaseUrl.baseUrl}/quiz-sets/${id}/questions';
-  static String updateQuestions (quizSetId, questionId) =>  '${BaseUrl.baseUrl}/quiz-sets/$quizSetId/questions/$questionId';
-  static String deleteQuestions (quizSetId, questionId) =>  '${BaseUrl.baseUrl}/questions/$quizSetId/questions/$questionId';
+  static const String baseUrl = '${BaseUrl.baseUrl}/quiz-sets';
+
+  static String questionsList(int quizSetId) =>
+      '$baseUrl/$quizSetId/questions';
+
+  static String addQuestions(int quizSetId) =>
+      '$baseUrl/$quizSetId/questions';
+
+  static String updateQuestions(int quizSetId, int questionId) =>
+      '$baseUrl/$quizSetId/questions/$questionId';
+
+  static String deleteQuestions(int quizSetId, int questionId) =>
+      '$baseUrl/$quizSetId/questions/$questionId';
 
 
 }

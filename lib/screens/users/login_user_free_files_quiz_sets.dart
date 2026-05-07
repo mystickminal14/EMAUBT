@@ -1,10 +1,12 @@
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
+import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
 import 'package:ema_app/screens/users/user_quiz_sets.dart';
 import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
+import 'package:ema_app/view_model/folders/user_question_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -317,21 +319,18 @@ class _FolderIconBox extends StatelessWidget {
       height: 52,
       decoration: FolderTheme.iconContainerDecoration,
       clipBehavior: Clip.antiAlias,
-      child: _buildIconChild(),
+      child: _buildIconChild(context),
     );
   }
 
-  Widget _buildIconChild() {
+  Widget _buildIconChild(BuildContext context) {
     final raw = iconPath;
 
     if (raw == null || raw.isEmpty) {
-      debugPrint("📁 No folder icon, using fallback");
       return const _FallbackFolderIcon();
     }
 
     final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
-
-    debugPrint("🖼️ Folder Icon URL => $fullUrl");
 
     return FutureBuilder<Map<String, String>>(
       future: getAuthHeaders(),
@@ -350,11 +349,7 @@ class _FolderIconBox extends StatelessWidget {
           fullUrl,
           headers: snapshot.data,
           fit: BoxFit.cover,
-          errorBuilder: (_, error, stackTrace) {
-            debugPrint("❌ Image load failed => $fullUrl");
-            debugPrint("Error: $error");
-            return const _FallbackFolderIcon();
-          },
+          errorBuilder: (_, __, ___) => const _FallbackFolderIcon(),
         );
       },
     );
@@ -460,8 +455,7 @@ class FreeForLoginPage extends StatelessWidget {
                 const Icon(Icons.error_outline_rounded,
                     size: 48, color: Colors.red),
                 const SizedBox(height: 16),
-                const Text('Invalid folder',
-                    style: FolderTheme.emptyTitle),
+                const Text('Invalid folder', style: FolderTheme.emptyTitle),
                 const SizedBox(height: 8),
                 Text('Folder ID must be a number: $folderId',
                     style: FolderTheme.emptySubtitle),
@@ -630,8 +624,10 @@ class _ContentBody extends StatelessWidget {
     return Consumer2<FolderFilesViewModel, FolderQuizSetsViewModel>(
       builder: (context, filesVm, quizVm, _) {
         // Show loading if both are loading and empty
-        if (filesVm.isLoading && filesVm.files.isEmpty &&
-            quizVm.isLoading && quizVm.quizSets.isEmpty) {
+        if (filesVm.isLoading &&
+            filesVm.files.isEmpty &&
+            quizVm.isLoading &&
+            quizVm.quizSets.isEmpty) {
           return const Center(
             child: CircularProgressIndicator(
                 color: FolderTheme.accent, strokeWidth: 2.5),
@@ -667,7 +663,9 @@ class _ContentBody extends StatelessWidget {
 }
 
 // ─── Content List ─────────────────────────────────────────────────────────────
-class _ContentList extends StatelessWidget {
+// FIX: Changed from StatelessWidget to StatefulWidget so it has access
+// to widget, setState and can call _loadData (refresh) after navigation.
+class _ContentList extends StatefulWidget {
   final FolderFilesViewModel filesVm;
   final FolderQuizSetsViewModel quizVm;
   final int folderId;
@@ -689,81 +687,149 @@ class _ContentList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-      children: [
-        // ── Quiz Sets section ──────────────────────────────────────────
-        if (quizVm.filteredQuizSets.isNotEmpty) ...[
-          _SectionHeader(
-            icon: Icons.quiz_rounded,
-            title: 'Quiz Sets',
-            count: quizVm.filteredQuizSets.length,
-          ),
-          const SizedBox(height: 10),
-          ...quizVm.filteredQuizSets.asMap().entries.map((e) => _ContentCard(
-            item: e.value.toJson(),
-            index: e.key,
-            itemType: 'quiz_set',
-            onTap: () => _openQuizSet(context, e.value),
-          )),
-          if (filesVm.filteredFiles.isNotEmpty) const SizedBox(height: 20),
-        ],
+  State<_ContentList> createState() => _ContentListState();
+}
 
-        // ── Files section ──────────────────────────────────────────────
-        if (filesVm.filteredFiles.isNotEmpty) ...[
-          _SectionHeader(
-            icon: Icons.insert_drive_file_rounded,
-            title: 'Files',
-            count: filesVm.filteredFiles.length,
-          ),
-          const SizedBox(height: 10),
-          ...filesVm.filteredFiles.asMap().entries.map((e) => _ContentCard(
-            item: e.value.toJson(),
-            index: e.key,
-            itemType: 'file',
-            onTap: () {
-              // TODO: implement file open
-            },
-          )),
-        ],
-      ],
-    );
+class _ContentListState extends State<_ContentList> {
+  // Refresh files + quiz sets after returning from a sub-page
+  void _loadData() {
+    if (!mounted) return;
+    widget.filesVm.fetchFiles(context, widget.folderId, refresh: true);
+    widget.quizVm.fetchQuizSets(context, widget.folderId, refresh: true);
   }
 
   void _openQuizSet(BuildContext context, dynamic item) {
-    final quizSetId = item is Map ? item['id'] : item.id?.toString();
-    final quizSetName = item is Map ? item['name'] : item.name;
+    final quizSetId = item is Map
+        ? (item['id'] as num?)?.toInt()
+        : (item.id as int?);
+    final quizSetName = (item is Map ? item['name'] : item.name) as String? ?? '';
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => UserQuizSetsPage(
-          quizSetId: quizSetId,
+          quizSetId: quizSetId ?? 0,
           quizSetName: quizSetName,
-          userId: isAdmin
+          userId: widget.isAdmin
               ? ''
-              : userIdentifier.isEmpty
+              : widget.userIdentifier.isEmpty
               ? 'guest'
-              : userIdentifier,
-          userName: fullName ?? '',
-          userEmail:
-          isAdmin ? userIdentifier : (userEmail ?? userIdentifier),
-          role: isAdmin ? 'admin' : 'user',
-          folderId: folderId.toString(),
-          folderName: folderName,
-          isAdmin: isAdmin,
-          userIdentifier: userIdentifier,
+              : widget.userIdentifier,
+          userName: widget.fullName ?? '',
+          userEmail: widget.isAdmin
+              ? widget.userIdentifier
+              : (widget.userEmail ?? widget.userIdentifier),
+          role: widget.isAdmin ? 'admin' : 'user',
+          folderId: widget.folderId.toString(),
+          folderName: widget.folderName,
+          isAdmin: widget.isAdmin,
+          userIdentifier: widget.userIdentifier,
           preStart: true,
           cachedFiles: {},
           quizData: {},
         ),
       ),
-    ).then((_) {
-      // Refresh quiz sets when returning
-      context.read<FolderQuizSetsViewModel>()
-          .fetchQuizSets(context, folderId, refresh: true);
-    });
+    ).then((_) => _loadData());
+  }
+
+  /// Opens the new quiz flow: load → overview → questions → results
+
+  void _openQuizSetNew(BuildContext context, dynamic item) {
+    final quizSetId = item is Map
+        ? (item['id'] as num?)?.toInt() ?? 0
+        : (item.id as int? ?? 0);
+    final quizSetName =
+        (item is Map ? item['name'] : item.name) as String? ?? '';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserQuizLoadPage(
+          quizSetId: quizSetId,
+          quizSetName: quizSetName,
+          folderId: widget.folderId.toString(),
+          folderName: widget.folderName,
+          userIdentifier: widget.userIdentifier,
+          isAdmin: widget.isAdmin,
+          fullName: widget.fullName ?? '',
+          userEmail: widget.userEmail ?? '',
+        ),
+      ),
+    ).then((_) => _loadData());
+  }
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+      children: [
+        // ── Quiz Sets section ──────────────────────────────────────────
+        if (widget.quizVm.filteredQuizSets.isNotEmpty) ...[
+          _SectionHeader(
+            icon: Icons.quiz_rounded,
+            title: 'Quiz Sets',
+            count: widget.quizVm.filteredQuizSets.length,
+          ),
+          const SizedBox(height: 10),
+          ...widget.quizVm.filteredQuizSets.asMap().entries.map(
+                (e) => _ContentCard(
+              item: e.value.toJson(),
+              index: e.key,
+              itemType: 'quiz_set',
+              onTap: () => _openQuizSetNew(context, e.value),
+            ),
+          ),
+          if (widget.filesVm.filteredFiles.isNotEmpty)
+            const SizedBox(height: 20),
+        ],
+
+        // ── Files section ──────────────────────────────────────────────
+        if (widget.filesVm.filteredFiles.isNotEmpty) ...[
+          _SectionHeader(
+            icon: Icons.insert_drive_file_rounded,
+            title: 'Files',
+            count: widget.filesVm.filteredFiles.length,
+          ),
+          const SizedBox(height: 10),
+          ...widget.filesVm.filteredFiles.asMap().entries.map(
+                (e) => _ContentCard(
+              item: e.value.toJson(),
+              index: e.key,
+              itemType: 'file',
+              onTap: () {
+                // Files use the old UserQuizSetsPage flow
+                final fileItem = e.value.toJson();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserQuizSetsPage(
+                      quizSetId: (fileItem['id'] as num?)?.toInt() ?? 0,
+                      quizSetName: fileItem['name'] ?? '',
+                      userId: widget.isAdmin
+                          ? ''
+                          : widget.userIdentifier.isEmpty
+                          ? 'guest'
+                          : widget.userIdentifier,
+                      userName: widget.fullName ?? '',
+                      userEmail: widget.isAdmin
+                          ? widget.userIdentifier
+                          : (widget.userEmail ?? widget.userIdentifier),
+                      role: widget.isAdmin ? 'admin' : 'user',
+                      folderId: widget.folderId.toString(),
+                      folderName: widget.folderName,
+                      isAdmin: widget.isAdmin,
+                      userIdentifier: widget.userIdentifier,
+                      preStart: true,
+                      cachedFiles: {},
+                      quizData: {},
+                    ),
+                  ),
+                ).then((_) => _loadData());
+              },
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -828,8 +894,7 @@ class _ContentCard extends StatelessWidget {
               ),
             ),
             trailing: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: FolderTheme.accent,
                 borderRadius: BorderRadius.circular(8),
@@ -864,21 +929,18 @@ class _ContentIconBox extends StatelessWidget {
       height: 52,
       decoration: FolderTheme.iconContainerDecoration,
       clipBehavior: Clip.antiAlias,
-      child: _buildIconChild(),
+      child: _buildIconChild(context),
     );
   }
 
-  Widget _buildIconChild() {
+  Widget _buildIconChild(BuildContext context) {
     final raw = iconPath;
 
     if (raw == null || raw.isEmpty) {
-      debugPrint("📁 No content icon, using fallback");
       return _FallbackContentIcon(isQuiz: isQuiz);
     }
 
     final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
-
-    debugPrint("🖼️ Content Icon URL => $fullUrl");
 
     return FutureBuilder<Map<String, String>>(
       future: getAuthHeaders(),
@@ -897,11 +959,7 @@ class _ContentIconBox extends StatelessWidget {
           fullUrl,
           headers: snapshot.data,
           fit: BoxFit.cover,
-          errorBuilder: (_, error, stackTrace) {
-            debugPrint("❌ Image load failed => $fullUrl");
-            debugPrint("Error: $error");
-            return _FallbackContentIcon(isQuiz: isQuiz);
-          },
+          errorBuilder: (_, __, ___) => _FallbackContentIcon(isQuiz: isQuiz),
         );
       },
     );
@@ -917,9 +975,7 @@ class _FallbackContentIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Icon(
-        isQuiz
-            ? Icons.quiz_rounded
-            : Icons.insert_drive_file_rounded,
+        isQuiz ? Icons.quiz_rounded : Icons.insert_drive_file_rounded,
         size: 28,
         color: FolderTheme.accent,
       ),
@@ -962,8 +1018,7 @@ class _SectionHeader extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
             color: FolderTheme.accent.withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
@@ -982,7 +1037,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ─── Content Empty State with Retry ──────────────────────────────────────────────
+// ─── Content Empty State with Retry ──────────────────────────────────────────
 class _ContentEmptyStateWithRetry extends StatelessWidget {
   final VoidCallback onRetry;
 
