@@ -259,11 +259,14 @@ class _QuizSetListBody extends StatelessWidget {
               );
             }
             final quizSet = vm.filteredQuizSets[i];
-            return QuizSetCard(
+            return  QuizSetCard(
               quizSet: quizSet,
               index: i,
               onEdit: () => onEdit(quizSet),
               onDelete: () => _confirmDelete(context, vm, quizSet),
+              onUpdate: () {
+                vm.publishQuizSet(context, quizSet, folderId);
+              },
             );
           },
         );
@@ -315,6 +318,8 @@ class QuizSetCard extends StatelessWidget {
   final int index;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onUpdate;
+
 
   const QuizSetCard({
     super.key,
@@ -322,6 +327,8 @@ class QuizSetCard extends StatelessWidget {
     required this.index,
     required this.onEdit,
     required this.onDelete,
+    required this.onUpdate,
+
   });
 
   @override
@@ -379,7 +386,7 @@ class QuizSetCard extends StatelessWidget {
                 ],
               ),
             ),
-            trailing: _QuizSetCardMenu(onEdit: onEdit, onDelete: onDelete),
+            trailing: _QuizSetCardMenu(onEdit: onEdit,onDelete: onDelete,onUpdate: onUpdate),
           ),
         ),
       ),
@@ -498,8 +505,10 @@ class _PublishedBadge extends StatelessWidget {
 class _QuizSetCardMenu extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onUpdate;
 
-  const _QuizSetCardMenu({required this.onEdit, required this.onDelete});
+
+  const _QuizSetCardMenu({required this.onEdit, required this.onDelete, required this.onUpdate});
 
   @override
   Widget build(BuildContext context) {
@@ -509,6 +518,7 @@ class _QuizSetCardMenu extends StatelessWidget {
       onSelected: (v) {
         if (v == 'edit') onEdit();
         if (v == 'delete') onDelete();
+        if (v == 'publish') onUpdate();
       },
       itemBuilder: (_) => [
         const PopupMenuItem(
@@ -528,6 +538,26 @@ class _QuizSetCardMenu extends StatelessWidget {
                 style: TextStyle(
                     fontWeight: FontWeight.w600, color: Colors.red)),
           ]),
+        ),
+        const PopupMenuItem(
+          value: 'publish',
+          child: Row(
+            children: [
+              Icon(
+                Icons.publish_rounded,
+                size: 18,
+                color: Colors.green,
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Publish Now',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
