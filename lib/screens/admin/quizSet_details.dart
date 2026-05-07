@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:ema_app/view_model/folders/quiz_question_view_model.dart';
 import 'package:ema_app/model/quiz_question_model.dart';
 import 'package:flutter/material.dart';
@@ -411,7 +412,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
         child: Column(
           children: [
             _buildHeader(),
-            _buildSearchBar(),
+            // _buildSearchBar(),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -974,6 +975,12 @@ class _QuestionDialog extends StatelessWidget {
                         setDs(() {});
                       },
                     ),
+                    _FilePreview(
+                      bytes: vm.selectedQuestionFileBytes,
+                      mimeType: vm.selectedQuestionFileMimeType,
+                      fileName: vm.selectedQuestionFileName,
+                      existingPath: vm.existingQuestionFilePath, // ← add this
+                    ),
 
                     const SizedBox(height: 20),
                     const _Divider(),
@@ -1052,6 +1059,12 @@ class _QuestionDialog extends StatelessWidget {
                           vm.clearChoiceFile(i);
                           setDs(() {});
                         },
+                      ),
+                      _FilePreview(
+                        bytes: vm.choices[i].fileBytes,           // newly picked bytes (null in edit mode)
+                        mimeType: vm.choices[i].mimeType,
+                        fileName: vm.choices[i].fileName,
+                        existingPath: vm.choices[i].existingFilePath, // ← server path shown in edit mode
                       ),
                       if (i < 3) const SizedBox(height: 10),
                     ],
@@ -1177,7 +1190,306 @@ class _QuestionDialog extends StatelessWidget {
     );
   }
 }
+// ── Updated _FilePreview ──────────────────────────────────────────
+class _FilePreview extends StatelessWidget {
+  final Uint8List? bytes;
+  final String? mimeType;
+  final String? fileName;
+  final String? existingPath;
 
+  const _FilePreview({this.bytes, this.mimeType, this.fileName, this.existingPath});
+
+  bool get _isImage => mimeType?.startsWith('image/') ?? false;
+  bool get _isAudio => mimeType?.startsWith('audio/') ?? false;
+  bool get _isVideo => mimeType?.startsWith('video/') ?? false;
+
+  @override
+  Widget build(BuildContext context) {
+    // ── Newly picked file (bytes) ──────────────────────────────
+    if (bytes != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: _isImage
+            ? _buildBytesImage()
+            : _isAudio
+            ? _BytesAudioPlayer(bytes: bytes!, fileName: fileName ?? 'audio')
+            : _isVideo
+            ? _BytesVideoPlayer(bytes: bytes!, fileName: fileName ?? 'video')
+            : const SizedBox.shrink(),
+      );
+    }
+
+    // ── Existing server file (edit mode) ───────────────────────
+    if (existingPath != null && existingPath!.isNotEmpty) {
+      final url = '${BaseUrl.imageUrl}/$existingPath';
+      final path = existingPath!;
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: _isImagePath(path)
+            ? _buildNetworkImage(url)
+            : _isAudioPath(path)
+            ? _AudioPlayer(url: url, fileName: path.split('/').last)
+            : _isVideoPath(path)
+            ? _VideoPlayerWidget(url: url)
+            : const SizedBox.shrink(),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildBytesImage() {
+    return Stack(children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(_T.r8),
+        child: Image.memory(bytes!, width: double.infinity, height: 180, fit: BoxFit.cover),
+      ),
+      Positioned(top: 8, right: 8, child: _badge('Preview')),
+    ]);
+  }
+
+  Widget _buildNetworkImage(String url) {
+    return Stack(children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(_T.r8),
+        child: Image.network(url,
+            width: double.infinity, height: 180, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+            const Text('Image unavailable', style: _T.caption)),
+      ),
+      Positioned(top: 8, right: 8, child: _badge('Current')),
+    ]);
+  }
+
+  Widget _badge(String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(6)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.image_rounded, color: Colors.white, size: 12),
+      const SizedBox(width: 4),
+      Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+    ]),
+  );
+}
+class _BytesAudioPlayer extends StatefulWidget {
+  final Uint8List bytes;
+  final String fileName;
+  const _BytesAudioPlayer({required this.bytes, required this.fileName});
+
+  @override
+  State<_BytesAudioPlayer> createState() => _BytesAudioPlayerState();
+}
+
+class _BytesAudioPlayerState extends State<_BytesAudioPlayer> {
+  final AudioPlayer _player = AudioPlayer();
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
+  String? _localPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.onDurationChanged.listen((d) => mounted ? setState(() => _duration = d) : null);
+    _player.onPositionChanged.listen((p) => mounted ? setState(() => _position = p) : null);
+    _player.onPlayerStateChanged.listen((s) {
+      if (mounted) setState(() => _isPlaying = s == PlayerState.playing);
+    });
+    _player.onPlayerComplete.listen(
+            (_) => mounted ? setState(() => _position = Duration.zero) : null);
+    _writeToTemp();
+  }
+
+  Future<void> _writeToTemp() async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/${widget.fileName}');
+    await file.writeAsBytes(widget.bytes);
+    if (mounted) setState(() => _localPath = file.path);
+  }
+
+  @override
+  void dispose() { _player.dispose(); super.dispose(); }
+
+  Future<void> _togglePlay() async {
+    if (_localPath == null) return;
+    if (_isPlaying) { await _player.pause(); return; }
+    await _player.play(DeviceFileSource(_localPath!));
+  }
+
+  String _fmt(Duration d) =>
+      '${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:'
+          '${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = _duration.inMilliseconds > 0
+        ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _T.purpleLight,
+        borderRadius: BorderRadius.circular(_T.r12),
+        border: Border.all(color: _T.purple.withOpacity(0.2)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.audiotrack_rounded, size: 14, color: _T.purple),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(widget.fileName,
+                style: const TextStyle(fontSize: 12, color: _T.purple, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          GestureDetector(
+            onTap: _localPath == null ? null : _togglePlay,
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: _localPath == null ? _T.textMuted : _T.purple,
+                shape: BoxShape.circle,
+                boxShadow: _localPath == null ? [] : [
+                  BoxShadow(color: _T.purple.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 4))
+                ],
+              ),
+              child: _localPath == null
+                  ? const Padding(padding: EdgeInsets.all(10),
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  : Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: Colors.white, size: 22),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(children: [
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                activeTrackColor: _T.purple,
+                inactiveTrackColor: _T.purple.withOpacity(0.18),
+                thumbColor: _T.purple,
+                overlayColor: _T.purple.withOpacity(0.12),
+              ),
+              child: Slider(
+                value: _position.inSeconds.toDouble(),
+                max: _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0,
+                onChanged: (v) async => await _player.seek(Duration(seconds: v.toInt())),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(_fmt(_position), style: _T.caption),
+                Text(_fmt(_duration), style: _T.caption),
+              ]),
+            ),
+          ])),
+        ]),
+      ]),
+    );
+  }
+}
+class _BytesVideoPlayer extends StatefulWidget {
+  final Uint8List bytes;
+  final String fileName;
+  const _BytesVideoPlayer({required this.bytes, required this.fileName});
+
+  @override
+  State<_BytesVideoPlayer> createState() => _BytesVideoPlayerState();
+}
+
+class _BytesVideoPlayerState extends State<_BytesVideoPlayer> {
+  VideoPlayerController? _videoCtrl;
+  ChewieController? _chewieCtrl;
+  bool _playerReady = false;
+  bool _isInitializing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/${widget.fileName}');
+      await file.writeAsBytes(widget.bytes);
+
+      final ctrl = VideoPlayerController.file(file);
+      await ctrl.initialize();
+
+      final chewie = ChewieController(
+        videoPlayerController: ctrl,
+        autoPlay: false,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        aspectRatio: ctrl.value.aspectRatio,
+      );
+
+      if (mounted) {
+        setState(() {
+          _videoCtrl = ctrl;
+          _chewieCtrl = chewie;
+          _playerReady = true;
+          _isInitializing = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[_BytesVideoPlayer] Error: $e');
+      if (mounted) setState(() => _isInitializing = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _chewieCtrl?.dispose();
+    _videoCtrl?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1B2E),
+          borderRadius: BorderRadius.circular(_T.r12),
+        ),
+        child: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(width: 32, height: 32,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)),
+          SizedBox(height: 8),
+          Text('Preparing video…',
+              style: TextStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w500)),
+        ])),
+      );
+    }
+
+    if (_playerReady && _chewieCtrl != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(_T.r12),
+        child: SizedBox(
+          height: 220,
+          width: double.infinity,
+          child: Chewie(controller: _chewieCtrl!),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // Question Card
 // ─────────────────────────────────────────────────────────────────────────────
