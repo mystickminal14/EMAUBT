@@ -1,102 +1,11 @@
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/endpoints/access_endpoints.dart';
+import 'package:ema_app/model/user_permission.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-
-// ── Lightweight result models ──────────────────────────────────────────────
-
-class BulkOperationResult {
-  final int operationId;
-  final String operationType;
-  final String targetType;
-  final int totalItems;
-
-  const BulkOperationResult({
-    required this.operationId,
-    required this.operationType,
-    required this.targetType,
-    required this.totalItems,
-  });
-
-  factory BulkOperationResult.fromJson(Map<String, dynamic> json) =>
-      BulkOperationResult(
-        operationId: (json['operation_id'] as num).toInt(),
-        operationType: json['operation_type'] as String,
-        targetType: json['target_type'] as String,
-        totalItems: (json['total_items'] as num).toInt(),
-      );
-}
-
-class AccessCheckResult {
-  final int itemId;
-  final String itemType;
-  final bool hasAccess;
-  final String accessType;
-
-  const AccessCheckResult({
-    required this.itemId,
-    required this.itemType,
-    required this.hasAccess,
-    required this.accessType,
-  });
-
-  factory AccessCheckResult.fromJson(Map<String, dynamic> json) =>
-      AccessCheckResult(
-        itemId: (json['item_id'] as num).toInt(),
-        itemType: json['item_type'] as String,
-        hasAccess: json['has_access'] as bool,
-        accessType: json['access_type'] as String,
-      );
-}
-
-class BatchCheckSummary {
-  final int total;
-  final int accessible;
-  final int inaccessible;
-
-  const BatchCheckSummary({
-    required this.total,
-    required this.accessible,
-    required this.inaccessible,
-  });
-
-  factory BatchCheckSummary.fromJson(Map<String, dynamic> json) =>
-      BatchCheckSummary(
-        total: (json['total'] as num).toInt(),
-        accessible: (json['accessible'] as num).toInt(),
-        inaccessible: (json['inaccessible'] as num).toInt(),
-      );
-}
-
-class UserPermission {
-  final int id;
-  final int userId;
-  final int itemId;
-  final String itemType;
-  final int accessTimes;
-  final String grantedAt;
-
-  const UserPermission({
-    required this.id,
-    required this.userId,
-    required this.itemId,
-    required this.itemType,
-    required this.accessTimes,
-    required this.grantedAt,
-  });
-
-  factory UserPermission.fromJson(Map<String, dynamic> json) => UserPermission(
-    id: (json['id'] as num).toInt(),
-    userId: (json['user_id'] as num).toInt(),
-    itemId: (json['item_id'] as num).toInt(),
-    itemType: json['item_type'] as String,
-    accessTimes: (json['access_times'] as num).toInt(),
-    grantedAt: json['granted_at'] as String,
-  );
-}
 
 class AccessItem {
   final int id;
@@ -295,16 +204,10 @@ class AccessControlViewModel extends ChangeNotifier {
   final Logger _logger = Logger();
   final NetworkApiService _apiService = NetworkApiService();
 
-  BulkOperationResult? lastBulkOperation;
-
   // ── Loading states ─────────────────────────────────────────────────────
   bool isLoading = false;
   bool isActionLoading = false;
   bool isFolderContentLoading = false;
-
-  // ── Batch-check ────────────────────────────────────────────────────────
-  List<AccessCheckResult> batchResults = [];
-  BatchCheckSummary? batchSummary;
 
   // ── Permissions list ───────────────────────────────────────────────────
   List<UserPermission> permissions = [];
@@ -704,122 +607,6 @@ class AccessControlViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // POST /api/admin/bulk-operations
-  // ══════════════════════════════════════════════════════════════════════════
-  Future<void> createBulkOperation(
-      BuildContext context, {
-        required String operationType,
-        required String targetType,
-        required List<int> targetIds,
-        int? userId,
-        int? accessTimes,
-      }) async {
-    if (targetIds.isEmpty) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Target IDs list cannot be empty'), context);
-      return;
-    }
-
-    const accessOps = {'bulk_grant_access', 'bulk_revoke_access'};
-    if (accessOps.contains(operationType) && userId == null) {
-      Utils.showApiResponse(
-          Utils.errorResponse('user_id is required for access operations'),
-          context);
-      return;
-    }
-
-    try {
-      isActionLoading = true;
-      notifyListeners();
-
-      final body = <String, dynamic>{
-        'operation_type': operationType,
-        'target_type': targetType,
-        'target_ids': targetIds,
-        if (accessOps.contains(operationType)) ...{
-          'user_id': userId,
-          if (accessTimes != null) 'access_times': accessTimes,
-        },
-      };
-
-      final response = await _apiService.getPostApiResponse(
-        AccessEndpoints.bulkOperations,
-        body,
-      );
-
-      Utils.showApiResponse(response, context);
-
-      if (response['success'] == true) {
-        final data = response['data'] as Map<String, dynamic>? ?? {};
-        lastBulkOperation = BulkOperationResult.fromJson(data);
-        _logger.i(
-          'Bulk op created — id ${lastBulkOperation?.operationId}, '
-              '$operationType on ${targetIds.length} $targetType',
-        );
-      }
-    } catch (e) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Error creating bulk operation: $e'), context);
-      _logger.e('createBulkOperation error: $e');
-    } finally {
-      isActionLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // POST /api/access/batch-check
-  // ══════════════════════════════════════════════════════════════════════════
-  Future<void> batchCheck(
-      BuildContext context, {
-        required List<Map<String, dynamic>> items,
-      }) async {
-    if (items.isEmpty) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Items list cannot be empty'), context);
-      return;
-    }
-
-    try {
-      isActionLoading = true;
-      notifyListeners();
-
-      final response = await _apiService.getPostApiResponse(
-        AccessEndpoints.batchCheck,
-        {'items': items},
-      );
-
-      if (response['success'] == true) {
-        final data = response['data'] as Map<String, dynamic>? ?? {};
-
-        final rawResults = data['results'] as List? ?? [];
-        batchResults = rawResults
-            .map((e) =>
-            AccessCheckResult.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList();
-
-        final rawSummary = data['summary'] as Map<String, dynamic>?;
-        batchSummary = rawSummary != null
-            ? BatchCheckSummary.fromJson(rawSummary)
-            : null;
-
-        _logger.i(
-            'Batch check done — ${batchSummary?.accessible}/${batchSummary?.total} accessible');
-      } else {
-        Utils.showApiResponse(response, context);
-      }
-    } catch (e) {
-      Utils.showApiResponse(
-          Utils.errorResponse('Error during batch check: $e'), context);
-      _logger.e('batchCheck error: $e');
-    } finally {
-      isActionLoading = false;
-      notifyListeners();
-    }
-  }
-
   // ══════════════════════════════════════════════════════════════════════════
   // PATCH /api/admin/files/{fileId}/assign-type
   // ══════════════════════════════════════════════════════════════════════════
@@ -910,8 +697,6 @@ class AccessControlViewModel extends ChangeNotifier {
   }
 
   void clearBatchResults() {
-    batchResults = [];
-    batchSummary = null;
     notifyListeners();
   }
 
@@ -922,7 +707,6 @@ class AccessControlViewModel extends ChangeNotifier {
   }
 
   void clearBulkOperation() {
-    lastBulkOperation = null;
     notifyListeners();
   }
 
