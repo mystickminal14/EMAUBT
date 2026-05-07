@@ -1,11 +1,11 @@
 import 'dart:async';
+import 'package:ema_app/model/get_me_model.dart';
 import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
-import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
+import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-import '../../model/user_model.dart';
 
 class FlashScreen extends StatefulWidget {
   const FlashScreen({super.key});
@@ -27,29 +27,27 @@ class _FlashScreenState extends State<FlashScreen> {
     await Future.delayed(const Duration(seconds: 2));
     await _checkAuthentication();
   }
-
   Future<void> _checkAuthentication() async {
-    final userViewModel = UserViewModel();
-    final UserModel? user = await userViewModel.getUser();
+    final GetMeModel? user = await AuthViewModel().IsAuthenticated(context);
 
-    if (user != null && user.success == true) {
-      logger.i("User found: ${user.email}, ${user.fullName} ${user.fullName}role: ${user.role}");
+    if (user != null) {
+      logger.i("User found: ${user.email}, ${user.fullName}, role: ${user.role}");
 
       if (user.role == "admin") {
         _navigateTo(AdminDashboardPage(
-          fullName: user.fullName ?? user.fullName ?? '',
+          fullName: user.fullName ?? '',
           profileImage: user.image ?? '',
           isAdmin: true,
           userEmail: user.email ?? '',
         ));
       } else {
         _navigateTo(UserHomePage(
-          fullName: user.fullName ?? user.fullName ?? '',
+          fullName: user.fullName ?? '',
           profileImage: user.image ?? '',
           isAdmin: false,
           userEmail: user.email ?? '',
-          userIdentifier:  user.email ?? '',   // example: using phone as identifier
-          folderId: '',                       // you can adjust this based on your logic
+          userIdentifier: user.email ?? '',
+          folderId: '',
           folderName: '',
         ));
       }

@@ -1,6 +1,7 @@
 import '../constants/base_url.dart';
 class AuthEndpoints{
   static var login = '${BaseUrl.baseUrl}/auth/login';
+  static var getMe = '${BaseUrl.baseUrl}/auth/me';
   static var register = '${BaseUrl.baseUrl}/auth/register';
   static var logout = '${BaseUrl.baseUrl}/auth/logout';
   static var changePassword = '${BaseUrl.baseUrl}/auth/change-password';

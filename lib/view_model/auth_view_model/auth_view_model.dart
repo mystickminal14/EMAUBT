@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:ema_app/data/network/AuthNetworkService.dart';
 import 'package:ema_app/data/network/NetworkApiService.dart';
 import 'package:ema_app/endpoints/auth_endpoints.dart';
+import 'package:ema_app/model/get_me_model.dart';
 import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
 import 'package:ema_app/screens/auth/login_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
@@ -179,6 +180,25 @@ class AuthViewModel with ChangeNotifier {
       setLoading(false);
     }
   }
+// ✅ Return the parsed user model, or null on failure
+  Future<GetMeModel?> IsAuthenticated(BuildContext context) async {
+    setLoading(true);
+    try {
+      final url = AuthEndpoints.getMe;
+      final response = await _networkApiService.getApiResponse(url);
+      if (response != null && response['data'] != null) {
+        return GetMeModel.fromJson(response['data']);
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) logger.e("get me: $e");
+      Utils.flushBarErrorMessage("Error during get me: $e", context);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
   Future<void> logout(BuildContext context) async {
     setLoading(true);
 
