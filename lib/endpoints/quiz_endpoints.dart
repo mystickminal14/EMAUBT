@@ -7,7 +7,8 @@ class QuizSetEndpoints {
   static const String updateQuizSet = '${BaseUrl.baseUrl}/quiz-sets/'; // append {id}
   static const String deleteQuizSet = '${BaseUrl.baseUrl}/quiz-sets/'; // append {id}
   static const String baseUrl = '${BaseUrl.baseUrl}/quiz-sets';
-
+  static const String updateQuizSetStatus =
+      '${BaseUrl.baseUrl}/admin/quiz-sets/';
   static String questionsList(int quizSetId) =>
       '$baseUrl/$quizSetId/questions';
 

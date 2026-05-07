@@ -222,42 +222,18 @@ class UserQuizViewModel extends ChangeNotifier {
       totalPages == 0 ? 0.0 : fetchedPages / totalPages;
 
   // ─────────────────────────────────────────────────────────────
-  // FIX: buildMediaUrl now uses BaseUrl.imageUrl as the base for
-  // all media files (images, audio, video, pdf).
-  //
-  // BaseUrl.baseUrl  = "http://10.10.100.144:8000/api"   ← API calls
-  // BaseUrl.imageUrl = "http://10.10.100.144:8000/api/res" ← was the old base
-  //
-  // BUT the 404 shows the server actually serves files under
-  // "http://10.10.100.144:8000/api/choices/..." so the file paths
-  // returned by the API (e.g. "choices/choice_D_xxx.mp3") only need the
-  // API root prepended, NOT the /res suffix.
-  //
-  // Rule:
-  //   • If path already starts with "http"  → use as-is
-  //   • If path starts with "res/"          → prepend BaseUrl.imageUrl parent
-  //                                           (strip /res from imageUrl)
-  //   • Otherwise                           → prepend BaseUrl.baseUrl
+  // buildMediaUrl
   // ─────────────────────────────────────────────────────────────
   String buildMediaUrl(String path) {
     if (path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
 
-    // Already full URL
-    if (path.startsWith('http')) {
-      return path;
-    }
+    final clean = path.startsWith('/') ? path.substring(1) : path;
 
-    // Remove starting slash
-    final clean = path.startsWith('/')
-        ? path.substring(1)
-        : path;
-
-    // If path already contains res/
     if (clean.startsWith('res/')) {
       return '${BaseUrl.baseUrl}/$clean';
     }
 
-    // ALL media files should go through /res/
     return '${BaseUrl.baseUrl}/res/$clean';
   }
 
@@ -324,11 +300,9 @@ class UserQuizViewModel extends ChangeNotifier {
       final mediaUrls = <String>{};
 
       for (final q in allQuestions) {
-        // Question file (image / audio / video / pdf)
         if (q.questionFile.isNotEmpty) {
           mediaUrls.add(buildMediaUrl(q.questionFile));
         }
-        // Choice files
         for (final file in q.choiceFiles.values) {
           if (file.isNotEmpty) mediaUrls.add(buildMediaUrl(file));
         }
@@ -343,14 +317,12 @@ class UserQuizViewModel extends ChangeNotifier {
         if (_isDisposed) return;
 
         final urlList = mediaUrls.toList();
-        // Download in batches of 3 to avoid overwhelming the server
         for (int i = 0; i < urlList.length; i += 3) {
           final batch = urlList.sublist(i, (i + 3).clamp(0, urlList.length));
           await Future.wait(batch.map((url) => _downloadFile(url, tempDir)));
           if (_isDisposed) return;
         }
       } else {
-        // Web: skip local download, stream directly from URL
         downloadedFiles = totalFilesToDownload;
         safeNotify();
       }
@@ -369,8 +341,7 @@ class UserQuizViewModel extends ChangeNotifier {
     }
   }
 
-  // ── Start quiz ─────────────────────────────────────────────
-// ── Start quiz ─────────────────────────────────────────────
+  // ── Start quiz — calls real API ─────────────────────────────
   Future<bool> startQuizAttempt(int quizSetId) async {
     try {
       if (_isDisposed) return false;
@@ -391,7 +362,8 @@ class UserQuizViewModel extends ChangeNotifier {
       if (_isDisposed) return false;
 
       if (response['success'] != true) {
-        throw Exception(response['message'] ?? 'Failed to start quiz attempt');
+        throw Exception(
+            response['message'] ?? 'Failed to start quiz attempt');
       }
 
       final data = response['data'] as Map<String, dynamic>? ?? {};
@@ -416,6 +388,7 @@ class UserQuizViewModel extends ChangeNotifier {
       return false;
     }
   }
+
   // ── Submit quiz ────────────────────────────────────────────
   Future<Map<String, dynamic>?> submitQuiz(
       int quizSetId, int timeTakenSeconds) async {
@@ -485,14 +458,12 @@ class UserQuizViewModel extends ChangeNotifier {
   // ── Download a single file ─────────────────────────────────
   Future<void> _downloadFile(String url, Directory tempDir) async {
     try {
-      // Use the last path segment as the local filename
       final fileName = Uri.parse(url).pathSegments.last;
       final safeFileName = fileName.replaceAll(RegExp(r'[^\w.]'), '_');
       final filePath = '${tempDir.path}/$safeFileName';
       final file = File(filePath);
 
       if (await file.exists()) {
-        // Already cached from a previous session
         cachedFiles[url] = filePath;
         _logger.i('Cache hit: $fileName');
       } else {
@@ -504,10 +475,9 @@ class UserQuizViewModel extends ChangeNotifier {
         if (response.statusCode == 200) {
           await file.writeAsBytes(response.bodyBytes);
           cachedFiles[url] = filePath;
-          _logger.i('Downloaded: $fileName (${response.bodyBytes.length} bytes)');
+          _logger.i(
+              'Downloaded: $fileName (${response.bodyBytes.length} bytes)');
         } else {
-          // Log warning but do NOT crash — the widget will fall back to
-          // streaming the URL directly.
           _logger.w('⚠️ Failed to download $url: ${response.statusCode}');
         }
       }

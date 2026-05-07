@@ -5,12 +5,6 @@ import 'package:provider/provider.dart';
 
 /// Shown when user taps "Open" on a quiz set.
 /// Downloads all questions + media, then transitions to the quiz overview.
-///
-/// FIX: This widget now accepts an already-created [UserQuizViewModel]
-/// instead of trying to read one from the provider tree — this avoids the
-/// "Failed to start quiz" bug that happened when _openQuizSetNew created a
-/// new vm via ChangeNotifierProvider but the page tried to read a different
-/// one from context.
 class UserQuizLoadPage extends StatefulWidget {
   final int quizSetId;
   final String quizSetName;
@@ -42,10 +36,6 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
 
-  // FIX: We own the vm here and pass it down explicitly.
-  // Previously the vm was created by ChangeNotifierProvider in _openQuizSetNew
-  // but then context.read<UserQuizViewModel>() in initState picked up a
-  // different (or unregistered) vm, causing startQuizAttempt to fail.
   late final UserQuizViewModel _vm;
   bool _navigating = false;
 
@@ -62,12 +52,9 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
 
-    // FIX: Create the vm ourselves so we control its lifetime.
     _vm = UserQuizViewModel();
     _vm.addListener(_onVmChange);
 
-    // Start loading immediately — no need to wait for postFrameCallback
-    // because _vm is created synchronously above.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _vm.loadQuizSet(widget.quizSetId);
     });
@@ -83,8 +70,6 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
       _navigating = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        // FIX: Pass _vm via ChangeNotifierProvider.value so that
-        // UserQuizOverviewPage and its children all share the SAME instance.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -111,8 +96,6 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
   void dispose() {
     _pulseCtrl.dispose();
     _vm.removeListener(_onVmChange);
-    // FIX: Only dispose _vm if we are not navigating away — if we navigated,
-    // the provider keeps the vm alive for UserQuizOverviewPage.
     if (!_navigating) {
       _vm.dispose();
     }
@@ -121,7 +104,6 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
 
   @override
   Widget build(BuildContext context) {
-    // Use AnimatedBuilder on _vm directly (no Consumer needed since we own it)
     return AnimatedBuilder(
       animation: _vm,
       builder: (context, _) {
@@ -149,8 +131,7 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
-                  child:
-                  isError ? _buildError() : _buildProgress(),
+                  child: isError ? _buildError() : _buildProgress(),
                 ),
               ),
             ),
@@ -186,16 +167,13 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
               color: Colors.teal.withOpacity(0.1),
             ),
             child: Icon(
-              isDownloading
-                  ? Icons.download_rounded
-                  : Icons.quiz_rounded,
+              isDownloading ? Icons.download_rounded : Icons.quiz_rounded,
               size: 52,
               color: Colors.teal[700],
             ),
           ),
         ),
         const SizedBox(height: 32),
-
         Text(
           isFetching ? 'Fetching Questions' : 'Downloading Media',
           style: const TextStyle(
@@ -205,27 +183,22 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
           ),
         ),
         const SizedBox(height: 8),
-
         Text(
           _vm.statusMessage,
           textAlign: TextAlign.center,
-          style:
-          const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
         ),
         const SizedBox(height: 28),
-
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
             value: progress.clamp(0.0, 1.0),
             minHeight: 10,
             backgroundColor: Colors.teal.withOpacity(0.12),
-            valueColor:
-            AlwaysStoppedAnimation<Color>(Colors.teal[600]!),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.teal[600]!),
           ),
         ),
         const SizedBox(height: 12),
-
         Text(
           '${(progress * 100).toStringAsFixed(0)}%',
           style: TextStyle(
@@ -235,20 +208,16 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
           ),
         ),
         const SizedBox(height: 8),
-
         if (_vm.allQuestions.isNotEmpty)
           Text(
             '${_vm.allQuestions.length} questions fetched',
-            style: const TextStyle(
-                fontSize: 13, color: Color(0xFF94A3B8)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
           ),
         if (isDownloading && _vm.totalFilesToDownload > 0)
           Text(
             '${_vm.downloadedFiles}/${_vm.totalFilesToDownload} files',
-            style: const TextStyle(
-                fontSize: 13, color: Color(0xFF94A3B8)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
           ),
-
         const SizedBox(height: 20),
         const Text(
           'Please keep this screen open',
@@ -262,8 +231,7 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.error_outline_rounded,
-            size: 64, color: Colors.red[400]),
+        Icon(Icons.error_outline_rounded, size: 64, color: Colors.red[400]),
         const SizedBox(height: 20),
         const Text(
           'Something went wrong',
@@ -276,8 +244,7 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
         Text(
           _vm.errorMessage ?? 'Unknown error',
           textAlign: TextAlign.center,
-          style: const TextStyle(
-              fontSize: 13, color: Color(0xFF64748B)),
+          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
         ),
         const SizedBox(height: 28),
         Row(
@@ -294,8 +261,8 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal[700],
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 12),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
@@ -306,8 +273,8 @@ class _UserQuizLoadPageState extends State<UserQuizLoadPage>
               icon: const Icon(Icons.close),
               label: const Text('Cancel'),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 12),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),

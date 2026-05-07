@@ -253,7 +253,38 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+  Future<void> publishQuizSet(
+      BuildContext context,
+      QuizSetModel quizSet,
+      int folderId,
+      ) async {
+    try {
+      isActionLoading = true;
+      notifyListeners();
 
+      final response = await _apiService.getPostApiResponse(
+        '${QuizSetEndpoints.updateQuizSetStatus}${quizSet.id}/status',
+        {
+          "status": "published",
+        },
+      );
+
+      Utils.showApiResponse(response, context);
+
+      if (response['success'] == true) {
+        await fetchQuizSets(context, folderId, refresh: true);
+      }
+    } catch (e) {
+      Utils.showApiResponse(
+        Utils.errorResponse('Error publishing quiz set: $e'),
+        context,
+      );
+      _logger.e('publishQuizSet error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
+    }
+  }
   // ── Delete quiz set ────────────────────────────────────────────────────────
   Future<void> deleteQuizSet(
       BuildContext context, QuizSetModel quizSet, int folderId) async {

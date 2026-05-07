@@ -137,7 +137,8 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
       if (mounted) {
         setState(() => _isStarting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Questions not loaded yet. Please wait.')),
+          const SnackBar(
+              content: Text('Questions not loaded yet. Please wait.')),
         );
       }
       return;
@@ -204,6 +205,9 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
     });
   }
 
+  // FIX: Use pushReplacement instead of pushAndRemoveUntil so the home
+  // route underneath the quiz stack stays alive. This allows
+  // QuizResultsPage's "Back to Home" (popUntil route.isFirst) to work.
   Future<void> _submitQuiz() async {
     _timer.stop();
     final vm = context.read<UserQuizViewModel>();
@@ -211,7 +215,7 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
     final result = await vm.submitQuiz(widget.quizSetId, timeTaken);
     if (!mounted) return;
 
-    Navigator.pushAndRemoveUntil(
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider<UserQuizViewModel>.value(
@@ -227,7 +231,6 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
           ),
         ),
       ),
-          (route) => false,
     );
   }
 
@@ -237,7 +240,8 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Submit Quiz?'),
-        content: const Text('Are you sure you want to submit your answers?'),
+        content:
+        const Text('Are you sure you want to submit your answers?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -247,8 +251,10 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
               Navigator.pop(context);
               _submitQuiz();
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: const Text('Submit', style: TextStyle(color: Colors.white)),
+            style:
+            ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Submit',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -280,8 +286,8 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
               elevation: 2,
               title: Text(
                 widget.quizSetName,
-                style:
-                TextStyle(fontSize: baseFontSize + 2, color: Colors.white),
+                style: TextStyle(
+                    fontSize: baseFontSize + 2, color: Colors.white),
                 overflow: TextOverflow.ellipsis,
               ),
               actions: [
@@ -306,11 +312,13 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
               children: [
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: (_hasStarted || _isStarting) ? null : _startQuiz,
+                  onPressed:
+                  (_hasStarted || _isStarting) ? null : _startQuiz,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green[600],
-                    disabledBackgroundColor:
-                    _hasStarted ? Colors.green[300] : Colors.grey[400],
+                    disabledBackgroundColor: _hasStarted
+                        ? Colors.green[300]
+                        : Colors.grey[400],
                     padding: EdgeInsets.symmetric(
                         horizontal: fs * 2, vertical: fs * 0.8),
                     shape: RoundedRectangleBorder(
@@ -450,8 +458,10 @@ class _UserQuizOverviewPageState extends State<UserQuizOverviewPage> {
       itemBuilder: (_, i) {
         final displayNumber = sectionStartIndex + i + 1;
         final originalIndex = vm.allQuestions.indexOf(questions[i]);
-        final isAnswered = vm.selectedAnswers.containsKey(originalIndex);
-        final isAttended = vm.attendedQuestions[displayNumber] == true;
+        final isAnswered =
+        vm.selectedAnswers.containsKey(originalIndex);
+        final isAttended =
+            vm.attendedQuestions[displayNumber] == true;
 
         return GestureDetector(
           onTap: () => _goToQuestion(displayNumber),
@@ -566,6 +576,18 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
     }
   }
 
+  // FIX: Stop audio before switching to a different question number.
+  // Previously audio from Q1 kept playing when the user tapped Next to Q2.
+  void _stopAudio() {
+    if (_isAudioPlaying) {
+      _audio.stop();
+      setState(() {
+        _isAudioPlaying = false;
+        _currentAudioPath = null;
+      });
+    }
+  }
+
   UserQuizQuestion? _currentQuestion(UserQuizViewModel vm) {
     final idx = vm.displayNumberToIndex[_currentDisplay];
     if (idx == null || idx >= vm.allQuestions.length) return null;
@@ -573,6 +595,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
   }
 
   void _goTo(int displayNumber) {
+    _stopAudio(); // FIX: stop audio before navigating
     _saveTime();
     setState(() {
       _currentDisplay = displayNumber;
@@ -600,8 +623,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 
   Future<void> _playAudio(String mediaPath, UserQuizViewModel vm) async {
     if (!widget.isAdmin && _playedMedia.contains(mediaPath)) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Audio already played.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Audio already played.')));
       return;
     }
 
@@ -654,11 +677,14 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 
       return WillPopScope(
         onWillPop: () async {
+          // Non-admin: block back if audio is playing
           if (_isAudioPlaying && !widget.isAdmin) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Please wait for audio to finish')));
             return false;
           }
+          // FIX: Stop audio cleanly before popping back to overview
+          _stopAudio();
           return true;
         },
         child: Scaffold(
@@ -671,7 +697,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               automaticallyImplyLeading: false,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, size: 22),
-                onPressed: (isFirst || (_isAudioPlaying && !widget.isAdmin))
+                onPressed:
+                (isFirst || (_isAudioPlaying && !widget.isAdmin))
                     ? null
                     : _previous,
               ),
@@ -688,7 +715,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               actions: [
                 if (sw.width > sw.height)
                   ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: sw.width * 0.3),
+                    constraints:
+                    BoxConstraints(maxWidth: sw.width * 0.3),
                     child: Center(
                       child: Text(
                         'इमा एजुकेशन, बागबजार, फोन नम्बर: +9779851213520',
@@ -701,8 +729,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   ),
                 Container(
                   margin: const EdgeInsets.only(right: 12),
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.red.shade700,
                     borderRadius: BorderRadius.circular(4),
@@ -728,8 +756,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   CircularProgressIndicator(color: Colors.white),
                   SizedBox(height: 16),
                   Text('Loading question...',
-                      style:
-                      TextStyle(color: Colors.white, fontSize: 16)),
+                      style: TextStyle(
+                          color: Colors.white, fontSize: 16)),
                 ],
               ),
             ),
@@ -754,7 +782,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               ],
             ),
           ),
-          bottomNavigationBar: _buildBottomNav(sw, vm, isFirst, isLast),
+          bottomNavigationBar:
+          _buildBottomNav(sw, vm, isFirst, isLast),
           floatingActionButton: widget.isAdmin
               ? Column(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -771,8 +800,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                     }
                   });
                 },
-                tooltip:
-                _isDrawingMode ? 'Exit Drawing' : 'Enter Drawing',
+                tooltip: _isDrawingMode
+                    ? 'Exit Drawing'
+                    : 'Enter Drawing',
                 child: Icon(
                     _isDrawingMode ? Icons.edit_off : Icons.edit,
                     size: 20),
@@ -809,7 +839,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
       ) {
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
@@ -831,7 +862,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue.shade200),
+                      border:
+                      Border.all(color: Colors.blue.shade200),
                       borderRadius: BorderRadius.circular(4),
                       color: Colors.blue.shade50,
                     ),
@@ -846,7 +878,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                            color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(4),
                         color: Colors.grey.shade50,
                       ),
@@ -858,12 +891,13 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.amber.shade200),
+                        border: Border.all(
+                            color: Colors.amber.shade200),
                         borderRadius: BorderRadius.circular(4),
                         color: Colors.amber.shade50,
                       ),
-                      child: _buildFormattedText(
-                          q.optionalText, q.optionalWordFormatting, sw),
+                      child: _buildFormattedText(q.optionalText,
+                          q.optionalWordFormatting, sw),
                     ),
                   ],
                 ],
@@ -877,8 +911,10 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                       setState(() => _leftPoints.add(d.localPosition)),
                   onPanUpdate: (d) =>
                       setState(() => _leftPoints.add(d.localPosition)),
-                  onPanEnd: (_) => setState(() => _leftPoints.add(null)),
-                  child: CustomPaint(painter: _DrawingPainter(_leftPoints)),
+                  onPanEnd: (_) =>
+                      setState(() => _leftPoints.add(null)),
+                  child:
+                  CustomPaint(painter: _DrawingPainter(_leftPoints)),
                 ),
               ),
           ],
@@ -896,7 +932,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
       ) {
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
@@ -927,8 +964,10 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                       setState(() => _rightPoints.add(d.localPosition)),
                   onPanUpdate: (d) =>
                       setState(() => _rightPoints.add(d.localPosition)),
-                  onPanEnd: (_) => setState(() => _rightPoints.add(null)),
-                  child: CustomPaint(painter: _DrawingPainter(_rightPoints)),
+                  onPanEnd: (_) =>
+                      setState(() => _rightPoints.add(null)),
+                  child: CustomPaint(
+                      painter: _DrawingPainter(_rightPoints)),
                 ),
               ),
           ],
@@ -956,7 +995,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         border: Border.all(
-          color: isSelected ? Colors.blue.shade400 : Colors.grey.shade300,
+          color: isSelected
+              ? Colors.blue.shade400
+              : Colors.grey.shade300,
           width: 2,
         ),
         borderRadius: BorderRadius.circular(8),
@@ -983,11 +1024,13 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   Container(
                     width: 30,
                     height: 30,
-                    margin: const EdgeInsets.only(right: 12, top: 2),
+                    margin:
+                    const EdgeInsets.only(right: 12, top: 2),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color:
-                      isSelected ? Colors.blue[600] : Colors.grey[200],
+                      color: isSelected
+                          ? Colors.blue[600]
+                          : Colors.grey[200],
                       border: Border.all(
                         color: isSelected
                             ? Colors.blue[600]!
@@ -1003,8 +1046,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                           style: TextStyle(
                             fontSize: fontSize * 0.8,
                             fontWeight: FontWeight.bold,
-                            color:
-                            isSelected ? Colors.white : Colors.black54,
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.black54,
                           ),
                         ),
                         if (isSelected)
@@ -1021,7 +1065,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                       ],
                     ),
                   ),
-                  Expanded(child: _buildFormattedText(text, fmt, sw)),
+                  Expanded(
+                      child: _buildFormattedText(text, fmt, sw)),
                 ],
               ),
               if (file.isNotEmpty) ...[
@@ -1035,12 +1080,6 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // FILE WIDGET
-  // FIX: Videos no longer open a modal — they display inline as a
-  // rectangle with play controls. A zoom button in the bottom-right
-  // corner opens the full-screen _VideoPage when tapped.
-  // ─────────────────────────────────────────────────────────────
   Widget _buildFileWidget(String mediaPath, UserQuizViewModel vm) {
     final ext = mediaPath.split('.').last.toLowerCase();
     final localFile = vm.localPath(mediaPath);
@@ -1053,7 +1092,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           localFile != null && File(localFile).existsSync()
               ? localFile
               : fullUrl,
-          isLocal: localFile != null && File(localFile).existsSync(),
+          isLocal:
+          localFile != null && File(localFile).existsSync(),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -1067,8 +1107,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               imageUrl: fullUrl,
               height: 180,
               fit: BoxFit.contain,
-              placeholder: (_, __) =>
-              const Center(child: CircularProgressIndicator()),
+              placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator()),
               errorWidget: (_, __, ___) =>
               const Icon(Icons.broken_image)),
         ),
@@ -1095,8 +1135,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               color: alreadyPlayed ? Colors.green : Colors.black54,
               size: 22,
             ),
-            onPressed:
-            alreadyPlayed ? null : () => _playAudio(mediaPath, vm),
+            onPressed: alreadyPlayed
+                ? null
+                : () => _playAudio(mediaPath, vm),
           ),
           if (widget.isAdmin && isThisPlaying) ...[
             IconButton(
@@ -1112,7 +1153,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
             mediaPath.split('/').last,
             style: TextStyle(
                 fontSize: 12,
-                color: alreadyPlayed ? Colors.grey : Colors.black87),
+                color:
+                alreadyPlayed ? Colors.grey : Colors.black87),
           ),
         ],
       );
@@ -1125,13 +1167,17 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
         localFile: localFile,
         fullUrl: fullUrl,
         isAdmin: widget.isAdmin,
-        alreadyPlayed: !widget.isAdmin && _playedMedia.contains(mediaPath),
-        onFirstPlay: () => setState(() => _playedMedia.add(mediaPath)),
+        alreadyPlayed:
+        !widget.isAdmin && _playedMedia.contains(mediaPath),
+        onFirstPlay: () =>
+            setState(() => _playedMedia.add(mediaPath)),
         onZoom: () {
           _playedMedia.add(mediaPath);
-          final ctrl = localFile != null && File(localFile).existsSync()
+          final ctrl =
+          localFile != null && File(localFile).existsSync()
               ? VideoPlayerController.file(File(localFile))
-              : VideoPlayerController.networkUrl(Uri.parse(fullUrl));
+              : VideoPlayerController.networkUrl(
+              Uri.parse(fullUrl));
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -1148,13 +1194,15 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 
     // ── Generic file attachment ────────────────────────────────
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
           color: Colors.blue.shade50,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: Colors.blue.shade200)),
       child: Row(children: [
-        const Icon(Icons.attach_file, size: 16, color: Colors.blueAccent),
+        const Icon(Icons.attach_file,
+            size: 16, color: Colors.blueAccent),
         const SizedBox(width: 6),
         Expanded(
             child: Text(mediaPath.split('/').last,
@@ -1175,7 +1223,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               child: Center(
                 child: isLocal
                     ? Image.file(File(path), fit: BoxFit.contain)
-                    : CachedNetworkImage(imageUrl: path, fit: BoxFit.contain),
+                    : CachedNetworkImage(
+                    imageUrl: path, fit: BoxFit.contain),
               ),
             ),
             Positioned(
@@ -1209,7 +1258,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               offset: const Offset(0, -1))
         ],
       ),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      padding:
+      const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1220,11 +1270,17 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               disabledBackgroundColor: Colors.grey,
               minimumSize: Size(sw.width * 0.12, 34),
             ),
-            child:
-            Text('Previous', style: TextStyle(fontSize: sw.width * 0.014)),
+            child: Text('Previous',
+                style: TextStyle(fontSize: sw.width * 0.014)),
           ),
           ElevatedButton(
-            onPressed: audioBlocked ? null : () => Navigator.pop(context),
+            onPressed: audioBlocked
+                ? null
+                : () {
+              // FIX: Stop audio when going back to question overview
+              _stopAudio();
+              Navigator.pop(context);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               disabledBackgroundColor: Colors.grey,
@@ -1234,7 +1290,9 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                 style: TextStyle(fontSize: sw.width * 0.014)),
           ),
           ElevatedButton(
-            onPressed: (isLast || audioBlocked) ? null : () => _next(vm),
+            onPressed: (isLast || audioBlocked)
+                ? null
+                : () => _next(vm),
             style: ElevatedButton.styleFrom(
               backgroundColor: isLast ? Colors.grey : Colors.blue,
               disabledBackgroundColor: Colors.grey,
@@ -1255,21 +1313,28 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
     if (fmt.isEmpty) {
       return SelectableText(text,
           style: TextStyle(
-              fontSize: fontSize, height: 1.3, color: Colors.black87));
+              fontSize: fontSize,
+              height: 1.3,
+              color: Colors.black87));
     }
     final words = text.split(' ');
     final spans = <TextSpan>[];
     for (int i = 0; i < words.length; i++) {
       final bold = i < fmt.length ? fmt[i]['bold'] == true : false;
-      final under = i < fmt.length ? fmt[i]['underline'] == true : false;
-      final italic = i < fmt.length ? fmt[i]['italic'] == true : false;
+      final under =
+      i < fmt.length ? fmt[i]['underline'] == true : false;
+      final italic =
+      i < fmt.length ? fmt[i]['italic'] == true : false;
       spans.add(TextSpan(
         text: words[i] + (i < words.length - 1 ? ' ' : ''),
         style: TextStyle(
           fontSize: fontSize,
-          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-          fontStyle: italic ? FontStyle.italic : FontStyle.normal,
-          decoration: under ? TextDecoration.underline : null,
+          fontWeight:
+          bold ? FontWeight.bold : FontWeight.normal,
+          fontStyle:
+          italic ? FontStyle.italic : FontStyle.normal,
+          decoration:
+          under ? TextDecoration.underline : null,
           color: Colors.black87,
           height: 1.3,
         ),
@@ -1280,8 +1345,6 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 }
 
 // ─── Inline Video Widget ───────────────────────────────────────────────────────
-// Displays video as a rectangle inline (no modal).
-// Bottom-right has a zoom icon that opens the full-screen player.
 class _InlineVideoWidget extends StatefulWidget {
   final String mediaPath;
   final String? localFile;
@@ -1321,7 +1384,6 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
 
   Future<void> _initAndPlay() async {
     if (_hasStarted) {
-      // Toggle play/pause
       if (_ctrl!.value.isPlaying) {
         await _ctrl!.pause();
       } else {
@@ -1330,18 +1392,17 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
       return;
     }
 
-    // Non-admin: block replay
     if (widget.alreadyPlayed && !widget.isAdmin) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Video already played.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Video already played.')));
       return;
     }
 
     widget.onFirstPlay();
     setState(() => _hasStarted = true);
 
-    final localOk = widget.localFile != null &&
-        File(widget.localFile!).existsSync();
+    final localOk =
+        widget.localFile != null && File(widget.localFile!).existsSync();
     _ctrl = localOk
         ? VideoPlayerController.file(File(widget.localFile!))
         : VideoPlayerController.networkUrl(Uri.parse(widget.fullUrl));
@@ -1379,7 +1440,6 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Video frame ────────────────────────────────────
           AspectRatio(
             aspectRatio: (_initialized && _ctrl!.value.isInitialized)
                 ? _ctrl!.value.aspectRatio
@@ -1404,16 +1464,12 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
                       ),
                     ),
                   ),
-
-                // Big play/pause overlay (tap anywhere on the frame)
                 Positioned.fill(
                   child: GestureDetector(
                     onTap: _initAndPlay,
                     child: Container(color: Colors.transparent),
                   ),
                 ),
-
-                // ── Zoom button — bottom right ───────────────
                 Positioned(
                   bottom: 6,
                   right: 6,
@@ -1433,15 +1489,12 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
               ],
             ),
           ),
-
-          // ── Controls bar ───────────────────────────────────
           Container(
             color: Colors.grey[900],
             padding:
             const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
-                // Play / pause button
                 GestureDetector(
                   onTap: _initAndPlay,
                   child: Icon(
@@ -1451,21 +1504,20 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
                   ),
                 ),
                 const SizedBox(width: 6),
-
-                // Seek bar (admin only; non-admin sees plain progress)
                 Expanded(
                   child: _initialized
                       ? (widget.isAdmin
                       ? Slider(
                     value: _position.inSeconds
                         .toDouble()
-                        .clamp(0,
-                        _duration.inSeconds.toDouble()),
+                        .clamp(
+                        0, _duration.inSeconds.toDouble()),
                     max: _duration.inSeconds > 0
                         ? _duration.inSeconds.toDouble()
                         : 1.0,
                     activeColor: Colors.teal,
-                    inactiveColor: Colors.teal.withOpacity(0.3),
+                    inactiveColor:
+                    Colors.teal.withOpacity(0.3),
                     onChanged: (v) => _ctrl!
                         .seekTo(Duration(seconds: v.toInt())),
                   )
@@ -1482,20 +1534,14 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
                   ))
                       : const SizedBox.shrink(),
                 ),
-
                 const SizedBox(width: 6),
-
-                // Time label
                 if (_initialized)
                   Text(
                     '${_fmt(_position)} / ${_fmt(_duration)}',
                     style: const TextStyle(
                         color: Colors.white70, fontSize: 10),
                   ),
-
                 const SizedBox(width: 6),
-
-                // Admin: rewind / fast-forward
                 if (widget.isAdmin && _initialized) ...[
                   GestureDetector(
                     onTap: () async {
@@ -1519,8 +1565,6 @@ class _InlineVideoWidgetState extends State<_InlineVideoWidget> {
                         color: Colors.white70, size: 18),
                   ),
                 ],
-
-                // File name
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -1618,8 +1662,8 @@ class _VideoPageState extends State<_VideoPage> {
         preferredSize: const Size.fromHeight(30),
         child: AppBar(
           backgroundColor: Colors.black,
-          title:
-          Text(widget.fileName, style: const TextStyle(fontSize: 13)),
+          title: Text(widget.fileName,
+              style: const TextStyle(fontSize: 13)),
         ),
       ),
       body: Center(
@@ -1632,7 +1676,6 @@ class _VideoPageState extends State<_VideoPage> {
               child: VideoPlayer(widget.controller),
             ),
             const SizedBox(height: 8),
-            // Always show scrubber in full-screen; admin gets extra controls
             Slider(
               value: _position.inSeconds
                   .toDouble()
@@ -1657,8 +1700,9 @@ class _VideoPageState extends State<_VideoPage> {
                     onPressed: () {
                       final np = _position -
                           const Duration(seconds: 10);
-                      widget.controller.seekTo(
-                          np < Duration.zero ? Duration.zero : np);
+                      widget.controller.seekTo(np < Duration.zero
+                          ? Duration.zero
+                          : np);
                     },
                   ),
                 IconButton(
@@ -1725,13 +1769,15 @@ class QuizResultsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final result = apiResult?['result'] as Map<String, dynamic>? ?? {};
+    final result =
+        apiResult?['result'] as Map<String, dynamic>? ?? {};
     final score = result['score'] ?? 0;
     final total = result['total_questions'] ?? 0;
     final correct = result['correct_answers'] ?? 0;
     final percentage = result['percentage'] ?? 0;
     final mins = timeTakenSeconds ~/ 60;
-    final secs = (timeTakenSeconds % 60).toString().padLeft(2, '0');
+    final secs =
+    (timeTakenSeconds % 60).toString().padLeft(2, '0');
     final sw = MediaQuery.of(context).size.width;
     final fs = sw * 0.025;
 
@@ -1742,7 +1788,8 @@ class QuizResultsPage extends StatelessWidget {
         preferredSize: const Size.fromHeight(30),
         child: AppBar(
           title: Text(quizSetName,
-              style: TextStyle(fontSize: fs), overflow: TextOverflow.ellipsis),
+              style: TextStyle(fontSize: fs),
+              overflow: TextOverflow.ellipsis),
           backgroundColor: Colors.blue[700],
           automaticallyImplyLeading: false,
         ),
@@ -1811,8 +1858,10 @@ class QuizResultsPage extends StatelessWidget {
               displayNum <= vm.allQuestions.length;
               displayNum++)
                 Builder(builder: (_) {
-                  final origIdx = vm.displayNumberToIndex[displayNum];
-                  if (origIdx == null) return const SizedBox.shrink();
+                  final origIdx =
+                  vm.displayNumberToIndex[displayNum];
+                  if (origIdx == null)
+                    return const SizedBox.shrink();
                   final q = vm.allQuestions[origIdx];
                   final selected = vm.selectedAnswers[origIdx];
                   final isCorrect = selected == q.correctAnswer;
@@ -1835,8 +1884,9 @@ class QuizResultsPage extends StatelessWidget {
                               'Your answer: ${selected ?? 'Not answered'}',
                               style: TextStyle(
                                   fontSize: fs * 0.75,
-                                  color:
-                                  isCorrect ? Colors.green : Colors.red,
+                                  color: isCorrect
+                                      ? Colors.green
+                                      : Colors.red,
                                   fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(width: 12),
@@ -1858,8 +1908,11 @@ class QuizResultsPage extends StatelessWidget {
             const SizedBox(height: 20),
             Center(
               child: ElevatedButton.icon(
-                onPressed: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
+                // FIX: popUntil(isFirst) works correctly now because
+                // _submitQuiz uses pushReplacement (not pushAndRemoveUntil),
+                // so the original home route is still in the stack.
+                onPressed: () => Navigator.of(context)
+                    .popUntil((route) => route.isFirst),
                 icon: const Icon(Icons.home, color: Colors.white),
                 label: const Text('Back to Home',
                     style: TextStyle(color: Colors.white)),
@@ -1885,12 +1938,15 @@ class _StatChip extends StatelessWidget {
   final Color color;
 
   const _StatChip(
-      {required this.label, required this.value, required this.color});
+      {required this.label,
+        required this.value,
+        required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: color.withOpacity(0.2),
         borderRadius: BorderRadius.circular(8),
@@ -1904,7 +1960,8 @@ class _StatChip extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: Colors.white)),
           Text(label,
-              style: const TextStyle(fontSize: 11, color: Colors.white70)),
+              style: const TextStyle(
+                  fontSize: 11, color: Colors.white70)),
         ],
       ),
     );
