@@ -129,16 +129,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
         MaterialPageRoute(builder: (_) => const GiveAccessPage()),
       ),
     ),
-    _DashItem(
-      icon: Icons.quiz_rounded,
-      label: 'Free Quiz & Files',
-      color: const Color(0xFFF7956C),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => const FreeQuizAndFilesPage()),
-      ),
-    ),
+    // _DashItem(
+    //   icon: Icons.quiz_rounded,
+    //   label: 'Free Quiz & Files',
+    //   color: const Color(0xFFF7956C),
+    //   onTap: () => Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //         builder: (_) => const FreeQuizAndFilesPage()),
+    //   ),
+    // ),
     _DashItem(
       icon: Icons.logout_rounded,
       label: 'Logout',

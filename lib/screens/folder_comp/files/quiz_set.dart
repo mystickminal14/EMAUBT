@@ -631,7 +631,7 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
         text: widget.existing?.durationMinutes?.toString() ?? '');
     _passingScore = TextEditingController(
         text: widget.existing?.passingScore?.toString() ?? '');
-    _isPublished = widget.existing?.isPublished ?? false;
+
   }
 
   @override
@@ -653,7 +653,6 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
         'description': _description.text.trim(),
         'duration_minutes': int.tryParse(_duration.text),
         'passing_score': int.tryParse(_passingScore.text),
-        'is_published': _isPublished,
         // NOTE: icon is NOT passed here — it lives in the VM's selectedIconBase64
         // and is captured directly in _showFormSheet's onSubmit callback.
       });
@@ -825,30 +824,6 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 14),
-
-              // Published toggle
-              Container(
-                decoration: FolderTheme.fieldDecoration(),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.publish_rounded,
-                        color: FolderTheme.accent, size: 20),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child:
-                      Text('Published', style: FolderTheme.fieldInput),
-                    ),
-                    Switch(
-                      value: _isPublished,
-                      onChanged: (v) => setState(() => _isPublished = v),
-                      activeColor: FolderTheme.accent,
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 28),
 

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
+import 'package:ema_app/screens/admin/quizSet_details.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:flutter/material.dart';
@@ -145,6 +147,7 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
                                   shape: BoxShape.circle,
                                   color:
                                   FolderTheme.accent.withOpacity(0.08),
+
                                   border: Border.all(
                                     color:
                                     FolderTheme.accent.withOpacity(0.3),
@@ -153,15 +156,8 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
                                   image: _buildPreviewImage(
                                       previewBytes, existingBase64),
                                 ),
-                                child: (previewBytes == null &&
-                                    (existingBase64 == null ||
-                                        existingBase64.isEmpty))
-                                    ? const Icon(
-                                  Icons.folder_rounded,
-                                  size: 40,
-                                  color: FolderTheme.accent,
-                                )
-                                    : null,
+                                clipBehavior: Clip.antiAlias,
+                                child: _buildIconChild(previewBytes, existingBase64),
                               ),
                               // Camera badge
                               Positioned(
@@ -235,6 +231,49 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
           ),
         ),
       ),
+    );
+  }
+  Widget _buildIconChild(Uint8List? pickedBytes, String? iconPath) {
+    // 1. Newly picked image takes priority
+    if (pickedBytes != null) {
+      return Image.memory(pickedBytes, fit: BoxFit.cover);
+    }
+
+    // 2. Existing icon from server
+    if (iconPath != null && iconPath.isNotEmpty) {
+      final fullUrl = '${BaseUrl.imageUrl}/$iconPath';
+
+      return FutureBuilder<Map<String, String>>(
+        future: getAuthHeaders(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
+          return Image.network(
+            fullUrl,
+            headers: snapshot.data,   // ← fixes 401
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.folder_rounded,
+              size: 40,
+              color: FolderTheme.accent,
+            ),
+          );
+        },
+      );
+    }
+
+    // 3. No icon — show placeholder
+    return const Icon(
+      Icons.folder_rounded,
+      size: 40,
+      color: FolderTheme.accent,
     );
   }
 
