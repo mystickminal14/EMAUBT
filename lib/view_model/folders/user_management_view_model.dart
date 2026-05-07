@@ -116,51 +116,110 @@ class UserManagementViewModel extends ChangeNotifier {
       _logger.e('Error picking/compressing image: $e');
     }
   }
-
   Future<void> addUser(BuildContext context) async {
-    if (name == null || name!.isEmpty || email == null || email!.isEmpty || phone == null || phone!.isEmpty || password == null || password!.isEmpty) {
-      Utils.showApiResponse(Utils.errorResponse('Full Name, Email, Phone, and Password are required'), context);
+    if (name == null || name!.trim().isEmpty) {
+      Utils.showApiResponse(
+        Utils.errorResponse('Full Name is required'),
+        context,
+      );
       return;
     }
 
-    if (users.any((user) => user.email?.toLowerCase() == email!.toLowerCase())) {
-      Utils.showApiResponse(Utils.errorResponse('Email already exists'), context);
+    if (email == null || email!.trim().isEmpty) {
+      Utils.showApiResponse(
+        Utils.errorResponse('Email is required'),
+        context,
+      );
+      return;
+    }
+
+    if (phone == null || phone!.trim().isEmpty) {
+      Utils.showApiResponse(
+        Utils.errorResponse('Phone is required'),
+        context,
+      );
+      return;
+    }
+
+    if (password == null || password!.isEmpty) {
+      Utils.showApiResponse(
+        Utils.errorResponse('Password is required'),
+        context,
+      );
       return;
     }
 
     try {
       isActionLoading = true;
       notifyListeners();
-      _logger.i('Adding user: $name, $email, $phone');
+
       final fields = {
-        'full_name': name!,
-        'email': email!,
-        'phone': phone!,
+        'full_name': name!.trim(),
+        'email': email!.trim(),
+        'phone': phone!.trim(),
         'password': password!,
       };
+
       final response = await _apiService.postMultipartResponse(
         '${BaseUrl.baseUrl}register.php',
         fields,
         selectedImage,
       );
-      Utils.showApiResponse(response, context);
+
+      // ✅ SHOW BACKEND VALIDATION MESSAGE
       if (response['success'] == true) {
-        _logger.i('User added successfully');
+        Utils.showApiResponse(response, context);
+
         clearFields();
-        await Future.delayed(const Duration(milliseconds: 100)); // Delay to avoid disposal race
+
+        await Future.delayed(
+          const Duration(milliseconds: 100),
+        );
+
         await fetchUsers(context);
       } else {
-        _logger.w('Failed to add user: ${response['message']}');
+        String errorMessage = '';
+
+        // backend sends errors
+        if (response['errors'] != null) {
+          if (response['errors'] is String) {
+            errorMessage = response['errors'];
+          } else if (response['errors'] is List) {
+            errorMessage =
+                (response['errors'] as List).join('\n');
+          } else if (response['errors'] is Map) {
+            final errors = response['errors'] as Map;
+
+            errorMessage = errors.values
+                .map((e) {
+              if (e is List) {
+                return e.join('\n');
+              }
+              return e.toString();
+            })
+                .join('\n');
+          }
+        }
+
+        errorMessage = errorMessage.isNotEmpty
+            ? errorMessage
+            : (response['message'] ?? 'Something went wrong');
+
+        Utils.showApiResponse(
+          Utils.errorResponse(errorMessage),
+          context,
+        );
       }
     } catch (e) {
-      Utils.showApiResponse(Utils.errorResponse('Error adding user: $e'), context);
-      _logger.e('Error adding user: $e');
+      Utils.showApiResponse(
+        Utils.errorResponse('Error adding user: $e'),
+        context,
+      );
     } finally {
       isActionLoading = false;
       notifyListeners();
     }
   }
-
   Future<void> editUser(BuildContext context, Users user) async {
     if (name == null || name!.isEmpty || email == null || email!.isEmpty || phone == null || phone!.isEmpty) {
       Utils.showApiResponse(Utils.errorResponse('Full Name, Email, and Phone are required'), context);
