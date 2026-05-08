@@ -59,8 +59,7 @@ class _GrantAccessFilesPageContentState
   _ActionMode _actionMode = _ActionMode.grant;
 
   // Scroll controllers for pagination
-  final ScrollController _filesScrollController = ScrollController();
-  final ScrollController _quizSetsScrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -69,35 +68,42 @@ class _GrantAccessFilesPageContentState
   }
 
   void _setupScrollListeners() {
-    _filesScrollController.addListener(() {
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels < _scrollController.position.maxScrollExtent - 200) return;
+
       final vm = context.read<AccessControlViewModel>();
-      if (_filesScrollController.position.pixels >=
-          _filesScrollController.position.maxScrollExtent - 200) {
-        if (_actionMode == _ActionMode.grant) {
-          vm.loadMoreNotGrantedFiles();
-        } else {
-          vm.loadMoreGrantedFiles();
+      final isRevoke = _actionMode == _ActionMode.revoke;
+
+      // Load more files
+      if (isRevoke) {
+        if (vm.grantedFilesPagination?.hasNextPage == true &&
+            !vm.isGrantedFilesLoadingMore && !vm.isGrantedFilesLoading) {
+          vm.fetchGrantedFiles(widget.userId);
+        }
+      } else {
+        if (vm.notGrantedFilesPagination?.hasNextPage == true &&
+            !vm.isNotGrantedFilesLoadingMore && !vm.isNotGrantedFilesLoading) {
+          vm.fetchNotGrantedFiles(widget.userId);
         }
       }
-    });
 
-    _quizSetsScrollController.addListener(() {
-      final vm = context.read<AccessControlViewModel>();
-      if (_quizSetsScrollController.position.pixels >=
-          _quizSetsScrollController.position.maxScrollExtent - 200) {
-        if (_actionMode == _ActionMode.grant) {
-          vm.loadMoreNotGrantedQuizSets();
-        } else {
-          vm.loadMoreGrantedQuizSets();
+      // Load more quiz sets
+      if (isRevoke) {
+        if (vm.grantedQuizSetsPagination?.hasNextPage == true &&
+            !vm.isGrantedQuizSetsLoadingMore && !vm.isGrantedQuizSetsLoading) {
+          vm.fetchGrantedQuizSets(widget.userId);
+        }
+      } else {
+        if (vm.notGrantedQuizSetsPagination?.hasNextPage == true &&
+            !vm.isNotGrantedQuizSetsLoadingMore && !vm.isNotGrantedQuizSetsLoading) {
+          vm.fetchNotGrantedQuizSets(widget.userId);
         }
       }
     });
   }
-
   @override
   void dispose() {
-    _filesScrollController.dispose();
-    _quizSetsScrollController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -424,6 +430,7 @@ class _GrantAccessFilesPageContentState
             color: FolderTheme.accent,
             onRefresh: () => viewModel.refreshAllData(widget.userId),
             child: SingleChildScrollView(
+              controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
               child: Column(
@@ -527,7 +534,6 @@ class _GrantAccessFilesPageContentState
                       message: 'No files available')
                       : ListView.builder(
                     shrinkWrap: true,
-                    controller: _filesScrollController,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: files.length + (filesLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
@@ -577,7 +583,6 @@ class _GrantAccessFilesPageContentState
                       message: 'No quiz sets available')
                       : ListView.builder(
                     shrinkWrap: true,
-                    controller: _quizSetsScrollController,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: quizSets.length + (quizSetsLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {

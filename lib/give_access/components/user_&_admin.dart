@@ -174,8 +174,9 @@ class _RoleUserListState extends State<_RoleUserList> {
   void _onScroll() {
     if (_controller.position.pixels > _controller.position.maxScrollExtent - 200) {
       final userVM = Provider.of<ManageUserViewModel>(context, listen: false);
-      if (!userVM.isLoading) {
-        userVM.fetchUsers(context, refresh: false);
+      // Use fetchNextPage instead of fetchUsers — it appends and guards duplicates
+      if (!userVM.isFetchingMore && !userVM.isLoading && userVM.hasMorePages) {
+        userVM.fetchNextPage(context);
       }
     }
   }
@@ -209,7 +210,7 @@ class _RoleUserListState extends State<_RoleUserList> {
           key: ValueKey('${widget.role}_list'),
           controller: _controller,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-          itemCount: filtered.length + (userVM.isLoading ? 1 : 0),
+          itemCount: filtered.length + (userVM.isFetchingMore ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == filtered.length) {
               return const Center(

@@ -220,7 +220,7 @@ class AccessControlViewModel extends ChangeNotifier {
   // ── Logged-in-access items ─────────────────────────────────────────────
   List<AccessItem> loginAccessItems = [];
   int totalLoginItems = 0;
-
+  int _currentUserId = 0;
   // ── Folder content ─────────────────────────────────────────────────────
   List<FolderFileModel> folderFiles = [];
   List<FolderQuizSetModel> folderQuizSets = [];
@@ -498,6 +498,7 @@ class AccessControlViewModel extends ChangeNotifier {
   // Call this when first opening the user-detail / access-inspection screen.
   // ══════════════════════════════════════════════════════════════════════════
   Future<void> fetchAllUserGrantData(int userId, {bool refresh = false}) async {
+    _currentUserId = userId;
     await Future.wait([
       fetchGrantedFiles(userId, refresh: refresh),
       fetchNotGrantedFiles(userId, refresh: refresh),
@@ -522,7 +523,7 @@ class AccessControlViewModel extends ChangeNotifier {
         !isGrantedFilesLoading) {
       // The fetchGrantedFiles method will automatically load the next page
       // since _grantedFilesPage is already incremented
-      fetchGrantedFiles(0); // userId is not needed for pagination, but we need to pass something
+      fetchGrantedFiles(_currentUserId); // userId is not needed for pagination, but we need to pass something
     }
   }
 
