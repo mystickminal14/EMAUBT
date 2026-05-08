@@ -819,6 +819,9 @@ class _ContentListState extends State<_ContentList> {
   Widget build(BuildContext context) {
     final isFetchingMore =
         widget.filesVm.isFetchingMore || widget.quizVm.isFetchingMore;
+    final visibleFiles = widget.filesVm.filteredFiles
+        .where((f) => f.status?.toLowerCase() == 'active')
+        .toList();
     return ListView(
       controller: _scrollCtrl,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
@@ -839,25 +842,22 @@ class _ContentListState extends State<_ContentList> {
               onTap: () => _openQuizSetNew(context, e.value),
             ),
           ),
-          if (widget.filesVm.filteredFiles.isNotEmpty)
-            const SizedBox(height: 20),
+          if (visibleFiles.isNotEmpty) const SizedBox(height: 20),
         ],
 
         // ── Files section ──────────────────────────────────────────────────
-        if (widget.filesVm.filteredFiles.isNotEmpty) ...[
+        if (visibleFiles.isNotEmpty) ...[                          // ← use visibleFiles
           _SectionHeader(
             icon: Icons.insert_drive_file_rounded,
             title: 'Files',
-            count: widget.filesVm.filteredFiles.length,
+            count: visibleFiles.length,                            // ← use visibleFiles
           ),
           const SizedBox(height: 10),
-          ...widget.filesVm.filteredFiles.asMap().entries.map(
+          ...visibleFiles.asMap().entries.map(                     // ← use visibleFiles
                 (e) => _ContentCard(
               item: e.value.toJson(),
               index: e.key,
               itemType: 'file',
-              // ✅ Fixed: download & open with auth instead of routing
-              // to UserQuizSetsPage which is wrong for files.
               onTap: () => _downloadAndOpenFile(context, e.value),
             ),
           ),
