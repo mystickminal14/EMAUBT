@@ -416,4 +416,9 @@ class UpdatedFolderViewModel extends ChangeNotifier {
     _debounceTimer?.cancel(); // ← always cancel on VM dispose
     super.dispose();
   }
+  void clearIcon() {
+    selectedIconBase64 = null;
+    selectedIconBytes = null;
+    notifyListeners();
+  }
 }

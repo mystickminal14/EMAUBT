@@ -1,5 +1,6 @@
 import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
 import 'package:ema_app/screens/admin/folder_detail_screen.dart';
+import 'package:ema_app/screens/admin/folder_management_v2.dart';
 import 'package:ema_app/screens/folder_comp/folder_card.dart';
 import 'package:ema_app/screens/folder_comp/folder_form_sheet.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
@@ -74,7 +75,7 @@ class FolderList extends StatelessWidget {
         value: vm,
         child: FolderFormSheet(
           existing: folder,
-          onClose: () => Navigator.pop(sheetContext), // ← sheetContext, not context
+
           onSubmit: (name, icon) async {
             vm.setFields(name: name, iconBase64: icon);
             await vm.editFolder(context, folder);

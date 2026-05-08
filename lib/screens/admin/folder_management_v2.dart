@@ -61,6 +61,7 @@ class _FolderManagementScreenState extends State<FolderManagementScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       backgroundColor: FolderTheme.surface,
       body: SafeArea(
         child: Column(
@@ -95,10 +96,7 @@ class _FolderManagementScreenState extends State<FolderManagementScreen>
       builder: (sheetContext) => ChangeNotifierProvider.value(
         value: vm, // ← still needed to pass VM into modal's separate tree
         child: FolderFormSheet(
-          onClose: () => Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => FolderManagementScreen()),
-          ),
+
           onSubmit: (name, icon) async {
             vm.setFields(name: name, iconBase64: icon);
             await vm.addFolder(context);
@@ -121,6 +119,13 @@ class _FolderHeader extends StatelessWidget {
       child: Consumer<UpdatedFolderViewModel>(
         builder: (_, vm, __) => Row(
           children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: FolderTheme.textSub, size: 22),
+              tooltip: 'Back',
+            ),
+            const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

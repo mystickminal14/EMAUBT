@@ -56,7 +56,9 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
         _name.text.trim(),
         vm.selectedIconBase64,
       );
-      if (mounted) widget.onClose?.call();
+      if (!mounted) return;
+      _name.clear();
+      vm.clearIcon();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -102,6 +104,7 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
               const SizedBox(height: 20),
 
               // ── Title row ───────────────────────────────────────────────
+              // ── Title row ───────────────────────────────────────────────
               Row(
                 children: [
                   Container(
@@ -119,6 +122,11 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
                   Text(
                     _isEditing ? 'Edit Folder' : 'New Folder',
                     style: FolderTheme.sheetTitle,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded, color: FolderTheme.textSub),
                   ),
                 ],
               ),
