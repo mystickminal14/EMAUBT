@@ -521,8 +521,6 @@ class AccessControlViewModel extends ChangeNotifier {
     if (grantedFilesPagination?.hasNextPage == true &&
         !isGrantedFilesLoadingMore &&
         !isGrantedFilesLoading) {
-      // The fetchGrantedFiles method will automatically load the next page
-      // since _grantedFilesPage is already incremented
       fetchGrantedFiles(_currentUserId); // userId is not needed for pagination, but we need to pass something
     }
   }

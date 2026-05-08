@@ -27,14 +27,32 @@ class FolderContentTab extends StatefulWidget {
 
 class _FolderContentTabState extends State<FolderContentTab>
     with AutomaticKeepAliveClientMixin {
+
+  final ScrollController _scrollController = ScrollController();
   @override
   bool get wantKeepAlive => true;
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UpdatedFolderViewModel>().fetchFolders(context, refresh: true);
     });
+  }
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      final vm = context.read<UpdatedFolderViewModel>();
+      if (!vm.isFetchingMore && !vm.isLoading && vm.hasMorePages) {
+        vm.fetchNextPage(context);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose(); // ← add
+    super.dispose();
   }
 
   @override
@@ -59,6 +77,7 @@ class _FolderContentTabState extends State<FolderContentTab>
           backgroundColor: Colors.white,
           onRefresh: () => folderVM.fetchFolders(context, refresh: true),
           child: ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             children: [
               Row(
@@ -474,9 +493,11 @@ class FolderContentDetailScreen extends StatefulWidget {
 
 class _FolderContentDetailScreenState
     extends State<FolderContentDetailScreen> {
+  final ScrollController _scrollController = ScrollController();
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.folderFilesVM.reset();
       widget.folderQuizSetsVM.reset();
@@ -485,7 +506,30 @@ class _FolderContentDetailScreenState
       widget.folderQuizSetsVM.fetchQuizSets(context, widget.folder.id!);
     });
   }
+  void _onScroll() {
+    if (_scrollController.position.pixels < _scrollController.position.maxScrollExtent - 200) return;
 
+    final folderId = widget.folder.id!;
+
+    // Load more files
+    if (!widget.folderFilesVM.isFetchingMore &&
+        !widget.folderFilesVM.isLoading &&
+        widget.folderFilesVM.hasMorePages) {
+      widget.folderFilesVM.fetchNextPage(context, folderId);
+    }
+
+    // Load more quiz sets
+    if (!widget.folderQuizSetsVM.isFetchingMore &&
+        !widget.folderQuizSetsVM.isLoading &&
+        widget.folderQuizSetsVM.hasMorePages) {
+      widget.folderQuizSetsVM.fetchNextPage(context, folderId);
+    }
+  }
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -540,6 +584,7 @@ class _FolderContentDetailScreenState
               backgroundColor: Colors.white,
               onRefresh: () => filesVM.fetchFiles(context, widget.folder.id!),
               child: SingleChildScrollView(
+                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
                 child: Column(
@@ -560,6 +605,7 @@ class _FolderContentDetailScreenState
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: files.length,
                       itemBuilder: (_, i) {
+
                         final file = files[i];
                         return _AssignTypeCard(
                           icon: Icons.insert_drive_file_rounded,
@@ -575,7 +621,14 @@ class _FolderContentDetailScreenState
                         );
                       },
                     ),
-
+                    if (filesVM.isFetchingMore)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                              color: FolderTheme.accent, strokeWidth: 2),
+                        ),
+                      ),
                     const SizedBox(height: 28),
 
                     _SectionHeader(label: 'Quiz Sets', count: quizSets.length),
@@ -605,6 +658,14 @@ class _FolderContentDetailScreenState
                         );
                       },
                     ),
+                    if (quizVM.isFetchingMore)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                              color: FolderTheme.accent, strokeWidth: 2),
+                        ),
+                      ),
                   ],
                 ),
               ),
