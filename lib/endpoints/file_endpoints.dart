@@ -12,4 +12,7 @@ class FileEndpoints {
   /// GET /api/folder/{folderId}/files?page=1&per_page=15&search=...
   static String folderFiles(int folderId) =>
       '${BaseUrl.baseUrl}/folders/$folderId/files';
+  static String changeStatus(int fileId) =>
+      '${BaseUrl.baseUrl}/admin/files/$fileId/status';
+
 }

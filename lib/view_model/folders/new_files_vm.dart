@@ -369,6 +369,31 @@ class FolderFilesViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+  Future<void> changeStatus(
+      BuildContext context, FileModel file, int folderId, String status) async {
+    try {
+      isActionLoading = true;
+      notifyListeners();
+
+      final response = await _apiService
+          .getPostApiResponse('${FileEndpoints.changeStatus(file.id!)}',{
+            "status":status
+      });
+
+      Utils.showApiResponse(response, context);
+      if (response['success'] == true) {
+        await fetchFiles(context, folderId, refresh: true);
+      }
+    } catch (e) {
+      Utils.showApiResponse(
+          Utils.errorResponse('Error deleting file: $e'), context);
+      _logger.e('deleteFile error: $e');
+    } finally {
+      isActionLoading = false;
+      notifyListeners();
+    }
+  }
+
 
   // ── Search / filter ────────────────────────────────────────────────────────
   Timer? _debounceTimer;

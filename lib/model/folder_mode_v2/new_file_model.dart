@@ -5,13 +5,12 @@ class FileModel {
   int?    folderId;
   String? name;
   String? accessType;
-
+  String? status;
   /// Relative path from server e.g. "uploads/icons/icon_xxx.jpg"
   String? iconPath;
 
   /// Relative path from server e.g. "uploads/files/file_xxx.pdf"
   String? filePath;
-
   String? folderName;
   String? folderIconPath;
   String? createdAt;
@@ -21,6 +20,7 @@ class FileModel {
     this.folderId,
     this.name,
     this.accessType,
+    this.status,
     this.iconPath,
     this.filePath,
     this.folderName,
@@ -34,6 +34,7 @@ class FileModel {
     folderId       = json['folder_id'];
     name           = json['name'];
     accessType     = json['access_type'];
+    status = json['status'];
     iconPath       = json['icon_path'];   // "uploads/icons/icon_xxx.jpg"
     filePath       = json['file_path'];   // "uploads/files/file_xxx.pdf"
     folderName     = json['folder_name'];
@@ -46,6 +47,7 @@ class FileModel {
     'folder_id':        folderId,
     'name':             name,
     'access_type':      accessType,
+    'status':status,
     'icon_path':        iconPath,
     'file_path':        filePath,
     'folder_name':      folderName,

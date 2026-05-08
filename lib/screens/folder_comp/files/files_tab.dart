@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/utils/get_headers.dart';
@@ -46,7 +45,7 @@ class _FilesTabState extends State<FilesTab>
     if (!_scrollCtrl.hasClients) return;
     debugPrint('scroll: ${_scrollCtrl.position.pixels} / ${_scrollCtrl.position.maxScrollExtent}');
     if (_scrollCtrl.position.pixels <
-    _scrollCtrl.position.maxScrollExtent - 200) return;
+        _scrollCtrl.position.maxScrollExtent - 200) return;
     final vm = context.read<FolderFilesViewModel>();
     debugPrint('hasMore: ${vm.hasMorePages} | fetching: ${vm.isFetchingMore} | loading: ${vm.isLoading}');
     if (vm.isFetchingMore || vm.isLoading || !vm.hasMorePages) return;
@@ -351,11 +350,7 @@ class _FileFormSheetState extends State<_FileFormSheet> {
                 const SizedBox(height: 16),
 
                 // ── File picker tile ──────────────────────────────────────
-                // In edit mode with no new file picked, show the existing
-                // server file as a read-only "current file" tile, plus a
-                // separate "Replace" tap target below it.
                 Builder(builder: (_) {
-                  // Existing server file info (edit mode only)
                   final existingName = _isEdit
                       ? (widget.editFile!.filePath
                       ?.split('/')
@@ -369,7 +364,6 @@ class _FileFormSheetState extends State<_FileFormSheet> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Current file row (edit mode, no replacement yet) ──
                       if (_isEdit && vm.selectedFile == null) ...[
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -438,7 +432,6 @@ class _FileFormSheetState extends State<_FileFormSheet> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        // "Replace file" tap area
                         GestureDetector(
                           onTap: () async {
                             await vm.pickFile();
@@ -469,12 +462,10 @@ class _FileFormSheetState extends State<_FileFormSheet> {
                           ),
                         ),
                       ]
-                      // ── New file picked (both upload & edit after picking) ──
                       else
                         GestureDetector(
                           onTap: () async {
                             await vm.pickFile();
-                            // Only sync to name field if user hasn't typed anything yet
                             if (_nameCtrl.text.isEmpty && vm.uploadFileName != null) {
                               _nameCtrl.text = vm.uploadFileName!;
                             }
@@ -569,9 +560,6 @@ class _FileFormSheetState extends State<_FileFormSheet> {
                       if (_isEdit) {
                         await vm.editFile(
                             context, widget.editFile!, widget.folderId);
-                        // Wait for flushbar to finish its own route pop
-                        // before we pop the bottom sheet, otherwise
-                        // Navigator asserts entry.currentState == popping.
                         await Future.delayed(
                             const Duration(milliseconds: 600));
                         if (context.mounted &&
@@ -583,7 +571,6 @@ class _FileFormSheetState extends State<_FileFormSheet> {
                             context, widget.folderId);
                         if (vm.selectedFile == null &&
                             context.mounted) {
-                          // Same guard — let flushbar route settle first
                           await Future.delayed(
                               const Duration(milliseconds: 600));
                           if (context.mounted &&
@@ -626,6 +613,245 @@ class _FileFormSheetState extends State<_FileFormSheet> {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
+
+// ─── Change Status Sheet ──────────────────────────────────────────────────────
+
+/// Represents a single status option shown in the picker.
+class _FileStatus {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _FileStatus({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+}
+
+/// All available statuses. Adjust [value] strings to match your API.
+const _kFileStatuses = [
+  _FileStatus(
+    label: 'Active',
+    value: 'active',
+    icon: Icons.check_circle_rounded,
+    color: Color(0xFF10B981),
+  ),
+  _FileStatus(
+    label: 'Inactive',
+    value: 'inactive',
+    icon: Icons.cancel_rounded,
+    color: Color(0xFF6B7280),
+  ),
+];
+
+class _ChangeStatusSheet extends StatefulWidget {
+  final FileModel file;
+  final int folderId;
+
+  const _ChangeStatusSheet({required this.file, required this.folderId});
+
+  @override
+  State<_ChangeStatusSheet> createState() => _ChangeStatusSheetState();
+}
+
+class _ChangeStatusSheetState extends State<_ChangeStatusSheet> {
+  late String _selectedValue;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select the file's current status, fallback to 'active'
+    _selectedValue = widget.file.status ?? 'active';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Consumer<FolderFilesViewModel>(
+        builder: (_, vm, __) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Drag handle ───────────────────────────────────────────────
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: FolderTheme.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Header ────────────────────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: FolderTheme.accent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.toggle_on_rounded,
+                    color: FolderTheme.accent,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Change Status',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: FolderTheme.textMain),
+                      ),
+                      Text(
+                        widget.file.name ?? '',
+                        style: FolderTheme.cardSubtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // ── Status options ────────────────────────────────────────────
+            ..._kFileStatuses.map((status) {
+              final isSelected = _selectedValue == status.value;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedValue = status.value),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? status.color.withOpacity(0.08)
+                        : FolderTheme.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected
+                          ? status.color.withOpacity(0.5)
+                          : FolderTheme.border,
+                      width: isSelected ? 1.8 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Status colour dot + icon
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: status.color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(status.icon,
+                            color: status.color, size: 20),
+                      ),
+                      const SizedBox(width: 14),
+                      // Label
+                      Expanded(
+                        child: Text(
+                          status.label,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected
+                                ? status.color
+                                : FolderTheme.textMain,
+                          ),
+                        ),
+                      ),
+                      // Checkmark
+                      AnimatedOpacity(
+                        opacity: isSelected ? 1 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: status.color,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.check_rounded,
+                              size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+
+            const SizedBox(height: 20),
+
+            // ── Confirm button ────────────────────────────────────────────
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: vm.isActionLoading
+                    ? null
+                    : () async {
+                  await vm.changeStatus(
+                    context,
+                    widget.file,
+                    widget.folderId,
+                    _selectedValue,
+                  );
+                  await Future.delayed(
+                      const Duration(milliseconds: 600));
+                  if (context.mounted && Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: FolderTheme.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: vm.isActionLoading
+                    ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2.5),
+                )
+                    : const Text(
+                  'Update Status',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -735,7 +961,6 @@ class FileCard extends StatelessWidget {
   Future<void> _downloadFile(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
 
-    // Show "starting" snack
     messenger.showSnackBar(SnackBar(
       content: Text('Downloading: ${file.name ?? ""}…'),
       backgroundColor: FolderTheme.accent,
@@ -744,7 +969,7 @@ class FileCard extends StatelessWidget {
 
     try {
       final headers = await getAuthHeaders();
-      final url     = file.downloadUrl; // uses BaseUrl + /files/{id}/download
+      final url     = file.downloadUrl;
       final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode != 200) {
@@ -755,11 +980,9 @@ class FileCard extends StatelessWidget {
         return;
       }
 
-      // Determine file extension from filePath or name
       final ext      = file.extension.isNotEmpty ? '.${file.extension}' : '';
       final safeName = (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
 
-      // Save to downloads / temp directory
       final dir      = Platform.isAndroid
           ? Directory('/storage/emulated/0/Download')
           : await getApplicationDocumentsDirectory();
@@ -776,7 +999,6 @@ class FileCard extends StatelessWidget {
         duration: const Duration(seconds: 3),
       ));
 
-      // Open the file with the device's default app
       await OpenFile.open(savePath);
     } catch (e) {
       messenger.showSnackBar(SnackBar(
@@ -786,11 +1008,10 @@ class FileCard extends StatelessWidget {
     }
   }
 
-  // ── Edit helper — opens the same sheet in edit mode ────────────────────────
+  // ── Edit helper ────────────────────────────────────────────────────────────
   void _showEditSheet(BuildContext context) {
-    // Reset upload state, then seed name from the existing file
     final vm = context.read<FolderFilesViewModel>();
-    vm.clearSelectionOnly();   // preserve nothing — name set below
+    vm.clearSelectionOnly();
     vm.setFileName(file.name ?? '');
 
     showModalBottomSheet(
@@ -804,8 +1025,27 @@ class FileCard extends StatelessWidget {
     );
   }
 
+  // ── Change Status helper ───────────────────────────────────────────────────
+  void _showChangeStatusSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChangeNotifierProvider.value(
+        value: context.read<FolderFilesViewModel>(),
+        child: _ChangeStatusSheet(file: file, folderId: folderId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Resolve current status appearance for the badge
+    final currentStatus = _kFileStatuses.firstWhere(
+          (s) => s.value == (file.status ?? 'active'),
+      orElse: () => _kFileStatuses.first,
+    );
+
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Duration(milliseconds: 250 + (index.clamp(0, 10) * 30)),
@@ -817,7 +1057,6 @@ class FileCard extends StatelessWidget {
         child: ListTile(
           contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          // Show custom icon if available, otherwise file-type icon
           leading: _FileLeading(file: file),
           title: Text(
             file.name ?? '—',
@@ -829,6 +1068,7 @@ class FileCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               children: [
+                // File type badge
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 6, vertical: 2),
@@ -844,8 +1084,33 @@ class FileCard extends StatelessWidget {
                         color: FolderTheme.accent),
                   ),
                 ),
+                const SizedBox(width: 6),
+                // ── Status badge ─────────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: currentStatus.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(currentStatus.icon,
+                          size: 9, color: currentStatus.color),
+                      const SizedBox(width: 3),
+                      Text(
+                        currentStatus.label,
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: currentStatus.color),
+                      ),
+                    ],
+                  ),
+                ),
                 if (file.createdAt != null) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       file.createdAt!.split(' ').first,
@@ -858,31 +1123,53 @@ class FileCard extends StatelessWidget {
               ],
             ),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Download ────────────────────────────────────────────────
-              IconButton(
-                onPressed: () => _downloadFile(context),
-                icon: const Icon(Icons.download_rounded,
-                    color: FolderTheme.accent, size: 20),
-                tooltip: 'Download',
+          trailing: PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded,
+                color: FolderTheme.textSub, size: 22),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 3,
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'download',
+                child: _PopupItem(
+                  icon: Icons.download_rounded,
+                  label: 'Download',
+                  color: FolderTheme.accent,
+                ),
               ),
-              // ── Edit ────────────────────────────────────────────────────
-              IconButton(
-                onPressed: () => _showEditSheet(context),
-                icon: const Icon(Icons.edit_rounded,
-                    color: FolderTheme.accent, size: 20),
-                tooltip: 'Edit',
+              const PopupMenuItem(
+                value: 'edit',
+                child: _PopupItem(
+                  icon: Icons.edit_rounded,
+                  label: 'Edit',
+                  color: FolderTheme.accent,
+                ),
               ),
-              // ── Delete ──────────────────────────────────────────────────
-              IconButton(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded,
-                    color: Colors.red, size: 20),
-                tooltip: 'Delete',
+              PopupMenuItem(
+                value: 'status',
+                child: _PopupItem(
+                  icon: Icons.toggle_on_rounded,
+                  label: 'Change Status',
+                  color: currentStatus.color,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: _PopupItem(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Delete',
+                  color: Colors.red,
+                ),
               ),
             ],
+            onSelected: (value) {
+              switch (value) {
+                case 'download': _downloadFile(context); break;
+                case 'edit':     _showEditSheet(context); break;
+                case 'status':   _showChangeStatusSheet(context); break;
+                case 'delete':   onDelete(); break;
+              }
+            },
           ),
         ),
       ),
@@ -906,7 +1193,7 @@ class _FileLeading extends StatelessWidget {
       }
 
       return FutureBuilder<Map<String, String>>(
-        future: getAuthHeaders(), // ✅ USE YOUR UTIL
+        future: getAuthHeaders(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Container(
@@ -930,8 +1217,8 @@ class _FileLeading extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: Image.network(
-              imageUrl, // ✅ FIXED (was wrong before)
-              headers: snapshot.data, // 🔥 THIS FIXES 401
+              imageUrl,
+              headers: snapshot.data,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) {
                 return Center(
@@ -948,7 +1235,6 @@ class _FileLeading extends StatelessWidget {
       );
     }
 
-    // ── Fallback (UNCHANGED DESIGN) ──
     return Container(
       width: 48,
       height: 48,
@@ -962,7 +1248,6 @@ class _FileLeading extends StatelessWidget {
     );
   }
 
-  // ── SAME AS YOUR ORIGINAL ──
   Color get _iconColor {
     if (file.isImage)    return const Color(0xFF10B981);
     if (file.isPdf)      return const Color(0xFFEF4444);
@@ -981,6 +1266,7 @@ class _FileLeading extends StatelessWidget {
     return Icons.insert_drive_file_rounded;
   }
 }
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 class _FilesEmptyState extends StatelessWidget {
   const _FilesEmptyState();
@@ -1008,6 +1294,36 @@ class _FilesEmptyState extends StatelessWidget {
               style: FolderTheme.emptySubtitle),
         ],
       ),
+    );
+  }
+}
+
+class _PopupItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _PopupItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
