@@ -1,10 +1,8 @@
-import 'package:ema_app/utils/utils.dart';
 import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 
@@ -17,21 +15,21 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage>
     with SingleTickerProviderStateMixin {
-  final _formKey                  = GlobalKey<FormState>();
-  final _nameController           = TextEditingController();
-  final _emailController          = TextEditingController();
-  final _phoneController          = TextEditingController();
-  final _passwordController       = TextEditingController();
+  final _formKey                   = GlobalKey<FormState>();
+  final _nameController            = TextEditingController();
+  final _emailController           = TextEditingController();
+  final _phoneController           = TextEditingController();
+  final _passwordController        = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   File? _imageFile;
-  bool _obscurePassword        = true;
-  bool _obscureConfirm         = true;
-  bool _passwordTouched        = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm  = true;
+  bool _passwordTouched = false;
 
-  final _picker      = ImagePicker();
-  final _logger      = Logger();
-  final _phoneRegex  = RegExp(r'^[0-9]{10}$');
+  final _picker     = ImagePicker();
+  final _logger     = Logger();
+  final _phoneRegex = RegExp(r'^[0-9]{10}$');
 
   late final AnimationController _fadeCtrl;
 
@@ -39,7 +37,8 @@ class _RegisterPageState extends State<RegisterPage>
   bool get _hasMinLength => _passwordController.text.length >= 8;
   bool get _hasLetter    => _passwordController.text.contains(RegExp(r'[A-Za-z]'));
   bool get _hasDigit     => _passwordController.text.contains(RegExp(r'[0-9]'));
-  bool get _hasSpecial   => _passwordController.text.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+  bool get _hasSpecial   =>
+      _passwordController.text.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
 
   @override
   void initState() {
@@ -66,14 +65,94 @@ class _RegisterPageState extends State<RegisterPage>
     super.dispose();
   }
 
+  // ── Image picker ───────────────────────────────────────────────────────────
+  Future<void> _pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Select Profile Photo',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: UMTheme.textMain,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _PickerOption(
+                      icon: Icons.photo_library_outlined,
+                      label: 'Gallery',
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final picked = await _picker.pickImage(
+                          source: ImageSource.gallery,
+                          imageQuality: 80,
+                        );
+                        if (picked != null) {
+                          setState(() => _imageFile = File(picked.path));
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _PickerOption(
+                      icon: Icons.camera_alt_outlined,
+                      label: 'Camera',
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final picked = await _picker.pickImage(
+                          source: ImageSource.camera,
+                          imageQuality: 80,
+                        );
+                        if (picked != null) {
+                          setState(() => _imageFile = File(picked.path));
+                        }
+                      },
+                    ),
+                  ),
+                  if (_imageFile != null) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _PickerOption(
+                        icon: Icons.delete_outline_rounded,
+                        label: 'Remove',
+                        isDestructive: true,
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() => _imageFile = null);
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── Register ───────────────────────────────────────────────────────────────
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
-    if (_imageFile == null) {
-      Utils.flushBarErrorMessage('Please select a profile image.', context);
-      return;
-    }
+
     final fields = {
       'full_name': _nameController.text.trim(),
       'email':     _emailController.text.trim(),
@@ -81,7 +160,7 @@ class _RegisterPageState extends State<RegisterPage>
       'password':  _passwordController.text,
     };
     await Provider.of<AuthViewModel>(context, listen: false)
-        .register(fields, _imageFile!, context);
+        .register(fields, _imageFile, context);
   }
 
   @override
@@ -115,6 +194,7 @@ class _RegisterPageState extends State<RegisterPage>
                     ],
                   ),
                   const SizedBox(height: 28),
+
                   // ── Form card ──────────────────────────────────────────
                   Container(
                     padding: const EdgeInsets.all(24),
@@ -135,7 +215,100 @@ class _RegisterPageState extends State<RegisterPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Full name
+
+                          // ── Profile Image (optional) ───────────────────
+                          _Label('Profile Image'),
+                          const SizedBox(height: 4),
+                          Center(
+                            child: GestureDetector(
+                              onTap: _pickImage,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(scale: anim, child: child),
+                                child: _imageFile != null
+                                    ? Stack(
+                                  key: const ValueKey('has-image'),
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    Container(
+                                      width: 100,
+                                      height: 100,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: UMTheme.accent,
+                                          width: 2.5,
+                                        ),
+                                        image: DecorationImage(
+                                          image: FileImage(_imageFile!),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: UMTheme.accent,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.white,
+                                            width: 2),
+                                      ),
+                                      padding: const EdgeInsets.all(5),
+                                      child: const Icon(
+                                          Icons.edit_rounded,
+                                          color: Colors.white,
+                                          size: 13),
+                                    ),
+                                  ],
+                                )
+                                    : Container(
+                                  key: const ValueKey('no-image'),
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: UMTheme.surface,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: UMTheme.border,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.add_a_photo_outlined,
+                                          color: UMTheme.accent,
+                                          size: 26),
+                                      const SizedBox(height: 6),
+                                      const Text(
+                                        'Add Photo',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: UMTheme.textSub,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Center(
+                            child: Text(
+                              'Optional',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: UMTheme.textSub,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // ── Full Name ──────────────────────────────────
                           _Label('Full Name'),
                           _Field(
                             controller: _nameController,
@@ -144,13 +317,14 @@ class _RegisterPageState extends State<RegisterPage>
                             validator: (v) {
                               if (v == null || v.isEmpty) return 'Enter your name';
                               if (v.trim().length < 2) return 'At least 2 characters';
-                              if (v.trim().length > 100) return 'At most 100 characters';
+                              if (v.trim().length > 100)
+                                return 'At most 100 characters';
                               return null;
                             },
                           ),
                           const SizedBox(height: 16),
 
-                          // Email
+                          // ── Email ──────────────────────────────────────
                           _Label('Email'),
                           _Field(
                             controller: _emailController,
@@ -167,7 +341,7 @@ class _RegisterPageState extends State<RegisterPage>
                           ),
                           const SizedBox(height: 16),
 
-                          // Phone
+                          // ── Phone ──────────────────────────────────────
                           _Label('Phone Number'),
                           _Field(
                             controller: _phoneController,
@@ -184,7 +358,7 @@ class _RegisterPageState extends State<RegisterPage>
                           ),
                           const SizedBox(height: 16),
 
-                          // Password
+                          // ── Password ───────────────────────────────────
                           _Label('Password'),
                           _Field(
                             controller: _passwordController,
@@ -227,7 +401,7 @@ class _RegisterPageState extends State<RegisterPage>
                           ],
                           const SizedBox(height: 16),
 
-                          // Confirm password
+                          // ── Confirm Password ───────────────────────────
                           _Label('Confirm Password'),
                           _Field(
                             controller: _confirmPasswordController,
@@ -246,16 +420,18 @@ class _RegisterPageState extends State<RegisterPage>
                               ),
                             ),
                             validator: (v) {
-                              if (v == null || v.isEmpty)
+                              if (v == null || v.isEmpty) {
                                 return 'Confirm your password';
-                              if (v != _passwordController.text)
+                              }
+                              if (v != _passwordController.text) {
                                 return 'Passwords do not match';
+                              }
                               return null;
                             },
                           ),
                           const SizedBox(height: 28),
 
-                          // Register button
+                          // ── Register button ────────────────────────────
                           SizedBox(
                             width: double.infinity,
                             height: 52,
@@ -294,8 +470,8 @@ class _RegisterPageState extends State<RegisterPage>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text('Already have an account?',
-                            style:
-                            TextStyle(fontSize: 14, color: UMTheme.textSub)),
+                            style: TextStyle(
+                                fontSize: 14, color: UMTheme.textSub)),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
                           style: TextButton.styleFrom(
@@ -316,6 +492,52 @@ class _RegisterPageState extends State<RegisterPage>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Image picker option tile ─────────────────────────────────────────────────
+class _PickerOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _PickerOption({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isDestructive ? Colors.redAccent : UMTheme.accent;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -376,7 +598,7 @@ class _Field extends StatelessWidget {
     required this.hint,
     required this.icon,
     this.keyboardType,
-    this.obscure    = false,
+    this.obscure   = false,
     this.maxLength,
     this.validator,
     this.trailing,
@@ -402,7 +624,8 @@ class _Field extends StatelessWidget {
           counterText: '',
           contentPadding:
           const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-          errorStyle: const TextStyle(fontSize: 11.5, color: Colors.redAccent),
+          errorStyle:
+          const TextStyle(fontSize: 11.5, color: Colors.redAccent),
         ),
       ),
     );

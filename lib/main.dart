@@ -1,4 +1,3 @@
-import 'package:ema_app/screens/admin/admin_quiz_set_detail_page.dart';
 import 'package:ema_app/screens/flash_screen.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
 import 'package:ema_app/view_model/access_view_model.dart';
@@ -10,7 +9,6 @@ import 'package:ema_app/view_model/folders/free_files_view_model.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
-import 'package:ema_app/view_model/folders/quiz_detail_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_question_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_view_model.dart';
 import 'package:ema_app/view_model/folders/user_management_view_model.dart';
@@ -77,7 +75,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => FolderFilesViewModel()),
         ChangeNotifierProvider(create: (_) => AccessControlViewModel()),
         ChangeNotifierProvider(create: (_) => ManageUserViewModel()),
-        ChangeNotifierProvider(create: (_) => NoticeManagementViewModel()),
+        ChangeNotifierProvider(create: (_) => AdminNoticeViewModel()),
+
+        ChangeNotifierProvider(create: (_) => NoticeViewModel()),
         ChangeNotifierProvider(create: (_) => FreeAccessViewModel()),
         ChangeNotifierProvider(create: (_) => FolderQuizSetsViewModel()),
         ChangeNotifierProvider(create: (_) => FolderViewModel()),

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:ema_app/screens/users/user_notices_page.dart';
+import 'package:ema_app/screens/notice/user_notice_screen.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:flutter/foundation.dart';
@@ -263,11 +263,73 @@ class _TopBar extends StatelessWidget {
         : '${p[0][0]}${p.last[0]}'.toUpperCase();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Row(
+  List<Widget> _buildButtonList(ResponsiveDimensions dimensions) {
+    return [
+      _buildLargeButton(
+        dimensions,
+        const Icon(Icons.login, color: Colors.white),
+        'Login / Register',
+        Colors.teal[600]!,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage())),
+      ),
+      _buildLargeButton(
+        dimensions,
+        const Icon(Icons.notifications, color: Colors.white),
+        'Important Information',
+        Colors.deepPurple[600]!,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticeScreen())),
+      ),
+      _buildLargeButton(
+        dimensions,
+        Image.asset(
+          "assets/ema.jpg",
+          width: dimensions.iconSize,
+          height: dimensions.iconSize,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Icon(
+            Icons.image_not_supported,
+            size: dimensions.iconSize,
+            color: Colors.white,
+          ),
+        ),
+        'EPS TOPIK NEW UBT SESSION',
+        Colors.green[600]!,
+            () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EPSSectionPage(
+              userIdentifier: widget.userIdentifier,
+              isAdmin: widget.isAdmin,
+              fullName: widget.fullName,
+              profileImage: '',
+              userEmail: '',
+              folderId: null,
+              folderName: '',
+            ),
+          ),
+        ),
+      ),
+      _buildLargeButton(
+        dimensions,
+        const Icon(Icons.contact_mail, color: Colors.white),
+        'Contact Us',
+        Colors.red[600]!,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
+      ),
+    ];
+  }
+
+  Widget _buildDrawer(BuildContext context, ResponsiveDimensions dimensions) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenSize = _getScreenSize(context);
+
+    return Drawer(
+      width: screenSize == ScreenSize.small
+          ? screenWidth * 0.8
+          : screenSize == ScreenSize.medium
+          ? screenWidth * 0.6
+          : 300,
+      child: Column(
         children: [
           // Hamburger
           Builder(
@@ -312,7 +374,51 @@ class _TopBar extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                 ),
-              ),
+                _buildDrawerItem(
+                  context,
+                  dimensions,
+                  const Icon(Icons.notifications, color: Colors.teal),
+                  "Important Information",
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticeScreen())),
+                ),
+                _buildDrawerItem(
+                  context,
+                  dimensions,
+                  Image.asset(
+                    "assets/ema.jpg",
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.image_not_supported,
+                      size: 20,
+                      color: Colors.teal,
+                    ),
+                  ),
+                  "EPS TOPIK NEW UBT SESSION",
+                      () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EPSSectionPage(
+                        userIdentifier: widget.userIdentifier,
+                        isAdmin: widget.isAdmin,
+                        fullName: widget.fullName,
+                        profileImage: '',
+                        userEmail: '',
+                        folderId: null,
+                        folderName: '',
+                      ),
+                    ),
+                  ),
+                ),
+                _buildDrawerItem(
+                  context,
+                  dimensions,
+                  const Icon(Icons.contact_mail, color: Colors.teal),
+                  "Contact Us",
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage())),
+                ),
+              ],
             ),
           ),
         ],

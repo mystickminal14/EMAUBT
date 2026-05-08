@@ -137,7 +137,7 @@ class AuthViewModel with ChangeNotifier {
     }
   }
 
-  Future<void> register(Map<String, dynamic> body, File image,
+  Future<void> register(Map<String, dynamic> body, File? image,
       BuildContext context) async {
     FocusScope.of(context).unfocus();
     setLoading(true);

@@ -1,6 +1,5 @@
 
 import 'package:ema_app/give_access/give_access_page_v2.dart';
-import 'package:ema_app/free_quiz_and_files_page.dart';
 import 'package:ema_app/screens/admin/folder_management_v2.dart';
 import 'package:ema_app/screens/admin/user_management_v2.dart';
 import 'package:ema_app/screens/users/home_page.dart';
@@ -9,10 +8,7 @@ import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../users/user_home_page.dart';
-import 'admin_folders_page.dart';
-import 'add_edit_delete_users.dart';
 import 'admin_notices_page.dart';
-import '../auth/login_page.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -123,7 +119,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
       color: const Color(0xFFF7C26C),
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const NoticesPage()),
+        MaterialPageRoute(builder: (_) => const AdminNoticeScreen()),
       ),
     ),
     _DashItem(
@@ -271,6 +267,10 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    // LOG IMAGE URL
+    debugPrint("Profile Header Image URL: $imageUrl");
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       padding: const EdgeInsets.all(20),
@@ -308,6 +308,7 @@ class _ProfileHeader extends StatelessWidget {
             )
                 : null,
           ),
+
           const SizedBox(width: 16),
 
           // Name + email
@@ -358,7 +359,6 @@ class _ProfileHeader extends StatelessWidget {
     return '${parts[0][0]}${parts.last[0]}'.toUpperCase();
   }
 }
-
 // ─── Animated Dashboard Card ──────────────────────────────────────────────────
 class _AnimatedDashCard extends StatelessWidget {
   final _DashItem item;
