@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
 import 'package:ema_app/screens/users/user_quiz_sets.dart';
@@ -8,6 +11,9 @@ import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:ema_app/view_model/folders/user_question_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -663,8 +669,6 @@ class _ContentBody extends StatelessWidget {
 }
 
 // ─── Content List ─────────────────────────────────────────────────────────────
-// FIX: Changed from StatelessWidget to StatefulWidget so it has access
-// to widget, setState and can call _loadData (refresh) after navigation.
 class _ContentList extends StatefulWidget {
   final FolderFilesViewModel filesVm;
   final FolderQuizSetsViewModel quizVm;
@@ -691,49 +695,72 @@ class _ContentList extends StatefulWidget {
 }
 
 class _ContentListState extends State<_ContentList> {
-  // Refresh files + quiz sets after returning from a sub-page
+  // ── Refresh after returning from a sub-page ────────────────────────────────
   void _loadData() {
     if (!mounted) return;
     widget.filesVm.fetchFiles(context, widget.folderId, refresh: true);
     widget.quizVm.fetchQuizSets(context, widget.folderId, refresh: true);
   }
 
-  void _openQuizSet(BuildContext context, dynamic item) {
-    final quizSetId = item is Map
-        ? (item['id'] as num?)?.toInt()
-        : (item.id as int?);
-    final quizSetName = (item is Map ? item['name'] : item.name) as String? ?? '';
+  // ── Download & open a file ─────────────────────────────────────────────────
+  Future<void> _downloadAndOpenFile(
+      BuildContext context, FileModel file) async {
+    final messenger = ScaffoldMessenger.of(context);
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => UserQuizSetsPage(
-          quizSetId: quizSetId ?? 0,
-          quizSetName: quizSetName,
-          userId: widget.isAdmin
-              ? ''
-              : widget.userIdentifier.isEmpty
-              ? 'guest'
-              : widget.userIdentifier,
-          userName: widget.fullName ?? '',
-          userEmail: widget.isAdmin
-              ? widget.userIdentifier
-              : (widget.userEmail ?? widget.userIdentifier),
-          role: widget.isAdmin ? 'admin' : 'user',
-          folderId: widget.folderId.toString(),
-          folderName: widget.folderName,
-          isAdmin: widget.isAdmin,
-          userIdentifier: widget.userIdentifier,
-          preStart: true,
-          cachedFiles: {},
-          quizData: {},
-        ),
-      ),
-    ).then((_) => _loadData());
+    messenger.showSnackBar(SnackBar(
+      content: Text('Opening: ${file.name ?? ""}…'),
+      backgroundColor: FolderTheme.accent,
+      duration: const Duration(seconds: 2),
+    ));
+
+    try {
+      final headers = await getAuthHeaders();
+      // file.downloadUrl resolves to BaseUrl.baseUrl + /files/{id}/download
+      final response =
+      await http.get(Uri.parse(file.downloadUrl), headers: headers);
+
+      if (response.statusCode != 200) {
+        if (!context.mounted) return;
+        messenger.showSnackBar(SnackBar(
+          content: Text('Download failed (${response.statusCode})'),
+          backgroundColor: Colors.red.shade600,
+        ));
+        return;
+      }
+
+      final ext =
+      file.extension.isNotEmpty ? '.${file.extension}' : '';
+      final safeName =
+      (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
+
+      final dir = Platform.isAndroid
+          ? Directory('/storage/emulated/0/Download')
+          : await getApplicationDocumentsDirectory();
+
+      if (!await dir.exists()) await dir.create(recursive: true);
+
+      final savePath = '${dir.path}/$safeName$ext';
+      await File(savePath).writeAsBytes(response.bodyBytes);
+
+      if (!context.mounted) return;
+
+      messenger.showSnackBar(SnackBar(
+        content: Text('Saved to $savePath'),
+        backgroundColor: Colors.green.shade600,
+        duration: const Duration(seconds: 3),
+      ));
+
+      await OpenFile.open(savePath);
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red.shade600,
+      ));
+    }
   }
 
-  /// Opens the new quiz flow: load → overview → questions → results
-
+  // ── Open quiz set (new flow) ───────────────────────────────────────────────
   void _openQuizSetNew(BuildContext context, dynamic item) {
     final quizSetId = item is Map
         ? (item['id'] as num?)?.toInt() ?? 0
@@ -757,12 +784,13 @@ class _ContentListState extends State<_ContentList> {
       ),
     ).then((_) => _loadData());
   }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       children: [
-        // ── Quiz Sets section ──────────────────────────────────────────
+        // ── Quiz Sets section ──────────────────────────────────────────────
         if (widget.quizVm.filteredQuizSets.isNotEmpty) ...[
           _SectionHeader(
             icon: Icons.quiz_rounded,
@@ -782,7 +810,7 @@ class _ContentListState extends State<_ContentList> {
             const SizedBox(height: 20),
         ],
 
-        // ── Files section ──────────────────────────────────────────────
+        // ── Files section ──────────────────────────────────────────────────
         if (widget.filesVm.filteredFiles.isNotEmpty) ...[
           _SectionHeader(
             icon: Icons.insert_drive_file_rounded,
@@ -795,36 +823,9 @@ class _ContentListState extends State<_ContentList> {
               item: e.value.toJson(),
               index: e.key,
               itemType: 'file',
-              onTap: () {
-                // Files use the old UserQuizSetsPage flow
-                final fileItem = e.value.toJson();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => UserQuizSetsPage(
-                      quizSetId: (fileItem['id'] as num?)?.toInt() ?? 0,
-                      quizSetName: fileItem['name'] ?? '',
-                      userId: widget.isAdmin
-                          ? ''
-                          : widget.userIdentifier.isEmpty
-                          ? 'guest'
-                          : widget.userIdentifier,
-                      userName: widget.fullName ?? '',
-                      userEmail: widget.isAdmin
-                          ? widget.userIdentifier
-                          : (widget.userEmail ?? widget.userIdentifier),
-                      role: widget.isAdmin ? 'admin' : 'user',
-                      folderId: widget.folderId.toString(),
-                      folderName: widget.folderName,
-                      isAdmin: widget.isAdmin,
-                      userIdentifier: widget.userIdentifier,
-                      preStart: true,
-                      cachedFiles: {},
-                      quizData: {},
-                    ),
-                  ),
-                ).then((_) => _loadData());
-              },
+              // ✅ Fixed: download & open with auth instead of routing
+              // to UserQuizSetsPage which is wrong for files.
+              onTap: () => _downloadAndOpenFile(context, e.value),
             ),
           ),
         ],
@@ -882,9 +883,9 @@ class _ContentCard extends StatelessWidget {
                   const Icon(Icons.lock_open_rounded,
                       size: 12, color: Color(0xFF10B981)),
                   const SizedBox(width: 4),
-                  const Text(
-                    'Can Use',
-                    style: TextStyle(
+                  Text(
+                    isQuiz ? 'Can Use' : 'Tap to download',
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF10B981),
@@ -894,7 +895,8 @@ class _ContentCard extends StatelessWidget {
               ),
             ),
             trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: FolderTheme.accent,
                 borderRadius: BorderRadius.circular(8),
