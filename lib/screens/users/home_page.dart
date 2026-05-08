@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:ema_app/screens/users/user_notices_page.dart';
+import 'package:ema_app/screens/notice/user_notice_screen.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -224,7 +224,7 @@ class _HomePageState extends State<HomePage> {
         const Icon(Icons.notifications, color: Colors.white),
         'Important Information',
         Colors.deepPurple[600]!,
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticeScreen())),
       ),
       _buildLargeButton(
         dimensions,
@@ -351,7 +351,7 @@ class _HomePageState extends State<HomePage> {
                   dimensions,
                   const Icon(Icons.notifications, color: Colors.teal),
                   "Important Information",
-                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserNoticeScreen())),
                 ),
                 _buildDrawerItem(
                   context,

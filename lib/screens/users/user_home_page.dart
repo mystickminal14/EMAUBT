@@ -1,10 +1,11 @@
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/eps_section_page.dart';
 import 'package:ema_app/model/user_model.dart';
 import 'package:ema_app/screens/admin/admin_dashboard_page.dart';
+import 'package:ema_app/screens/notice/user_notice_screen.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
 import 'package:ema_app/screens/users/login_user_free_files_quiz_sets.dart';
-import 'package:ema_app/screens/users/user_notices_page.dart';
 import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -147,7 +148,7 @@ class _UserHomePageState extends State<UserHomePage>
       label: 'Important\nInformation',
       color: const Color(0xFF7C6CF7),
       onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const UserNoticesPage())),
+          MaterialPageRoute(builder: (_) => const UserNoticeScreen())),
     ),
     _NavItem(
       icon: Icons.file_copy_rounded,
@@ -354,7 +355,11 @@ class _TopBar extends StatelessWidget {
   final String email;
   final String imageUrl;
 
-  const _TopBar({required this.name, required this.email, required this.imageUrl});
+  const _TopBar({
+    required this.name,
+    required this.email,
+    required this.imageUrl,
+  });
 
   String _initials(String n) {
     if (n.isEmpty) return 'U';
@@ -366,6 +371,14 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    final fullImageUrl = imageUrl.isNotEmpty
+        ? BaseUrl.imageUrl + "/" + imageUrl
+        : "";
+
+    // LOG URL
+    debugPrint("Profile Image URL: $fullImageUrl");
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
@@ -374,41 +387,55 @@ class _TopBar extends StatelessWidget {
           Builder(
             builder: (ctx) => IconButton(
               onPressed: () => Scaffold.of(ctx).openDrawer(),
-              icon: const Icon(Icons.menu_rounded,
-                  color: UMTheme.textMain, size: 24),
+              icon: const Icon(
+                Icons.menu_rounded,
+                color: UMTheme.textMain,
+                size: 24,
+              ),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 side: const BorderSide(color: UMTheme.border),
                 padding: const EdgeInsets.all(8),
               ),
             ),
           ),
+
           const SizedBox(width: 12),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('EMA UBT', style: UMTheme.screenTitle),
-                Text('Empower Your Future',
-                    style: UMTheme.screenSubtitle),
+                Text(
+                  'Empower Your Future',
+                  style: UMTheme.screenSubtitle,
+                ),
               ],
             ),
           ),
+
           // Avatar
           Container(
             width: 42,
             height: 42,
             decoration: UMTheme.avatarDecoration(
-                imageUrl: imageUrl.isNotEmpty ? imageUrl : null),
+              imageUrl: fullImageUrl.isNotEmpty ? fullImageUrl : null,
+            ),
             child: imageUrl.isEmpty
                 ? Center(
-                child: Text(_initials(name),
-                    style: const TextStyle(
-                        color: UMTheme.accent,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15)))
+              child: Text(
+                _initials(name),
+                style: const TextStyle(
+                  color: UMTheme.accent,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+            )
                 : null,
           ),
         ],
@@ -416,7 +443,6 @@ class _TopBar extends StatelessWidget {
     );
   }
 }
-
 // ─── Drawer ───────────────────────────────────────────────────────────────────
 class _Drawer extends StatelessWidget {
   final String name;

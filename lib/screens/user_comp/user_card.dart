@@ -1,3 +1,4 @@
+import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:ema_app/model/user_model.dart';
@@ -46,8 +47,16 @@ class UserCard extends StatelessWidget {
         child: ListTile(
           contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: UserAvatar(imageUrl: user.image, initials: initials),
-          title: Text(user.fullName ?? '—', style: UMTheme.cardTitle),
+          leading: Builder(
+            builder: (_) {
+              debugPrint("User Avatar Image URL: ${BaseUrl.imageUrl}/${user.image}");
+
+              return UserAvatar(
+                imageUrl: "${BaseUrl.imageUrl}/${user.image}",
+                initials: initials,
+              );
+            },
+          ),          title: Text(user.fullName ?? '—', style: UMTheme.cardTitle),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
