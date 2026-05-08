@@ -246,7 +246,7 @@ class UpdatedFolderViewModel extends ChangeNotifier {
           'icon': selectedIconBase64,
       };
 
-      final response = await _apiService.getPutResponse(
+      final response = await _apiService.getPostApiResponse(
         '${FolderEndpoints.updateFolder}${folder.id}',
         body,
       );

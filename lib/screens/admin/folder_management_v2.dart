@@ -87,16 +87,24 @@ class _FolderManagementScreenState extends State<FolderManagementScreen>
   }
 
   void _showAddSheet(BuildContext context) {
+    final vm = context.read<UpdatedFolderViewModel>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => FolderFormSheet(
-        onSubmit: (name, icon) async {
-          final vm = context.read<UpdatedFolderViewModel>();
-          vm.setFields(name: name, iconBase64: icon);
-          await vm.addFolder(context);
-        },
+      builder: (sheetContext) => ChangeNotifierProvider.value(
+        value: vm, // ← still needed to pass VM into modal's separate tree
+        child: FolderFormSheet(
+          onClose: () => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => FolderManagementScreen()),
+          ),
+          onSubmit: (name, icon) async {
+            vm.setFields(name: name, iconBase64: icon);
+            await vm.addFolder(context);
+            await vm.fetchFolders(context, refresh: true);
+          },
+        ),
       ),
     );
   }

@@ -70,12 +70,17 @@ class FolderList extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => FolderFormSheet(
-        existing: folder,
-        onSubmit: (name, icon) async {
-          vm.setFields(name: name, iconBase64: icon);
-          await vm.editFolder(context, folder);
-        },
+      builder: (sheetContext) => ChangeNotifierProvider.value(
+        value: vm,
+        child: FolderFormSheet(
+          existing: folder,
+          onClose: () => Navigator.pop(sheetContext), // ← sheetContext, not context
+          onSubmit: (name, icon) async {
+            vm.setFields(name: name, iconBase64: icon);
+            await vm.editFolder(context, folder);
+            await vm.fetchFolders(context, refresh: true);
+          },
+        ),
       ),
     );
   }

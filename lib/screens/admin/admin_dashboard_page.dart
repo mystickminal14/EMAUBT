@@ -4,8 +4,10 @@ import 'package:ema_app/free_quiz_and_files_page.dart';
 import 'package:ema_app/screens/admin/folder_management_v2.dart';
 import 'package:ema_app/screens/admin/user_management_v2.dart';
 import 'package:ema_app/screens/users/home_page.dart';
+import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../users/user_home_page.dart';
 import 'admin_folders_page.dart';
 import 'add_edit_delete_users.dart';
@@ -79,18 +81,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => const FolderManagementScreen()),
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) => UpdatedFolderViewModel(), // ← wrap here
+            child: const FolderManagementScreen(),
+          ),
+        ),
       ),
     ),
-    _DashItem(
-      icon: Icons.folder_open_rounded,
-      label: 'Folders',
-      color: const Color(0xFFF7956C),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const FoldersPage()),
-      ),
-    ),
+    // _DashItem(
+    //   icon: Icons.folder_open_rounded,
+    //   label: 'Folders',
+    //   color: const Color(0xFFF7956C),
+    //   onTap: () => Navigator.push(
+    //     context,
+    //     MaterialPageRoute(builder: (_) => const FoldersPage()),
+    //   ),
+    // ),
     _DashItem(
       icon: Icons.manage_accounts_rounded,
       label: 'User Management',
@@ -101,16 +107,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
             builder: (_) => const UserManagementScreen()),
       ),
     ),
-    _DashItem(
-      icon: Icons.group_rounded,
-      label: 'Add / Edit Users',
-      color: const Color(0xFF3DB88B),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => const AddEditDeleteUsersPage()),
-      ),
-    ),
+    // _DashItem(
+    //   icon: Icons.group_rounded,
+    //   label: 'Add / Edit Users',
+    //   color: const Color(0xFF3DB88B),
+    //   onTap: () => Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //         builder: (_) => const AddEditDeleteUsersPage()),
+    //   ),
+    // ),
     _DashItem(
       icon: Icons.campaign_rounded,
       label: 'Notices',

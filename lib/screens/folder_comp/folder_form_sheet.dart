@@ -13,8 +13,9 @@ typedef FolderFormCallback = Future<void> Function(String name, String? iconBase
 class FolderFormSheet extends StatefulWidget {
   final FolderModelv2? existing;
   final FolderFormCallback onSubmit;
+  final VoidCallback? onClose;
 
-  const FolderFormSheet({super.key, this.existing, required this.onSubmit});
+  const FolderFormSheet({super.key, this.existing, required this.onSubmit,this.onClose,});
 
   @override
   State<FolderFormSheet> createState() => _FolderFormSheetState();
@@ -55,10 +56,7 @@ class _FolderFormSheetState extends State<FolderFormSheet> {
         _name.text.trim(),
         vm.selectedIconBase64,
       );
-      if (mounted) {
-        await Future.delayed(const Duration(milliseconds: 400));
-        if (Navigator.canPop(context)) Navigator.pop(context);
-      }
+      if (mounted) widget.onClose?.call();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
