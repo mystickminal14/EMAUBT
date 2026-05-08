@@ -1,6 +1,4 @@
 import 'package:ema_app/constants/base_url.dart';
-import 'package:ema_app/screens/users/user_folder_detail_page.dart';
-import 'package:ema_app/view_model/folders/folder_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
@@ -34,27 +32,27 @@ class _EPSSectionPageState extends State<EPSSectionPage> {
     var log=Logger();
     log.d("jh ${widget.userIdentifier}");
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Provider.of<FolderViewModel>(context, listen: false).fetchFolders();
-      }
+      // if (mounted) {
+      //   Provider.of<FolderViewModel>(context, listen: false).fetchFolders();
+      // }
     });
   }
 
   void _openFolder(String folderId, String folderName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UserFolderDetailsPage(
-          folderId: folderId,
-          folderName: folderName,
-          userIdentifier: widget.userIdentifier,
-          isAdmin: widget.isAdmin,
-          userId: '',
-          userName: '',
-          role: '',
-        ),
-      ),
-    );
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => UserFolderDetailsPage(
+    //       folderId: folderId,
+    //       folderName: folderName,
+    //       userIdentifier: widget.userIdentifier,
+    //       isAdmin: widget.isAdmin,
+    //       userId: '',
+    //       userName: '',
+    //       role: '',
+    //     ),
+    //   ),
+    // );
   }
 
   Widget _buildFolderCard(FolderModel folder) {
@@ -133,48 +131,48 @@ class _EPSSectionPageState extends State<EPSSectionPage> {
           ),
         ),
       ),
-      body: SafeArea(
-        child: Consumer<FolderViewModel>(
-          builder: (context, folderVM, _) {
-            if (folderVM.isLoading && folderVM.folders.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
-                    SizedBox(height: 16),
-                    Text(
-                      "Loading folders...",
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            if (folderVM.folders.isEmpty) {
-              return const Center(
-                child: Text(
-                  "No folders available",
-                  style: TextStyle(fontSize: 18, color: Colors.black54),
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: folderVM.folders
-                      .map((folder) => _buildFolderCard(folder))
-                      .toList(),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+      // body: SafeArea(
+      //   child: Consumer<FolderViewModel>(
+      //     builder: (context, folderVM, _) {
+      //       if (folderVM.isLoading && folderVM.folders.isEmpty) {
+      //         return const Center(
+      //           child: Column(
+      //             mainAxisAlignment: MainAxisAlignment.center,
+      //             children: [
+      //               CircularProgressIndicator(
+      //                   valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
+      //               SizedBox(height: 16),
+      //               Text(
+      //                 "Loading folders...",
+      //                 style: TextStyle(fontSize: 16, color: Colors.black54),
+      //               ),
+      //             ],
+      //           ),
+      //         );
+      //       }
+      //
+      //       if (folderVM.folders.isEmpty) {
+      //         return const Center(
+      //           child: Text(
+      //             "No folders available",
+      //             style: TextStyle(fontSize: 18, color: Colors.black54),
+      //           ),
+      //         );
+      //       }
+      //
+      //       return SingleChildScrollView(
+      //         child: Padding(
+      //           padding: const EdgeInsets.all(16.0),
+      //           child: Column(
+      //             children: folderVM.folders
+      //                 .map((folder) => _buildFolderCard(folder))
+      //                 .toList(),
+      //           ),
+      //         ),
+      //       );
+      //     },
+      //   ),
+      // ),
     );
   }
 }

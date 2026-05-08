@@ -1,6 +1,5 @@
 import 'package:ema_app/screens/flash_screen.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
-import 'package:ema_app/view_model/access_view_model.dart';
 import 'package:ema_app/view_model/folders/admin_management_view_model.dart';
 import 'package:ema_app/view_model/folders/files_view_model.dart';
 import 'package:ema_app/view_model/folders/folder_view_model.dart';
@@ -10,13 +9,9 @@ import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:ema_app/view_model/folders/quiz_question_view_model.dart';
-import 'package:ema_app/view_model/folders/quiz_view_model.dart';
-import 'package:ema_app/view_model/folders/user_management_view_model.dart';
 import 'package:ema_app/view_model/folders/user_question_view_model.dart';
-import 'package:ema_app/view_model/grant_view_model.dart';
 import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:ema_app/view_model/user_management/user_view_model.dart';
-import 'package:ema_app/view_model/user_view_model/user_folder_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -69,7 +64,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
-        ChangeNotifierProvider(create: (_) => UserManagementViewModel()),
         ChangeNotifierProvider(create: (_) => UpdatedFolderViewModel()),
         ChangeNotifierProvider(create: (_) => NewQuizSetQuestionsViewModel()),
         ChangeNotifierProvider(create: (_) => FolderFilesViewModel()),
@@ -78,17 +72,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => AdminNoticeViewModel()),
 
         ChangeNotifierProvider(create: (_) => NoticeViewModel()),
-        ChangeNotifierProvider(create: (_) => FreeAccessViewModel()),
         ChangeNotifierProvider(create: (_) => FolderQuizSetsViewModel()),
-        ChangeNotifierProvider(create: (_) => FolderViewModel()),
-        ChangeNotifierProvider(create: (_) => GiveAccessViewModel()),
-        ChangeNotifierProvider(create: (_) => FolderViewModel()),
-        ChangeNotifierProvider(create: (_) => UserFolderViewModel()),
+
         ChangeNotifierProvider(create: (_) => UserViewModel()),
-        ChangeNotifierProvider(create: (_) => FilesViewModel()),
-        ChangeNotifierProvider(create: (_) => QuizSetsViewModel()),
         ChangeNotifierProvider(create: (_) => AdminManagementViewModel()),
-        ChangeNotifierProvider(create: (_) => GrantAccessFilesViewModel()),
+        // ChangeNotifierProvider(create: (_) => GrantAccessFilesViewModel()),
         // ChangeNotifierProvider(create: (_) => QuizSetDetailViewModel()),
         ChangeNotifierProvider(create: (_) => UserViewModel()),
         ChangeNotifierProvider(create: (_) => UserQuizViewModel()),
