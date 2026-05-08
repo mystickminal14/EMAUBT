@@ -645,7 +645,7 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
 
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty) return;
-
+    FocusScope.of(context).unfocus();
     setState(() => _submitting = true);
     try {
       await widget.onSubmit({
@@ -656,6 +656,27 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
         // NOTE: icon is NOT passed here — it lives in the VM's selectedIconBase64
         // and is captured directly in _showFormSheet's onSubmit callback.
       });
+      if (!mounted) return;
+
+      // Clear form
+      _name.clear();
+      _description.clear();
+      _duration.clear();
+      _passingScore.clear();
+      context.read<FolderQuizSetsViewModel>().clearFields();
+
+      // Show snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isEditing ? 'Quiz set updated!' : 'Quiz set created!'),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
       await Future.delayed(const Duration(milliseconds: 400));
       if (mounted && Navigator.canPop(context)) Navigator.pop(context);
     } finally {
