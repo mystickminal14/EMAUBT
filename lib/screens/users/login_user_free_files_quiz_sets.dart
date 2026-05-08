@@ -4,12 +4,10 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
-import 'package:ema_app/screens/users/user_quiz_sets.dart';
 import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
-import 'package:ema_app/view_model/folders/user_question_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
@@ -47,7 +45,7 @@ class _LoginUserFreeFilesQuizSetsState
   void initState() {
     super.initState();
     _searchCtrl = TextEditingController();
-    _scrollCtrl = ScrollController();
+    _scrollCtrl = ScrollController()..addListener(_onScroll);
     _fabAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -60,6 +58,16 @@ class _LoginUserFreeFilesQuizSetsState
         _fabAnim.forward();
       }
     });
+  }
+  void _onScroll() {
+    if (!_scrollCtrl.hasClients) return;
+    final threshold = _scrollCtrl.position.maxScrollExtent - 200;
+    if (_scrollCtrl.position.pixels >= threshold) {
+      final vm = context.read<UpdatedFolderViewModel>();
+      if (!vm.isFetchingMore && !vm.isLoading && vm.hasMorePages) {
+        vm.fetchNextPage(context);
+      }
+    }
   }
 
   @override
@@ -238,6 +246,15 @@ class _LoginUserFreeFilesQuizSetsState
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
           itemCount: vm.filteredFolders.length,
           itemBuilder: (_, i) {
+            if (i == vm.filteredFolders.length) {              // ← last slot = spinner
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: CircularProgressIndicator(
+                      color: FolderTheme.accent, strokeWidth: 2.5),
+                ),
+              );
+            }
             final folder = vm.filteredFolders[i];
             return _FolderCard(
               folder: folder.toJson(),
@@ -695,13 +712,26 @@ class _ContentList extends StatefulWidget {
 }
 
 class _ContentListState extends State<_ContentList> {
+  late final ScrollController _scrollCtrl;
   // ── Refresh after returning from a sub-page ────────────────────────────────
   void _loadData() {
     if (!mounted) return;
     widget.filesVm.fetchFiles(context, widget.folderId, refresh: true);
     widget.quizVm.fetchQuizSets(context, widget.folderId, refresh: true);
   }
-
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl = ScrollController()..addListener(_onScroll);  // ← ADD
+  }
+  void _onScroll() {                                            // ← ADD ENTIRE METHOD
+    if (!_scrollCtrl.hasClients) return;
+    final threshold = _scrollCtrl.position.maxScrollExtent - 200;
+    if (_scrollCtrl.position.pixels >= threshold) {
+      widget.filesVm.fetchNextPage(context, widget.folderId);
+      widget.quizVm.fetchNextPage(context, widget.folderId);
+    }
+  }
   // ── Download & open a file ─────────────────────────────────────────────────
   Future<void> _downloadAndOpenFile(
       BuildContext context, FileModel file) async {
@@ -787,7 +817,10 @@ class _ContentListState extends State<_ContentList> {
 
   @override
   Widget build(BuildContext context) {
+    final isFetchingMore =
+        widget.filesVm.isFetchingMore || widget.quizVm.isFetchingMore;
     return ListView(
+      controller: _scrollCtrl,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       children: [
         // ── Quiz Sets section ──────────────────────────────────────────────
@@ -829,6 +862,15 @@ class _ContentListState extends State<_ContentList> {
             ),
           ),
         ],
+        if (isFetchingMore)                                    // ← ADD
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: CircularProgressIndicator(
+                  color: FolderTheme.accent, strokeWidth: 2.5),
+            ),
+          ),
+
       ],
     );
   }
