@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:ema_app/screens/notice/user_notice_screen.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
-import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,20 +23,13 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _fadeCtrl;
-
+class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
-    _fadeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..forward();
   }
 
   @override
@@ -50,50 +42,58 @@ class _HomePageState extends State<HomePage>
         DeviceOrientation.landscapeRight,
       ]);
     }
-    _fadeCtrl.dispose();
     super.dispose();
   }
 
-  // ── Responsive helpers ─────────────────────────────────────────────────────
-  _ScreenSize _getScreenSize(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    if (w < 600) return _ScreenSize.small;
-    if (w < 1024) return _ScreenSize.medium;
-    return _ScreenSize.large;
+  ScreenSize _getScreenSize(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 600) return ScreenSize.small;
+    if (width < 1024) return ScreenSize.medium;
+    return ScreenSize.large;
   }
 
-  _ResponsiveDimensions _getDimensions(BuildContext context) {
-    final ss = _getScreenSize(context);
-    final w = MediaQuery.of(context).size.width;
-    final h = MediaQuery.of(context).size.height;
-    switch (ss) {
-      case _ScreenSize.small:
-        return _ResponsiveDimensions(
-          padding: w * 0.04,
-          logoHeight: h * 0.15,
-          logoWidth: w * 0.6,
-          titleFontSize: w * 0.045,
-          iconSize: w * 0.08,
+  ResponsiveDimensions _getResponsiveDimensions(BuildContext context) {
+    final screenSize = _getScreenSize(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    switch (screenSize) {
+      case ScreenSize.small:
+        return ResponsiveDimensions(
+          padding: screenWidth * 0.04,
+          logoHeight: screenHeight * 0.15,
+          logoWidth: screenWidth * 0.6,
+          titleFontSize: screenWidth * 0.045,
+          buttonWidth: screenWidth * 0.42,
+          buttonHeight: screenHeight * 0.12,
+          buttonFontSize: screenWidth * 0.028,
+          iconSize: screenWidth * 0.08,
           crossAxisCount: 2,
-          childAspectRatio: 1.1,
+          childAspectRatio: 0.9,
         );
-      case _ScreenSize.medium:
-        return _ResponsiveDimensions(
-          padding: w * 0.03,
-          logoHeight: h * 0.18,
-          logoWidth: w * 0.4,
-          titleFontSize: w * 0.035,
-          iconSize: w * 0.06,
+      case ScreenSize.medium:
+        return ResponsiveDimensions(
+          padding: screenWidth * 0.03,
+          logoHeight: screenHeight * 0.18,
+          logoWidth: screenWidth * 0.4,
+          titleFontSize: screenWidth * 0.035,
+          buttonWidth: screenWidth * 0.28,
+          buttonHeight: screenHeight * 0.14,
+          buttonFontSize: screenWidth * 0.022,
+          iconSize: screenWidth * 0.06,
           crossAxisCount: 3,
-          childAspectRatio: 1.0,
+          childAspectRatio: 0.8,
         );
-      case _ScreenSize.large:
-        return _ResponsiveDimensions(
-          padding: 24,
-          logoHeight: 200,
-          logoWidth: 300,
-          titleFontSize: 24,
-          iconSize: 32,
+      case ScreenSize.large:
+        return ResponsiveDimensions(
+          padding: 24.0,
+          logoHeight: 200.0,
+          logoWidth: 300.0,
+          titleFontSize: 24.0,
+          buttonWidth: 180.0,
+          buttonHeight: 140.0,
+          buttonFontSize: 13.0,
+          iconSize: 32.0,
           crossAxisCount: 4,
           childAspectRatio: 1.0,
         );
@@ -132,135 +132,114 @@ class _HomePageState extends State<HomePage>
             userEmail: '',
             folderId: null,
             folderName: '',
+  @override
+  Widget build(BuildContext context) {
+    final dimensions = _getResponsiveDimensions(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Empower Your Future",
+          style: TextStyle(
+            fontSize: _getScreenSize(context) == ScreenSize.small
+                ? screenWidth * 0.045
+                : _getScreenSize(context) == ScreenSize.medium
+                ? screenWidth * 0.03
+                : 20.0,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.teal[700],
+        elevation: 6,
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.teal, Colors.cyanAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
       ),
-    ),
-    _NavItem(
-      icon: Icons.contact_mail_rounded,
-      label: 'Contact Us',
-      color: const Color(0xFFE06CF7),
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const ContactUsPage())),
-    ),
-  ];
-
-  // ── Build ──────────────────────────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    final dim = _getDimensions(context);
-    final items = _navItems;
-    final displayName =
-    widget.fullName.isEmpty ? 'Guest' : widget.fullName;
-
-    return Scaffold(
-      backgroundColor: UMTheme.surface,
-      drawer: _HomeDrawer(
-        name: displayName,
-        identifier: widget.userIdentifier,
-        isAdmin: widget.isAdmin,
-        items: items,
-      ),
-      body: FadeTransition(
-        opacity: _fadeCtrl,
+      drawer: _buildDrawer(context, dimensions),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.grey[100]!, Colors.teal[50]!],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              // ── Top bar ────────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: _TopBar(name: displayName),
-              ),
-
-              // ── Logo + welcome ─────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: dim.padding, vertical: 8),
-                  child: Column(
-                    children: [
-                      Container(
-                        height: dim.logoHeight,
-                        alignment: Alignment.center,
-                        child: Image.asset(
-                          'assets/ema.jpeg',
-                          width: dim.logoWidth,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.image_not_supported,
-                            size: dim.logoWidth * 0.3,
-                            color: UMTheme.textSub,
-                          ),
-                        ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(dimensions.padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    alignment: Alignment.center,
+                    height: dimensions.logoHeight,
+                    child: Image.asset(
+                      "assets/ema.jpeg",
+                      width: dimensions.logoWidth,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.image_not_supported,
+                        size: dimensions.logoWidth * 0.3,
+                        color: Colors.grey,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Welcome to EMA UBT, $displayName 👋',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: UMTheme.textMain,
-                          fontSize: dim.titleFontSize,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'What would you like to do today?',
-                        style: UMTheme.screenSubtitle,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Section label ──────────────────────────────────────────
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 10),
-                  child: Text('Quick Access', style: UMTheme.screenTitle),
-                ),
-              ),
-
-              // ── Grid ──────────────────────────────────────────────────
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                    dim.padding + 4, 0, dim.padding + 4, 40),
-                sliver: SliverGrid(
-                  delegate: SliverChildBuilderDelegate(
-                        (_, i) => _AnimatedCard(
-                      item: items[i],
-                      index: i,
-                      iconSize: dim.iconSize,
                     ),
-                    childCount: items.length,
                   ),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: dim.crossAxisCount,
-                    crossAxisSpacing: dim.crossAxisCount == 2 ? 14 : 16,
-                    mainAxisSpacing: dim.crossAxisCount == 2 ? 14 : 16,
-                    childAspectRatio: dim.childAspectRatio,
+                  SizedBox(height: screenHeight * 0.02),
+                  Text(
+                    "Welcome to EMA UBT, ${widget.fullName.isEmpty ? 'Guest' : widget.fullName}",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal[800],
+                      fontSize: dimensions.titleFontSize,
+                    ),
                   ),
-                ),
+                  SizedBox(height: screenHeight * 0.03),
+                  _buildResponsiveButtonGrid(context, dimensions),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
-}
 
-// ─── Top bar ──────────────────────────────────────────────────────────────────
-class _TopBar extends StatelessWidget {
-  final String name;
+  Widget _buildResponsiveButtonGrid(BuildContext context, ResponsiveDimensions dimensions) {
+    final screenSize = _getScreenSize(context);
 
-  const _TopBar({required this.name});
-
-  String _initials(String n) {
-    if (n.isEmpty) return 'G';
-    final p = n.trim().split(' ');
-    return p.length == 1
-        ? p[0][0].toUpperCase()
-        : '${p[0][0]}${p.last[0]}'.toUpperCase();
+    if (screenSize == ScreenSize.large) {
+      return Container(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: dimensions.crossAxisCount,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: dimensions.childAspectRatio,
+          children: _buildButtonList(dimensions),
+        ),
+      );
+    } else {
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 16,
+        children: _buildButtonList(dimensions),
+      );
+    }
   }
 
   @override
@@ -269,366 +248,204 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         children: [
-          // Hamburger
-          Builder(
-            builder: (ctx) => IconButton(
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-              icon: const Icon(Icons.menu_rounded,
-                  color: UMTheme.textMain, size: 24),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                side: const BorderSide(color: UMTheme.border),
-                padding: const EdgeInsets.all(8),
-              ),
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [Colors.teal[700]!, Colors.cyanAccent]),
             ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('EMA UBT', style: UMTheme.screenTitle),
-                Text('Empower Your Future', style: UMTheme.screenSubtitle),
-              ],
-            ),
-          ),
-          // Guest avatar
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: UMTheme.accent.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: UMTheme.accent.withOpacity(0.25), width: 1.5),
-            ),
-            child: Center(
-              child: Text(
-                _initials(name),
-                style: const TextStyle(
-                  color: UMTheme.accent,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Drawer ───────────────────────────────────────────────────────────────────
-class _HomeDrawer extends StatelessWidget {
-  final String name;
-  final String identifier;
-  final bool isAdmin;
-  final List<_NavItem> items;
-
-  const _HomeDrawer({
-    required this.name,
-    required this.identifier,
-    required this.isAdmin,
-    required this.items,
-  });
-
-  String _initials(String n) {
-    if (n.isEmpty) return 'G';
-    final p = n.trim().split(' ');
-    return p.length == 1
-        ? p[0][0].toUpperCase()
-        : '${p[0][0]}${p.last[0]}'.toUpperCase();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: Column(
-        children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
-            decoration: BoxDecoration(
-              color: UMTheme.accent.withOpacity(0.06),
-              border:
-              const Border(bottom: BorderSide(color: UMTheme.border)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: UMTheme.accent.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: UMTheme.accent.withOpacity(0.25), width: 1.5),
+                CircleAvatar(
+                  radius: screenSize == ScreenSize.small
+                      ? 28
+                      : screenSize == ScreenSize.medium
+                      ? 32
+                      : 35,
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.account_circle,
+                    size: screenSize == ScreenSize.small
+                        ? 35
+                        : screenSize == ScreenSize.medium
+                        ? 40
+                        : 45,
+                    color: Colors.teal,
                   ),
-                  child: Center(
-                    child: Text(
-                      _initials(name),
-                      style: const TextStyle(
-                        color: UMTheme.accent,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                      ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  "Hello, ${widget.isAdmin ? 'Admin' : (widget.userIdentifier.isEmpty ? 'Guest' : 'User')}",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenSize == ScreenSize.small
+                        ? 16
+                        : screenSize == ScreenSize.medium
+                        ? 18
+                        : 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                if (widget.userIdentifier.isNotEmpty)
+                  Text(
+                    widget.userIdentifier,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: screenSize == ScreenSize.small
+                          ? 12
+                          : screenSize == ScreenSize.medium
+                          ? 14
+                          : 16,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: UMTheme.textMain,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      if (identifier.isNotEmpty)
-                        Text(
-                          identifier,
-                          style: UMTheme.cardSubtitle,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: UMTheme.userBadgeBg,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Guest',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: UMTheme.userBadgeText,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
-
-          // Nav items
           Expanded(
-            child: ListView.separated(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
-              itemBuilder: (_, i) {
-                final item = items[i];
-                return ListTile(
-                  onTap: () {
-                    Navigator.pop(context);
-                    item.onTap();
-                  },
-                  leading: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: item.color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: item.assetIcon != null
-                        ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        item.assetIcon!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
-                            item.icon,
-                            color: item.color,
-                            size: 18),
-                      ),
-                    )
-                        : Icon(item.icon, color: item.color, size: 18),
-                  ),
-                  title: Text(
-                    item.label.replaceAll('\n', ' '),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: UMTheme.textMain,
-                    ),
-                  ),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  tileColor: Colors.transparent,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  horizontalTitleGap: 10,
-                );
-              },
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildDrawerItem(
+                  context,
+                  dimensions,
+                  const Icon(Icons.login, color: Colors.teal),
+                  "Login / Register",
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage())),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// ─── Animated grid card ───────────────────────────────────────────────────────
-class _AnimatedCard extends StatelessWidget {
-  final _NavItem item;
-  final int index;
-  final double iconSize;
-
-  const _AnimatedCard(
-      {required this.item, required this.index, required this.iconSize});
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 280 + (index.clamp(0, 8) * 45)),
-      curve: Curves.easeOutCubic,
-      builder: (_, v, child) => Opacity(
-        opacity: v,
-        child:
-        Transform.translate(offset: Offset(0, 20 * (1 - v)), child: child),
-      ),
-      child: _HomeCard(item: item, iconSize: iconSize),
-    );
-  }
-}
-
-class _HomeCard extends StatefulWidget {
-  final _NavItem item;
-  final double iconSize;
-  const _HomeCard({required this.item, required this.iconSize});
-
-  @override
-  State<_HomeCard> createState() => _HomeCardState();
-}
-
-class _HomeCardState extends State<_HomeCard> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final item = widget.item;
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        item.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: UMTheme.border),
-            boxShadow: [
-              BoxShadow(
-                color: item.color.withOpacity(0.10),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
+  Widget _buildLargeButton(
+      ResponsiveDimensions dimensions,
+      Widget icon,
+      String text,
+      Color color,
+      VoidCallback onPressed,
+      ) {
+    return SizedBox(
+      width: dimensions.buttonWidth,
+      height: dimensions.buttonHeight,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.all(8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Icon container
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: item.color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: item.assetIcon != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    item.assetIcon!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(item.icon,
-                        color: item.color,
-                        size: widget.iconSize + 8),
+          elevation: 6,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: dimensions.buttonHeight * 0.4,
+              child: icon is Icon
+                  ? Icon(
+                (icon).icon,
+                size: dimensions.iconSize,
+                color: Colors.white,
+              )
+                  : SizedBox(
+                width: dimensions.iconSize,
+                height: dimensions.iconSize,
+                child: icon,
+              ),
+            ),
+            SizedBox(height: 4),
+            Expanded(
+              child: Center(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: dimensions.buttonFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.1,
                   ),
-                )
-                    : Icon(item.icon,
-                    color: item.color, size: widget.iconSize + 8),
-              ),
-              const SizedBox(height: 10),
-              // Label
-              Text(
-                item.label.replaceAll('\n', ' '),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: UMTheme.textMain,
-                  height: 1.3,
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  Widget _buildDrawerItem(
+      BuildContext context,
+      ResponsiveDimensions dimensions,
+      Widget leading,
+      String title,
+      VoidCallback onTap,
+      ) {
+    final screenSize = _getScreenSize(context);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ListTile(
+        leading: SizedBox(width: 24, height: 24, child: leading),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: screenSize == ScreenSize.small
+                ? 14
+                : screenSize == ScreenSize.medium
+                ? 16
+                : 18,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: onTap,
+        tileColor: Colors.white,
+        selectedTileColor: Colors.teal[100],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        dense: true,
+        visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+        minLeadingWidth: 36,
+      ),
+    );
+  }
 }
 
-// ─── Data class ───────────────────────────────────────────────────────────────
-class _NavItem {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final String? assetIcon;
-  final VoidCallback onTap;
+enum ScreenSize { small, medium, large }
 
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.assetIcon,
-    required this.onTap,
-  });
-}
-
-// ─── Enums / responsive models ────────────────────────────────────────────────
-enum _ScreenSize { small, medium, large }
-
-class _ResponsiveDimensions {
+class ResponsiveDimensions {
   final double padding;
   final double logoHeight;
   final double logoWidth;
   final double titleFontSize;
+  final double buttonWidth;
+  final double buttonHeight;
+  final double buttonFontSize;
   final double iconSize;
   final int crossAxisCount;
   final double childAspectRatio;
 
-  _ResponsiveDimensions({
+  ResponsiveDimensions({
     required this.padding,
     required this.logoHeight,
     required this.logoWidth,
     required this.titleFontSize,
+    required this.buttonWidth,
+    required this.buttonHeight,
+    required this.buttonFontSize,
     required this.iconSize,
     required this.crossAxisCount,
     required this.childAspectRatio,
