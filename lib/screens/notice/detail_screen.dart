@@ -133,8 +133,7 @@ class NoticeDetailScreen extends StatelessWidget {
       pinned: true,
       backgroundColor: NoticeTheme.accent,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-            color: Colors.white),
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
       flexibleSpace: FlexibleSpaceBar(
@@ -520,6 +519,17 @@ class _AttachmentTile extends StatelessWidget {
     } else if (attachment.isAudio) {
       icon  = Icons.audiotrack_rounded;
       color = Colors.orange;
+    } else if (attachment.fileType?.toLowerCase() == 'doc' ||
+        attachment.fileType?.toLowerCase() == 'docx') {
+      icon  = Icons.description_rounded;
+      color = Colors.blue;
+    } else if (attachment.fileType?.toLowerCase() == 'xls' ||
+        attachment.fileType?.toLowerCase() == 'xlsx') {
+      icon  = Icons.table_chart_rounded;
+      color = Colors.green;
+    } else if (attachment.fileType?.toLowerCase() == 'txt') {
+      icon  = Icons.article_rounded;
+      color = Colors.blueGrey;
     } else {
       icon  = Icons.insert_drive_file_rounded;
       color = NoticeTheme.accent;
@@ -535,17 +545,8 @@ class _AttachmentTile extends StatelessWidget {
     );
   }
 
+  // ── All file types: download to temp dir then open natively ───────────────
   Future<void> _open(BuildContext context) async {
-    if (attachment.isPdf) {
-      await _openPdf(context);
-    } else {
-      await _openWithBrowser(context);
-    }
-  }
-
-  // ── PDF: download to temp dir then open with open_file ────────────────────
-  Future<void> _openPdf(BuildContext context) async {
-    // Prefer the dedicated download URL; fall back to the stream URL
     final url = attachment.downloadUrl ?? attachment.fileUrl;
 
     if (url == null) {
@@ -553,10 +554,8 @@ class _AttachmentTile extends StatelessWidget {
       return;
     }
 
-    // 🔍 Log the download URL
-    debugPrint('[PDF Download] URL: $url');
+    debugPrint('[File Download] URL: $url');
 
-    // Show loading indicator while downloading
     if (!context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final snackController = messenger.showSnackBar(
@@ -567,12 +566,10 @@ class _AttachmentTile extends StatelessWidget {
               width: 18,
               height: 18,
               child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
+                  color: Colors.white, strokeWidth: 2),
             ),
             SizedBox(width: 14),
-            Text('Opening PDF…'),
+            Text('Opening file…'),
           ],
         ),
         duration: Duration(seconds: 30),
@@ -580,12 +577,11 @@ class _AttachmentTile extends StatelessWidget {
     );
 
     try {
-      // 🔐 Fetch auth headers (session cookie + CSRF token)
       final authHeaders = await getAuthHeaders();
-      debugPrint('[PDF Download] Headers: $authHeaders');
+      debugPrint('[File Download] Headers: $authHeaders');
 
-      // Download the PDF with auth headers
-      final response = await http.get(Uri.parse(url), headers: authHeaders);
+      final response =
+      await http.get(Uri.parse(url), headers: authHeaders);
       snackController.close();
 
       if (response.statusCode != 200) {
@@ -593,40 +589,31 @@ class _AttachmentTile extends StatelessWidget {
         return;
       }
 
-      // Write bytes to a temp file
-      final dir      = await getTemporaryDirectory();
-      final fileName = attachment.displayName.endsWith('.pdf')
-          ? attachment.displayName
-          : '${attachment.displayName}.pdf';
-      final file     = File('${dir.path}/$fileName');
+      final dir = await getTemporaryDirectory();
+
+      // Use displayName as-is so the correct extension is preserved
+      // (.pdf, .docx, .xlsx, .txt, etc.)
+      final file = File('${dir.path}/${attachment.displayName}');
       await file.writeAsBytes(response.bodyBytes);
 
-      // Open with the device's native PDF viewer
+      debugPrint('[File Download] Saved to: ${file.path}');
+
       final result = await OpenFile.open(file.path);
 
       if (result.type != ResultType.done && context.mounted) {
-        _showSnack(context, 'Could not open PDF: ${result.message}');
+        // Fallback: if no native app can handle it, open in browser
+        final uri = Uri.tryParse(url);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          _showSnack(context, 'Could not open file: ${result.message}');
+        }
       }
     } catch (e) {
       snackController.close();
-      _showSnack(context, 'Error opening PDF: $e');
-    }
-  }
-
-  // ── Non-PDF: open in external browser / app ───────────────────────────────
-  Future<void> _openWithBrowser(BuildContext context) async {
-    final url = attachment.fileUrl;
-    if (url == null) {
-      _showSnack(context, 'File URL not available');
-      return;
-    }
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      _showSnack(context, 'Could not open file');
+      if (context.mounted) {
+        _showSnack(context, 'Error opening file: $e');
+      }
     }
   }
 
