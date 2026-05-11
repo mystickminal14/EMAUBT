@@ -383,13 +383,9 @@ class AdminNoticeViewModel extends NoticeViewModel {
 
     final url = NoticeEndpoints.updateNotice(notice.id!);
 
-    // Build fields — include removed attachment IDs so backend deletes them
     final fields = <String, dynamic>{
       'title':   formTitle!.trim(),
       'content': formContent!.trim(),
-      // Send each removed ID as a separate field key expected by most Laravel APIs.
-      // If your backend uses a JSON array instead, replace with:
-      // 'remove_attachment_ids': _removedAttachmentIds.join(',')
       if (_removedAttachmentIds.isNotEmpty)
         'remove_attachment_ids[]': _removedAttachmentIds.toList().join(','),
     };
@@ -397,24 +393,17 @@ class AdminNoticeViewModel extends NoticeViewModel {
     _logger.i('📤 updateNotice → URL: $url');
     _logger.i('📦 Fields: $fields');
     _logger.i('📎 New attachments count: ${selectedFiles.length}');
-    _logger.i(
-      '🗑️ Attachments to remove: ${_removedAttachmentIds.toList()}',
-    );
-    for (int i = 0; i < selectedFiles.length; i++) {
-      final f = selectedFiles[i];
-      _logger.d('   [$i] name=${f.name} | size=${f.size}B | ext=${f.extension}');
-    }
+    _logger.i('🗑️ Attachments to remove: ${_removedAttachmentIds.toList()}');
 
     try {
       final response = await _api.postMultipartNoticeFiles(
         url,
         fields,
         files:     selectedFiles.isEmpty ? null : selectedFiles,
-        fieldName: 'attachments[]',
+        fieldName: 'attachment[]',
       );
 
       _logger.i('✅ updateNotice response: $response');
-      Utils.showApiResponse(response, context);
 
       if (response['success'] == true) {
         clearForm();
@@ -422,20 +411,16 @@ class AdminNoticeViewModel extends NoticeViewModel {
         return true;
       } else {
         _logger.w('⚠️ updateNotice non-success: $response');
+        return false;
       }
     } catch (e) {
       _logger.e('❌ updateNotice error: $e');
-      Utils.showApiResponse(
-        Utils.errorResponse('Error updating notice: $e'),
-        context,
-      );
+      return false;
     } finally {
       isActionLoading = false;
       notifyListeners();
     }
-    return false;
   }
-
   // ── Delete ─────────────────────────────────────────────────────────────────
   Future<void> deleteNotice(BuildContext context, NoticeModel notice) async {
     isActionLoading = true;

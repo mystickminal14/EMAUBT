@@ -50,20 +50,34 @@ class _AdminNoticeFormScreenState extends State<AdminNoticeFormScreen> {
     vm.formTitle   = _titleCtrl.text.trim();
     vm.formContent = _contentCtrl.text.trim();
 
-    bool success;
+    final bool success;
     if (_isEdit) {
       success = await vm.updateNotice(context, widget.existing!);
     } else {
       success = await vm.createNotice(context);
     }
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isEdit ? 'Notice updated successfully' : 'Notice created successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
       _titleCtrl.clear();
       _contentCtrl.clear();
       Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isEdit ? 'Failed to update notice.' : 'Failed to create notice.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
