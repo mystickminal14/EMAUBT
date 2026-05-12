@@ -125,10 +125,7 @@ class _HomePageState extends State<HomePage>
       color: const Color(0xFFF7956C),
       // assetIcon: 'assets/ema.jpg',
       onTap: () => Navigator.push(context, MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider(
-          create: (_) => UpdatedFolderViewModel(),
-          child: const GuestFreeFilesQuizSets(),
-        ),
+        builder: (_) => GuestFreeFilesQuizSets(),
       )),
     ),
     _NavItem(

@@ -26,14 +26,28 @@ String _downloadUrl(PublicFile file) =>
     '${BaseUrl.baseUrl}/${file.filePath}';
 
 // ─── Guest Folder List Screen ─────────────────────────────────────────────────
-class GuestFreeFilesQuizSets extends StatefulWidget {
+/// Entry point — provisions its own [PublicFolderViewModel] so the screen is
+/// fully self-contained and doesn't rely on an ancestor provider.
+class GuestFreeFilesQuizSets extends StatelessWidget {
   const GuestFreeFilesQuizSets({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => PublicFolderViewModel(),
+      child: const _GuestFolderListBody(),
+    );
+  }
+}
+
+class _GuestFolderListBody extends StatefulWidget {
+  const _GuestFolderListBody();
 
   @override
   _GuestFreeFilesQuizSetsState createState() => _GuestFreeFilesQuizSetsState();
 }
 
-class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
+class _GuestFreeFilesQuizSetsState extends State<_GuestFolderListBody>
     with SingleTickerProviderStateMixin {
   late final TextEditingController _searchCtrl;
   late final ScrollController _scrollCtrl;
@@ -895,7 +909,6 @@ class _GuestQuizSetCard extends StatelessWidget {
           ],
         ],
       ),
-      actionLabel: 'Open',
     );
   }
 }
@@ -933,7 +946,6 @@ class _GuestFileCard extends StatelessWidget {
           ),
         ],
       ),
-      actionLabel: 'View',
     );
   }
 }
@@ -945,7 +957,6 @@ class _GuestAnimatedCard extends StatelessWidget {
   final Widget leading;
   final String title;
   final Widget subtitle;
-  final String actionLabel;
 
   const _GuestAnimatedCard({
     required this.index,
@@ -953,7 +964,6 @@ class _GuestAnimatedCard extends StatelessWidget {
     required this.leading,
     required this.title,
     required this.subtitle,
-    required this.actionLabel,
   });
 
   @override
@@ -964,7 +974,6 @@ class _GuestAnimatedCard extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (_, v, child) => Opacity(opacity: v, child: child),
       child: GestureDetector(
-        onTap: onTap,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: FolderTheme.cardDecoration,
@@ -981,22 +990,6 @@ class _GuestAnimatedCard extends StatelessWidget {
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: subtitle,
-            ),
-            trailing: Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: FolderTheme.accent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                actionLabel,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
             ),
           ),
         ),
