@@ -1,25 +1,31 @@
 import 'dart:io';
 
 import 'package:ema_app/constants/base_url.dart';
-import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
-import 'package:ema_app/view_model/folders/folder_vm2.dart';
-import 'package:ema_app/view_model/folders/new_files_vm.dart';
-import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
+import 'package:ema_app/view_model/folders/public_folder_vm.dart'; // ← new single VM
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
-// ─── Access type constant ─────────────────────────────────────────────────────
+// ─── Access-type constant ──────────────────────────────────────────────────────
 const String _kAccessAll = 'all';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/// Extracts the file extension from a path/URL (without the leading dot).
+String _extensionFrom(String filePath) {
+  final parts = filePath.split('.');
+  return parts.length > 1 ? parts.last.toLowerCase() : '';
+}
+
+/// Builds the full download URL for a [PublicFile].
+String _downloadUrl(PublicFile file) =>
+    '${BaseUrl.baseUrl}/${file.filePath}';
+
 // ─── Guest Folder List Screen ─────────────────────────────────────────────────
-/// Shown to logged-out (guest) users.
-/// Fetches folders via [UpdatedFolderViewModel] and, inside each folder,
-/// shows only items whose [access_type] == "all".
 class GuestFreeFilesQuizSets extends StatefulWidget {
   const GuestFreeFilesQuizSets({super.key});
 
@@ -33,6 +39,8 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
   late final ScrollController _scrollCtrl;
   late final AnimationController _fabAnim;
 
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -44,8 +52,7 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        Provider.of<UpdatedFolderViewModel>(context, listen: false)
-            .fetchFolders(context);
+        context.read<PublicFolderViewModel>().fetchFolders(refresh: true);
         _fabAnim.forward();
       }
     });
@@ -55,9 +62,9 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
     if (!_scrollCtrl.hasClients) return;
     final threshold = _scrollCtrl.position.maxScrollExtent - 200;
     if (_scrollCtrl.position.pixels >= threshold) {
-      final vm = context.read<UpdatedFolderViewModel>();
-      if (!vm.isFetchingMore && !vm.isLoading && vm.hasMorePages) {
-        vm.fetchNextPage(context);
+      final vm = context.read<PublicFolderViewModel>();
+      if (!vm.isFoldersLoadingMore && !vm.isFoldersLoading && vm.hasFoldersNextPage) {
+        vm.fetchFoldersNextPage();
       }
     }
   }
@@ -70,7 +77,15 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
     super.dispose();
   }
 
-  void _openFolder(String folderId, String folderName) {
+  /// Client-side search filter applied to the VM's folder list.
+  List<PublicFolder> _filtered(List<PublicFolder> all) {
+    if (_searchQuery.isEmpty) return all;
+    return all
+        .where((f) => f.name.toLowerCase().contains(_searchQuery))
+        .toList();
+  }
+
+  void _openFolder(int folderId, String folderName) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -104,83 +119,85 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-      child: Consumer<UpdatedFolderViewModel>(
-        builder: (_, vm, __) => Row(
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: FolderTheme.card,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: FolderTheme.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: FolderTheme.primary.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+      child: Consumer<PublicFolderViewModel>(
+        builder: (_, vm, __) {
+          final visible = _filtered(vm.folders);
+          return Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: FolderTheme.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: FolderTheme.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FolderTheme.primary.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: FolderTheme.textMain, size: 16),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Free Content', style: FolderTheme.screenTitle),
+                    Text(
+                      '${visible.length} folders available',
+                      style: FolderTheme.screenSubtitle,
                     ),
                   ],
                 ),
-                child: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: FolderTheme.textMain, size: 16),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Free Content', style: FolderTheme.screenTitle),
-                  Text(
-                    '${vm.folders.length} folders available',
-                    style: FolderTheme.screenSubtitle,
-                  ),
-                ],
-              ),
-            ),
-            // Guest badge
-            Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: FolderTheme.accent.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.person_outline_rounded,
-                      size: 14, color: FolderTheme.accent),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Guest',
-                    style: FolderTheme.screenSubtitle.copyWith(
-                      color: FolderTheme.accent,
-                      fontWeight: FontWeight.w600,
+              // Guest badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: FolderTheme.accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.person_outline_rounded,
+                        size: 14, color: FolderTheme.accent),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Guest',
+                      style: FolderTheme.screenSubtitle.copyWith(
+                        color: FolderTheme.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            // Refresh
-            IconButton(
-              onPressed: vm.isLoading
-                  ? null
-                  : () => vm.fetchFolders(context, refresh: true),
-              icon: AnimatedRotation(
-                turns: vm.isLoading ? 1 : 0,
-                duration: const Duration(seconds: 1),
-                child: const Icon(Icons.refresh_rounded,
-                    color: FolderTheme.textSub, size: 22),
+              const SizedBox(width: 4),
+              // Refresh
+              IconButton(
+                onPressed: vm.isFoldersLoading
+                    ? null
+                    : () => vm.fetchFolders(refresh: true),
+                icon: AnimatedRotation(
+                  turns: vm.isFoldersLoading ? 1 : 0,
+                  duration: const Duration(seconds: 1),
+                  child: const Icon(Icons.refresh_rounded,
+                      color: FolderTheme.textSub, size: 22),
+                ),
+                tooltip: 'Refresh',
               ),
-              tooltip: 'Refresh',
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -194,8 +211,7 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
         decoration: FolderTheme.searchDecoration,
         child: TextField(
           controller: _searchCtrl,
-          onChanged: (v) =>
-              context.read<UpdatedFolderViewModel>().searchFolders(v),
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
           style: FolderTheme.fieldInput,
           decoration: InputDecoration(
             hintText: 'Search folders…',
@@ -215,9 +231,7 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
                     color: FolderTheme.textSub, size: 18),
                 onPressed: () {
                   _searchCtrl.clear();
-                  context
-                      .read<UpdatedFolderViewModel>()
-                      .searchFolders('');
+                  setState(() => _searchQuery = '');
                 },
               ),
             ),
@@ -229,28 +243,29 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
 
   // ─── Folder List ──────────────────────────────────────────────────────────
   Widget _buildFolderList() {
-    return Consumer<UpdatedFolderViewModel>(
+    return Consumer<PublicFolderViewModel>(
       builder: (_, vm, __) {
-        if (vm.isLoading && vm.filteredFolders.isEmpty) {
+        final visible = _filtered(vm.folders);
+
+        if (vm.isFoldersLoading && visible.isEmpty) {
           return const Center(
             child: CircularProgressIndicator(
                 color: FolderTheme.accent, strokeWidth: 2.5),
           );
         }
 
-        if (vm.filteredFolders.isEmpty) {
+        if (visible.isEmpty && !vm.isFoldersLoading) {
           return _GuestFolderEmptyState(
-            onRetry: () => vm.fetchFolders(context, refresh: true),
+            onRetry: () => vm.fetchFolders(refresh: true),
           );
         }
 
         return ListView.builder(
           controller: _scrollCtrl,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-          itemCount:
-          vm.filteredFolders.length + (vm.isFetchingMore ? 1 : 0),
+          itemCount: visible.length + (vm.isFoldersLoadingMore ? 1 : 0),
           itemBuilder: (_, i) {
-            if (i == vm.filteredFolders.length) {
+            if (i == visible.length) {
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Center(
@@ -259,12 +274,11 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
                 ),
               );
             }
-            final folder = vm.filteredFolders[i];
+            final folder = visible[i];
             return _GuestFolderCard(
-              folder: folder.toJson(),
+              folder: folder,
               index: i,
-              onTap: () =>
-                  _openFolder(folder.id.toString(), folder.name ?? ''),
+              onTap: () => _openFolder(folder.id, folder.name),
             );
           },
         );
@@ -275,7 +289,7 @@ class _GuestFreeFilesQuizSetsState extends State<GuestFreeFilesQuizSets>
 
 // ─── Guest Folder Card ────────────────────────────────────────────────────────
 class _GuestFolderCard extends StatelessWidget {
-  final Map<String, dynamic> folder;
+  final PublicFolder folder;
   final int index;
   final VoidCallback onTap;
 
@@ -300,9 +314,9 @@ class _GuestFolderCard extends StatelessWidget {
           child: ListTile(
             contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            leading: _GuestFolderIconBox(iconPath: folder['icon_path']),
+            leading: _GuestFolderIconBox(iconPath: folder.iconPath),
             title: Text(
-              folder['name'] ?? '—',
+              folder.name.isEmpty ? '—' : folder.name,
               style: FolderTheme.cardTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -321,6 +335,12 @@ class _GuestFolderCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  if (folder.fileCount > 0)
+                    Text(
+                      '${folder.fileCount} items',
+                      style: FolderTheme.cardSubtitle,
+                    ),
                 ],
               ),
             ),
@@ -333,11 +353,11 @@ class _GuestFolderCard extends StatelessWidget {
   }
 }
 
-// ─── Folder Icon Box (no auth headers for guest) ──────────────────────────────
+// ─── Folder Icon Box ──────────────────────────────────────────────────────────
 class _GuestFolderIconBox extends StatelessWidget {
-  final String? iconPath;
+  final String iconPath;
 
-  const _GuestFolderIconBox({this.iconPath});
+  const _GuestFolderIconBox({required this.iconPath});
 
   @override
   Widget build(BuildContext context) {
@@ -346,21 +366,13 @@ class _GuestFolderIconBox extends StatelessWidget {
       height: 52,
       decoration: FolderTheme.iconContainerDecoration,
       clipBehavior: Clip.antiAlias,
-      child: _buildChild(),
-    );
-  }
-
-  Widget _buildChild() {
-    final raw = iconPath;
-    if (raw == null || raw.isEmpty) return const _GuestFallbackFolderIcon();
-
-    final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
-
-    // Guest users — no auth headers required
-    return Image.network(
-      fullUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => const _GuestFallbackFolderIcon(),
+      child: iconPath.isEmpty
+          ? const _GuestFallbackFolderIcon()
+          : Image.network(
+        '${BaseUrl.imageUrl}/$iconPath',
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const _GuestFallbackFolderIcon(),
+      ),
     );
   }
 }
@@ -416,8 +428,8 @@ class _GuestFolderEmptyState extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Retry',
-                style: TextStyle(fontWeight: FontWeight.w700)),
+            label:
+            const Text('Retry', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -428,7 +440,7 @@ class _GuestFolderEmptyState extends StatelessWidget {
 // ─── Guest Folder Content Page ────────────────────────────────────────────────
 /// Shows files + quiz sets inside a folder, filtered to access_type == "all".
 class GuestFolderContentPage extends StatelessWidget {
-  final String folderId;
+  final int folderId;
   final String folderName;
 
   const GuestFolderContentPage({
@@ -439,45 +451,10 @@ class GuestFolderContentPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final folderIdInt = int.tryParse(folderId);
-    if (folderIdInt == null) {
-      return Scaffold(
-        backgroundColor: FolderTheme.surface,
-        body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline_rounded,
-                    size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                const Text('Invalid folder', style: FolderTheme.emptyTitle),
-                const SizedBox(height: 8),
-                Text('Folder ID must be a number: $folderId',
-                    style: FolderTheme.emptySubtitle),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: FolderTheme.accent,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Go Back'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => FolderFilesViewModel()),
-        ChangeNotifierProvider(create: (_) => FolderQuizSetsViewModel()),
-      ],
+    return ChangeNotifierProvider(
+      create: (_) => PublicFolderViewModel(),
       child: _GuestFolderContentBody(
-        folderId: folderIdInt,
+        folderId: folderId,
         folderName: folderName,
       ),
     );
@@ -503,14 +480,10 @@ class _GuestFolderContentBodyState extends State<_GuestFolderContentBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context
-            .read<FolderFilesViewModel>()
-            .fetchFiles(context, widget.folderId, refresh: true);
-        context
-            .read<FolderQuizSetsViewModel>()
-            .fetchQuizSets(context, widget.folderId, refresh: true);
-      }
+      if (!mounted) return;
+      final vm = context.read<PublicFolderViewModel>();
+      vm.fetchFolderFiles(widget.folderId, refresh: true);
+      vm.fetchFolderQuizSets(widget.folderId, refresh: true);
     });
   }
 
@@ -576,10 +549,8 @@ class _GuestFolderContentBodyState extends State<_GuestFolderContentBody> {
               ],
             ),
           ),
-          // "All access" chip
           Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: const Color(0xFF6366F1).withOpacity(0.12),
               borderRadius: BorderRadius.circular(20),
@@ -618,13 +589,16 @@ class _GuestContentArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<FolderFilesViewModel, FolderQuizSetsViewModel>(
-      builder: (context, filesVm, quizVm, _) {
+    return Consumer<PublicFolderViewModel>(
+      builder: (context, vm, _) {
+        final filesLoading = vm.isFolderFilesLoading;
+        final quizLoading  = vm.isFolderQuizSetsLoading;
+
         // Both loading + empty → spinner
-        if (filesVm.isLoading &&
-            filesVm.files.isEmpty &&
-            quizVm.isLoading &&
-            quizVm.quizSets.isEmpty) {
+        if (filesLoading &&
+            vm.folderFiles.isEmpty &&
+            quizLoading &&
+            vm.folderQuizSets.isEmpty) {
           return const Center(
             child: CircularProgressIndicator(
                 color: FolderTheme.accent, strokeWidth: 2.5),
@@ -632,32 +606,31 @@ class _GuestContentArea extends StatelessWidget {
         }
 
         // Filter: access_type == 'all' AND status == 'active'
-        final publicFiles = filesVm.filteredFiles
+        final publicFiles = vm.folderFiles
             .where((f) =>
-        f.accessType?.toLowerCase() == _kAccessAll &&
-            f.status?.toLowerCase() == 'active')
+        f.accessType.toLowerCase() == _kAccessAll &&
+            f.status.toLowerCase() == 'active')
             .toList();
 
-        final publicQuizSets = quizVm.filteredQuizSets
-            .where((q) => q.access_type?.toLowerCase() == _kAccessAll)
+        final publicQuizSets = vm.folderQuizSets
+            .where((q) => q.accessType.toLowerCase() == _kAccessAll)
             .toList();
 
-        // Both filtered lists empty + not loading → empty state
+        // Both empty + not loading → empty state
         if (publicFiles.isEmpty &&
             publicQuizSets.isEmpty &&
-            !filesVm.isLoading &&
-            !quizVm.isLoading) {
+            !filesLoading &&
+            !quizLoading) {
           return _GuestContentEmptyState(
             onRetry: () {
-              filesVm.fetchFiles(context, folderId, refresh: true);
-              quizVm.fetchQuizSets(context, folderId, refresh: true);
+              vm.fetchFolderFiles(folderId, refresh: true);
+              vm.fetchFolderQuizSets(folderId, refresh: true);
             },
           );
         }
 
         return _GuestContentList(
-          filesVm: filesVm,
-          quizVm: quizVm,
+          vm: vm,
           publicFiles: publicFiles,
           publicQuizSets: publicQuizSets,
           folderId: folderId,
@@ -670,16 +643,14 @@ class _GuestContentArea extends StatelessWidget {
 
 // ─── Guest Content List ───────────────────────────────────────────────────────
 class _GuestContentList extends StatefulWidget {
-  final FolderFilesViewModel filesVm;
-  final FolderQuizSetsViewModel quizVm;
-  final List<FileModel> publicFiles;
-  final List<dynamic> publicQuizSets; // same model type as FolderQuizSetsViewModel items
+  final PublicFolderViewModel vm;
+  final List<PublicFile> publicFiles;
+  final List<PublicQuizSet> publicQuizSets;
   final int folderId;
   final String folderName;
 
   const _GuestContentList({
-    required this.filesVm,
-    required this.quizVm,
+    required this.vm,
     required this.publicFiles,
     required this.publicQuizSets,
     required this.folderId,
@@ -703,8 +674,8 @@ class _GuestContentListState extends State<_GuestContentList> {
     if (!_scrollCtrl.hasClients) return;
     final threshold = _scrollCtrl.position.maxScrollExtent - 200;
     if (_scrollCtrl.position.pixels >= threshold) {
-      widget.filesVm.fetchNextPage(context, widget.folderId);
-      widget.quizVm.fetchNextPage(context, widget.folderId);
+      widget.vm.fetchFolderFilesNextPage(widget.folderId);
+      widget.vm.fetchFolderQuizSetsNextPage(widget.folderId);
     }
   }
 
@@ -714,20 +685,19 @@ class _GuestContentListState extends State<_GuestContentList> {
     super.dispose();
   }
 
-  // ── Download & open (no auth headers for guest) ───────────────────────────
+  // ── Download & open ───────────────────────────────────────────────────────
   Future<void> _downloadAndOpenFile(
-      BuildContext context, FileModel file) async {
+      BuildContext context, PublicFile file) async {
     final messenger = ScaffoldMessenger.of(context);
 
     messenger.showSnackBar(SnackBar(
-      content: Text('Opening: ${file.name ?? ""}…'),
+      content: Text('Opening: ${file.name}…'),
       backgroundColor: FolderTheme.accent,
       duration: const Duration(seconds: 2),
     ));
 
     try {
-      // Guest users — no auth headers
-      final response = await http.get(Uri.parse(file.downloadUrl));
+      final response = await http.get(Uri.parse(_downloadUrl(file)));
 
       if (response.statusCode != 200) {
         if (!context.mounted) return;
@@ -738,10 +708,9 @@ class _GuestContentListState extends State<_GuestContentList> {
         return;
       }
 
-      final ext =
-      file.extension.isNotEmpty ? '.${file.extension}' : '';
-      final safeName =
-      (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
+      final ext      = _extensionFrom(file.filePath);
+      final extSuffix = ext.isNotEmpty ? '.$ext' : '';
+      final safeName = file.name.replaceAll(RegExp(r'[^\w\-.]'), '_');
 
       final dir = Platform.isAndroid
           ? Directory('/storage/emulated/0/Download')
@@ -749,11 +718,10 @@ class _GuestContentListState extends State<_GuestContentList> {
 
       if (!await dir.exists()) await dir.create(recursive: true);
 
-      final savePath = '${dir.path}/$safeName$ext';
+      final savePath = '${dir.path}/$safeName$extSuffix';
       await File(savePath).writeAsBytes(response.bodyBytes);
 
       if (!context.mounted) return;
-
       messenger.showSnackBar(SnackBar(
         content: Text('Saved to $savePath'),
         backgroundColor: Colors.green.shade600,
@@ -771,19 +739,13 @@ class _GuestContentListState extends State<_GuestContentList> {
   }
 
   // ── Open quiz set ─────────────────────────────────────────────────────────
-  void _openQuizSet(BuildContext context, dynamic item) {
-    final quizSetId = item is Map
-        ? (item['id'] as num?)?.toInt() ?? 0
-        : (item.id as int? ?? 0);
-    final quizSetName =
-        (item is Map ? item['name'] : item.name) as String? ?? '';
-
+  void _openQuizSet(BuildContext context, PublicQuizSet quizSet) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => UserQuizLoadPage(
-          quizSetId: quizSetId,
-          quizSetName: quizSetName,
+          quizSetId: quizSet.id,
+          quizSetName: quizSet.title,
           folderId: widget.folderId.toString(),
           folderName: widget.folderName,
           userIdentifier: 'guest',
@@ -798,14 +760,14 @@ class _GuestContentListState extends State<_GuestContentList> {
   @override
   Widget build(BuildContext context) {
     final isFetchingMore =
-        widget.filesVm.isFetchingMore || widget.quizVm.isFetchingMore;
+        widget.vm.isFolderFilesLoadingMore || widget.vm.isFolderQuizSetsLoadingMore;
 
     return ListView(
       controller: _scrollCtrl,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       children: [
         // ── Guest info banner ──────────────────────────────────────────────
-        _GuestInfoBanner(),
+        const _GuestInfoBanner(),
         const SizedBox(height: 16),
 
         // ── Quiz Sets ──────────────────────────────────────────────────────
@@ -817,10 +779,9 @@ class _GuestContentListState extends State<_GuestContentList> {
           ),
           const SizedBox(height: 10),
           ...widget.publicQuizSets.asMap().entries.map(
-                (e) => _GuestContentCard(
-              item: e.value.toJson(),
+                (e) => _GuestQuizSetCard(
+              quizSet: e.value,
               index: e.key,
-              itemType: 'quiz_set',
               onTap: () => _openQuizSet(context, e.value),
             ),
           ),
@@ -836,10 +797,9 @@ class _GuestContentListState extends State<_GuestContentList> {
           ),
           const SizedBox(height: 10),
           ...widget.publicFiles.asMap().entries.map(
-                (e) => _GuestContentCard(
-              item: e.value.toJson(),
+                (e) => _GuestFileCard(
+              file: e.value,
               index: e.key,
-              itemType: 'file',
               onTap: () => _downloadAndOpenFile(context, e.value),
             ),
           ),
@@ -861,6 +821,8 @@ class _GuestContentListState extends State<_GuestContentList> {
 
 // ─── Guest Info Banner ────────────────────────────────────────────────────────
 class _GuestInfoBanner extends StatelessWidget {
+  const _GuestInfoBanner();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -891,24 +853,111 @@ class _GuestInfoBanner extends StatelessWidget {
   }
 }
 
-// ─── Guest Content Card ───────────────────────────────────────────────────────
-class _GuestContentCard extends StatelessWidget {
-  final Map<String, dynamic> item;
+// ─── Typed content cards ──────────────────────────────────────────────────────
+
+class _GuestQuizSetCard extends StatelessWidget {
+  final PublicQuizSet quizSet;
   final int index;
-  final String itemType;
   final VoidCallback onTap;
 
-  const _GuestContentCard({
-    required this.item,
+  const _GuestQuizSetCard({
+    required this.quizSet,
     required this.index,
-    required this.itemType,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isQuiz = itemType == 'quiz_set';
+    return _GuestAnimatedCard(
+      index: index,
+      onTap: onTap,
+      leading: _GuestContentIconBox(
+          iconPath: quizSet.iconPath, isQuiz: true),
+      title: quizSet.title.isEmpty ? 'Unnamed Quiz Set' : quizSet.title,
+      subtitle: Row(
+        children: [
+          const Icon(Icons.public_rounded, size: 12, color: Color(0xFF6366F1)),
+          const SizedBox(width: 4),
+          const Text(
+            'Open access',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6366F1),
+            ),
+          ),
+          if (quizSet.questionCount > 0) ...[
+            const SizedBox(width: 8),
+            Text(
+              '${quizSet.questionCount} questions',
+              style: FolderTheme.cardSubtitle,
+            ),
+          ],
+        ],
+      ),
+      actionLabel: 'Open',
+    );
+  }
+}
 
+class _GuestFileCard extends StatelessWidget {
+  final PublicFile file;
+  final int index;
+  final VoidCallback onTap;
+
+  const _GuestFileCard({
+    required this.file,
+    required this.index,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _GuestAnimatedCard(
+      index: index,
+      onTap: onTap,
+      leading: _GuestContentIconBox(
+          iconPath: file.iconPath, isQuiz: false),
+      title: file.name.isEmpty ? 'Unnamed File' : file.name,
+      subtitle: const Row(
+        children: [
+          Icon(Icons.public_rounded, size: 12, color: Color(0xFF6366F1)),
+          SizedBox(width: 4),
+          Text(
+            'Open access',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6366F1),
+            ),
+          ),
+        ],
+      ),
+      actionLabel: 'View',
+    );
+  }
+}
+
+/// Shared animated card shell used by both [_GuestQuizSetCard] and [_GuestFileCard].
+class _GuestAnimatedCard extends StatelessWidget {
+  final int index;
+  final VoidCallback onTap;
+  final Widget leading;
+  final String title;
+  final Widget subtitle;
+  final String actionLabel;
+
+  const _GuestAnimatedCard({
+    required this.index,
+    required this.onTap,
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Duration(milliseconds: 250 + (index.clamp(0, 10) * 30)),
@@ -922,34 +971,16 @@ class _GuestContentCard extends StatelessWidget {
           child: ListTile(
             contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            leading: _GuestContentIconBox(
-              iconPath: item['icon_path'],
-              isQuiz: isQuiz,
-            ),
+            leading: leading,
             title: Text(
-              item['name'] ??
-                  (isQuiz ? 'Unnamed Quiz Set' : 'Unnamed File'),
+              title,
               style: FolderTheme.cardTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                children: const [
-                  Icon(Icons.public_rounded,
-                      size: 12, color: Color(0xFF6366F1)),
-                  SizedBox(width: 4),
-                  Text(
-                    'Open access',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6366F1),
-                    ),
-                  ),
-                ],
-              ),
+              child: subtitle,
             ),
             trailing: Container(
               padding:
@@ -959,7 +990,7 @@ class _GuestContentCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                isQuiz ? 'Open' : 'View',
+                actionLabel,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -974,7 +1005,7 @@ class _GuestContentCard extends StatelessWidget {
   }
 }
 
-// ─── Guest Content Icon Box (no auth headers) ─────────────────────────────────
+// ─── Content Icon Box (no auth headers for guest) ─────────────────────────────
 class _GuestContentIconBox extends StatelessWidget {
   final String? iconPath;
   final bool isQuiz;
@@ -988,22 +1019,14 @@ class _GuestContentIconBox extends StatelessWidget {
       height: 52,
       decoration: FolderTheme.iconContainerDecoration,
       clipBehavior: Clip.antiAlias,
-      child: _buildChild(),
-    );
-  }
-
-  Widget _buildChild() {
-    final raw = iconPath;
-    if (raw == null || raw.isEmpty) {
-      return _GuestFallbackContentIcon(isQuiz: isQuiz);
-    }
-
-    final fullUrl = Uri.parse("${BaseUrl.imageUrl}/$raw").toString();
-
-    return Image.network(
-      fullUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => _GuestFallbackContentIcon(isQuiz: isQuiz),
+      child: (iconPath == null || iconPath!.isEmpty)
+          ? _GuestFallbackContentIcon(isQuiz: isQuiz)
+          : Image.network(
+        '${BaseUrl.imageUrl}/$iconPath',
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            _GuestFallbackContentIcon(isQuiz: isQuiz),
+      ),
     );
   }
 }
@@ -1014,18 +1037,16 @@ class _GuestFallbackContentIcon extends StatelessWidget {
   const _GuestFallbackContentIcon({required this.isQuiz});
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Icon(
-        isQuiz ? Icons.quiz_rounded : Icons.insert_drive_file_rounded,
-        size: 28,
-        color: FolderTheme.accent,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Center(
+    child: Icon(
+      isQuiz ? Icons.quiz_rounded : Icons.insert_drive_file_rounded,
+      size: 28,
+      color: FolderTheme.accent,
+    ),
+  );
 }
 
-// ─── Guest Section Header ─────────────────────────────────────────────────────
+// ─── Section Header ───────────────────────────────────────────────────────────
 class _GuestSectionHeader extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1079,7 +1100,7 @@ class _GuestSectionHeader extends StatelessWidget {
   }
 }
 
-// ─── Guest Content Empty State ────────────────────────────────────────────────
+// ─── Content Empty State ──────────────────────────────────────────────────────
 class _GuestContentEmptyState extends StatelessWidget {
   final VoidCallback onRetry;
 
@@ -1122,8 +1143,8 @@ class _GuestContentEmptyState extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Retry',
-                style: TextStyle(fontWeight: FontWeight.w700)),
+            label:
+            const Text('Retry', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
