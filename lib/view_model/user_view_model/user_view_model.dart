@@ -19,8 +19,9 @@ class UserViewModel with ChangeNotifier {
         logger.i("📧 CSRF: ${user.csrf}");
 
         logger.i("👤 Name: ${user.fullName}");
+        logger.i("id : ${user.id.toString()}");
       }
-
+      await prefs.setString('id', user.id.toString() ?? '');
       await prefs.setString('email', user.email ?? '');
       await prefs.setString('csrf', user.csrf ?? '');
       await prefs.setString('user_name', user.fullName ?? '');
@@ -43,6 +44,7 @@ class UserViewModel with ChangeNotifier {
 
     return UserModel(
       // session: prefs.getString('session'),
+      id: int.tryParse(prefs.getString('id') ?? '') ?? 0,
       email: prefs.getString('email'),
       fullName: prefs.getString('user_name'),
       role: prefs.getString('user_role'),

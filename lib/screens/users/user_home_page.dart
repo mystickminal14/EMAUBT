@@ -158,7 +158,7 @@ class _UserHomePageState extends State<UserHomePage>
         context,
         MaterialPageRoute(
           builder: (_) => LoginUserFreeFilesQuizSets(
-              userIdentifier: cachedEmail, isAdmin: widget.isAdmin),
+              userIdentifier: cachedEmail, isAdmin: widget.isAdmin,),
         ),
       ),
     ),
@@ -192,8 +192,9 @@ class _UserHomePageState extends State<UserHomePage>
                 ? widget.userEmail
                 : cachedEmail,
             isAdmin: widget.isAdmin,
-            fullName: '', profileImage: '',
-            userEmail: '', folderId: null, folderName: '',
+
+
+
           ),
         ),
       ),

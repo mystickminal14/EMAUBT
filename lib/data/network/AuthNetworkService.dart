@@ -89,6 +89,7 @@ class AuthNetworkApiService {
           }
 
           UserModel user = UserModel(
+            id: responseBody['data']['id'],
             phone: responseBody['data']['phone'],
             role: responseBody['data']['role'],
             email: responseBody['data']['email'],

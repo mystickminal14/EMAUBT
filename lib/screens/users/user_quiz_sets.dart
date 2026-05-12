@@ -2529,21 +2529,19 @@ class SubmitPage extends StatelessWidget {
                         Center(
                             child: ElevatedButton(
                                 onPressed: () {
-                                    Navigator.pushAndRemoveUntil(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => UserFolderDetailsPage(
-                                                folderId: folderId,
-                                                folderName: folderName,
-                                                userIdentifier: userIdentifier,
-                                                isAdmin: isAdmin,
-                                                userId: '',
-                                                userName: '',
-                                                role: '',
-                                            ),
-                                        ),
-                                            (Route<dynamic> route) => false,
-                                    );
+                                    // Navigator.pushAndRemoveUntil(
+                                    //     context,
+                                    //     MaterialPageRoute(
+                                    //         builder: (context) => UserFolderDetailsPage(
+                                    //             folderId: folderId,
+                                    //             folderName: folderName,
+                                    //             userIdentifier: userIdentifier,
+                                    //             isAdmin: isAdmin,
+                                    //             userId: 0,
+                                    //         ),
+                                    //     ),
+                                    //         (Route<dynamic> route) => false,
+                                    // );
                                 },
                                 style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blue[600],

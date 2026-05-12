@@ -29,7 +29,6 @@ class _FlashScreenState extends State<FlashScreen> {
   }
   Future<void> _checkAuthentication() async {
     final GetMeModel? user = await AuthViewModel().IsAuthenticated(context);
-
     if (user != null) {
       logger.i("User found: ${user.email}, ${user.fullName}, role: ${user.role}");
 

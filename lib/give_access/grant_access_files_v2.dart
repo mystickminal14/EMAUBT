@@ -69,7 +69,8 @@ class _GrantAccessFilesPageContentState
 
   void _setupScrollListeners() {
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels < _scrollController.position.maxScrollExtent - 200) return;
+      if (_scrollController.position.pixels <
+          _scrollController.position.maxScrollExtent - 200) return;
 
       final vm = context.read<AccessControlViewModel>();
       final isRevoke = _actionMode == _ActionMode.revoke;
@@ -77,12 +78,14 @@ class _GrantAccessFilesPageContentState
       // Load more files
       if (isRevoke) {
         if (vm.grantedFilesPagination?.hasNextPage == true &&
-            !vm.isGrantedFilesLoadingMore && !vm.isGrantedFilesLoading) {
+            !vm.isGrantedFilesLoadingMore &&
+            !vm.isGrantedFilesLoading) {
           vm.fetchGrantedFiles(widget.userId);
         }
       } else {
         if (vm.notGrantedFilesPagination?.hasNextPage == true &&
-            !vm.isNotGrantedFilesLoadingMore && !vm.isNotGrantedFilesLoading) {
+            !vm.isNotGrantedFilesLoadingMore &&
+            !vm.isNotGrantedFilesLoading) {
           vm.fetchNotGrantedFiles(widget.userId);
         }
       }
@@ -90,17 +93,20 @@ class _GrantAccessFilesPageContentState
       // Load more quiz sets
       if (isRevoke) {
         if (vm.grantedQuizSetsPagination?.hasNextPage == true &&
-            !vm.isGrantedQuizSetsLoadingMore && !vm.isGrantedQuizSetsLoading) {
+            !vm.isGrantedQuizSetsLoadingMore &&
+            !vm.isGrantedQuizSetsLoading) {
           vm.fetchGrantedQuizSets(widget.userId);
         }
       } else {
         if (vm.notGrantedQuizSetsPagination?.hasNextPage == true &&
-            !vm.isNotGrantedQuizSetsLoadingMore && !vm.isNotGrantedQuizSetsLoading) {
+            !vm.isNotGrantedQuizSetsLoadingMore &&
+            !vm.isNotGrantedQuizSetsLoading) {
           vm.fetchNotGrantedQuizSets(widget.userId);
         }
       }
     });
   }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -113,7 +119,9 @@ class _GrantAccessFilesPageContentState
         content: Row(
           children: [
             Icon(
-              isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+              isError
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_rounded,
               color: Colors.white,
               size: 18,
             ),
@@ -124,7 +132,8 @@ class _GrantAccessFilesPageContentState
         backgroundColor:
         isError ? const Color(0xFFEF4444) : const Color(0xFF22C55E),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: Duration(seconds: isError ? 5 : 3),
       ),
     );
@@ -210,7 +219,8 @@ class _GrantAccessFilesPageContentState
   Widget _buildActionButton(AccessControlViewModel viewModel) {
     final isRevoke = _actionMode == _ActionMode.revoke;
     final color = isRevoke ? const Color(0xFFEF4444) : FolderTheme.accent;
-    final label = isRevoke ? 'Revoke Selected Items' : 'Grant Access to Selected Items';
+    final label =
+    isRevoke ? 'Revoke Selected Items' : 'Grant Access to Selected Items';
     final icon = isRevoke ? Icons.lock_rounded : Icons.lock_open_rounded;
 
     final hasSelection = viewModel.selectedFiles.values.any((v) => v) ||
@@ -245,8 +255,10 @@ class _GrantAccessFilesPageContentState
           foregroundColor: Colors.white,
           disabledBackgroundColor: FolderTheme.border,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding:
+          const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
@@ -263,7 +275,8 @@ class _GrantAccessFilesPageContentState
         .toList();
 
     if (selectedFileIds.isEmpty && selectedQuizIds.isEmpty) {
-      _showSnackBar('Please select at least one item to grant', isError: true);
+      _showSnackBar('Please select at least one item to grant',
+          isError: true);
       return;
     }
 
@@ -310,17 +323,20 @@ class _GrantAccessFilesPageContentState
         .toList();
 
     if (selectedFileIds.isEmpty && selectedQuizIds.isEmpty) {
-      _showSnackBar('Please select at least one item to revoke', isError: true);
+      _showSnackBar('Please select at least one item to revoke',
+          isError: true);
       return;
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Confirm Revoke',
             style: TextStyle(
-                fontWeight: FontWeight.w700, color: FolderTheme.textMain)),
+                fontWeight: FontWeight.w700,
+                color: FolderTheme.textMain)),
         content: Text(
           'Revoke access for ${selectedFileIds.length + selectedQuizIds.length} selected item(s)?',
           style: const TextStyle(color: FolderTheme.textSub, height: 1.5),
@@ -385,7 +401,8 @@ class _GrantAccessFilesPageContentState
         final isRevoke = _actionMode == _ActionMode.revoke;
 
         // Get the appropriate data based on mode
-        final files = isRevoke ? viewModel.grantedFiles : viewModel.notGrantedFiles;
+        final files =
+        isRevoke ? viewModel.grantedFiles : viewModel.notGrantedFiles;
         final filesLoading = isRevoke
             ? viewModel.isGrantedFilesLoading
             : viewModel.isNotGrantedFilesLoading;
@@ -393,9 +410,8 @@ class _GrantAccessFilesPageContentState
             ? viewModel.isGrantedFilesLoadingMore
             : viewModel.isNotGrantedFilesLoadingMore;
 
-        final quizSets = isRevoke
-            ? viewModel.grantedQuizSets
-            : viewModel.notGrantedQuizSets;
+        final quizSets =
+        isRevoke ? viewModel.grantedQuizSets : viewModel.notGrantedQuizSets;
         final quizSetsLoading = isRevoke
             ? viewModel.isGrantedQuizSetsLoading
             : viewModel.isNotGrantedQuizSetsLoading;
@@ -422,6 +438,40 @@ class _GrantAccessFilesPageContentState
               ),
             ),
           ),
+
+          // ── Sticky bottom bar ──────────────────────────────────────────
+          bottomNavigationBar: Container(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              12,
+              20,
+              MediaQuery.of(context).padding.bottom + 16,
+            ),
+            decoration: BoxDecoration(
+              color: FolderTheme.surface,
+              border: Border(
+                top: BorderSide(color: FolderTheme.border),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _SelectionSummary(viewModel: viewModel),
+                if (viewModel.selectedFiles.values.any((v) => v) ||
+                    viewModel.selectedQuizSets.values.any((v) => v))
+                  const SizedBox(height: 10),
+                _buildActionButton(viewModel),
+              ],
+            ),
+          ),
+
           body: isLoading
               ? const Center(
               child: CircularProgressIndicator(
@@ -436,7 +486,7 @@ class _GrantAccessFilesPageContentState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Person card ────────────────────────────────
+                  // ── Person card ──────────────────────────────────
                   Container(
                     decoration: FolderTheme.cardDecoration,
                     padding: const EdgeInsets.all(16),
@@ -446,10 +496,12 @@ class _GrantAccessFilesPageContentState
                           width: 52,
                           height: 52,
                           decoration: BoxDecoration(
-                            color: FolderTheme.accent.withOpacity(0.12),
+                            color:
+                            FolderTheme.accent.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                                color: FolderTheme.accent.withOpacity(0.3),
+                                color: FolderTheme.accent
+                                    .withOpacity(0.3),
                                 width: 1.5),
                           ),
                           child: Icon(
@@ -463,7 +515,8 @@ class _GrantAccessFilesPageContentState
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
                             children: [
                               Text(
                                 widget.isAdmin ? 'Admin' : 'User',
@@ -502,14 +555,15 @@ class _GrantAccessFilesPageContentState
                         color: const Color(0xFFEF4444).withOpacity(0.08),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: const Color(0xFFEF4444).withOpacity(0.25)),
+                            color: const Color(0xFFEF4444)
+                                .withOpacity(0.25)),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
-                          const Icon(Icons.info_outline_rounded,
+                          Icon(Icons.info_outline_rounded,
                               size: 16, color: Color(0xFFEF4444)),
-                          const SizedBox(width: 8),
-                          const Expanded(
+                          SizedBox(width: 8),
+                          Expanded(
                             child: Text(
                               'Only items with an existing permission can be revoked.',
                               style: TextStyle(
@@ -523,10 +577,9 @@ class _GrantAccessFilesPageContentState
                     ),
 
                   const SizedBox(height: 24),
-                  // ── Files section ──────────────────────────────
+                  // ── Files section ────────────────────────────────
                   _SectionHeader(
-                      label: 'Files',
-                      count: files.length),
+                      label: 'Files', count: files.length),
                   const SizedBox(height: 12),
                   files.isEmpty
                       ? const _EmptyCard(
@@ -534,10 +587,13 @@ class _GrantAccessFilesPageContentState
                       message: 'No files available')
                       : ListView.builder(
                     shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: files.length + (filesLoadingMore ? 1 : 0),
+                    physics:
+                    const NeverScrollableScrollPhysics(),
+                    itemCount: files.length +
+                        (filesLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (index == files.length && filesLoadingMore) {
+                      if (index == files.length &&
+                          filesLoadingMore) {
                         return const Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(
@@ -548,34 +604,35 @@ class _GrantAccessFilesPageContentState
                       }
                       final item = files[index];
                       final itemId = item.id;
-                      final selected = viewModel.selectedFiles[itemId] ?? false;
-
-                      // Determine if item is granted (for revoke mode)
-                      final isItemGranted = isRevoke ||
-                          (item is dynamic && item.accessType != null && item.accessType != 'no_access');
+                      final selected =
+                          viewModel.selectedFiles[itemId] ??
+                              false;
 
                       return _SelectableItemCard(
                         index: index,
-                        icon: _buildItemIcon(
-                            item.iconPath, Icons.insert_drive_file_rounded),
+                        icon: _buildItemIcon(item.iconPath,
+                            Icons.insert_drive_file_rounded),
                         title: item.name,
-                        subtitle: isRevoke && item is dynamic && item.accessType != null
+                        subtitle: isRevoke &&
+                            item is dynamic &&
+                            item.accessType != null
                             ? 'Access Type: ${item.accessType}'
                             : null,
                         selected: selected,
                         enabled: true,
                         actionMode: _actionMode,
-                        onChanged: (v) => viewModel.toggleFileSelection(itemId, v ?? false),
+                        onChanged: (v) =>
+                            viewModel.toggleFileSelection(
+                                itemId, v ?? false),
                       );
                     },
                   ),
                   const SizedBox(height: 24),
                   Container(height: 1, color: FolderTheme.border),
                   const SizedBox(height: 24),
-                  // ── Quiz Sets section ──────────────────────────
+                  // ── Quiz Sets section ────────────────────────────
                   _SectionHeader(
-                      label: 'Quiz Sets',
-                      count: quizSets.length),
+                      label: 'Quiz Sets', count: quizSets.length),
                   const SizedBox(height: 12),
                   quizSets.isEmpty
                       ? const _EmptyCard(
@@ -583,10 +640,13 @@ class _GrantAccessFilesPageContentState
                       message: 'No quiz sets available')
                       : ListView.builder(
                     shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: quizSets.length + (quizSetsLoadingMore ? 1 : 0),
+                    physics:
+                    const NeverScrollableScrollPhysics(),
+                    itemCount: quizSets.length +
+                        (quizSetsLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (index == quizSets.length && quizSetsLoadingMore) {
+                      if (index == quizSets.length &&
+                          quizSetsLoadingMore) {
                         return const Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(
@@ -597,30 +657,30 @@ class _GrantAccessFilesPageContentState
                       }
                       final item = quizSets[index];
                       final itemId = item.id;
-                      final selected = viewModel.selectedQuizSets[itemId] ?? false;
+                      final selected =
+                          viewModel.selectedQuizSets[itemId] ??
+                              false;
 
                       return _SelectableItemCard(
                         index: index,
                         icon: _buildItemIcon(
                             item.iconPath, Icons.quiz_rounded),
                         title: item.name,
-                        subtitle: isRevoke && item is dynamic && item.accessType != null
+                        subtitle: isRevoke &&
+                            item is dynamic &&
+                            item.accessType != null
                             ? 'Access Type: ${item.accessType}'
                             : null,
                         selected: selected,
                         enabled: true,
                         actionMode: _actionMode,
-                        onChanged: (v) => viewModel.toggleQuizSetSelection(itemId, v ?? false),
+                        onChanged: (v) =>
+                            viewModel.toggleQuizSetSelection(
+                                itemId, v ?? false),
                       );
                     },
                   ),
-                  const SizedBox(height: 28),
-                  _SelectionSummary(viewModel: viewModel),
                   const SizedBox(height: 16),
-                  _buildActionButton(viewModel),
-                  const SizedBox(height: 32),
-                  Container(height: 1, color: FolderTheme.border),
-                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -655,7 +715,9 @@ class _ModeTab extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
-            color: selected ? selectedColor.withOpacity(0.1) : Colors.transparent,
+            color: selected
+                ? selectedColor.withOpacity(0.1)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -776,7 +838,8 @@ class _SelectableItemCard extends StatelessWidget {
           checkboxShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           secondary: Container(
             width: 44,
             height: 44,
@@ -822,7 +885,8 @@ class _EmptyCard extends StatelessWidget {
       decoration: FolderTheme.cardDecoration,
       child: Column(
         children: [
-          Icon(icon, size: 48, color: FolderTheme.textSub.withOpacity(0.5)),
+          Icon(icon,
+              size: 48, color: FolderTheme.textSub.withOpacity(0.5)),
           const SizedBox(height: 12),
           Text(
             message,
@@ -845,8 +909,10 @@ class _SelectionSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedFilesCount = viewModel.selectedFiles.values.where((v) => v).length;
-    final selectedQuizCount = viewModel.selectedQuizSets.values.where((v) => v).length;
+    final selectedFilesCount =
+        viewModel.selectedFiles.values.where((v) => v).length;
+    final selectedQuizCount =
+        viewModel.selectedQuizSets.values.where((v) => v).length;
     final totalSelected = selectedFilesCount + selectedQuizCount;
 
     if (totalSelected == 0) return const SizedBox.shrink();

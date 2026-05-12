@@ -1,10 +1,13 @@
 import 'dart:io';
+import 'package:ema_app/guest_free_files_quiz_sets.dart';
 import 'package:ema_app/screens/notice/user_notice_screen.dart';
 import 'package:ema_app/screens/users/contactuspage.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
+import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../auth/login_page.dart';
 import '../../eps_section_page.dart';
 
@@ -117,24 +120,16 @@ class _HomePageState extends State<HomePage>
           MaterialPageRoute(builder: (_) => const UserNoticeScreen())),
     ),
     _NavItem(
-      icon: Icons.quiz_rounded,
-      label: 'EPS TOPIK\nNew UBT',
+      icon: Icons.explore,
+      label: 'Explore',
       color: const Color(0xFFF7956C),
-      assetIcon: 'assets/ema.jpg',
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => EPSSectionPage(
-            userIdentifier: widget.userIdentifier,
-            isAdmin: widget.isAdmin,
-            fullName: widget.fullName,
-            profileImage: '',
-            userEmail: '',
-            folderId: null,
-            folderName: '',
-          ),
+      // assetIcon: 'assets/ema.jpg',
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => UpdatedFolderViewModel(),
+          child: const GuestFreeFilesQuizSets(),
         ),
-      ),
+      )),
     ),
     _NavItem(
       icon: Icons.contact_mail_rounded,

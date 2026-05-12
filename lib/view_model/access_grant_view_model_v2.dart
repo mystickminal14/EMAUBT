@@ -116,6 +116,7 @@ class UserGrantedFile {
   final String accessType;
   final String status;
   final String createdAt;
+  final int folderId;
   final String folderName;
   final String? folderIconPath;
 
@@ -127,6 +128,7 @@ class UserGrantedFile {
     required this.accessType,
     required this.status,
     required this.createdAt,
+    required this.folderId,
     required this.folderName,
     this.folderIconPath,
   });
@@ -140,6 +142,7 @@ class UserGrantedFile {
         accessType: json['access_type'] as String,
         status: json['status'] as String,
         createdAt: json['created_at'] as String,
+        folderId: json['folder_id'] as int,
         folderName: json['folder_name'] as String,
         folderIconPath: json['folder_icon_path'] as String?,
       );
@@ -497,6 +500,13 @@ class AccessControlViewModel extends ChangeNotifier {
   // Convenience: load all 4 grant-inspection lists for a user at once.
   // Call this when first opening the user-detail / access-inspection screen.
   // ══════════════════════════════════════════════════════════════════════════
+  Future<void> fetchUserGrantData(int userId, {bool refresh = false}) async {
+    _currentUserId = userId;
+    await Future.wait([
+      fetchGrantedFiles(userId, refresh: refresh),
+      fetchGrantedQuizSets(userId, refresh: refresh),
+    ]);
+  }
   Future<void> fetchAllUserGrantData(int userId, {bool refresh = false}) async {
     _currentUserId = userId;
     await Future.wait([
