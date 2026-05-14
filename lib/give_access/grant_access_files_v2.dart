@@ -280,13 +280,13 @@ class _GrantAccessFilesPageContentState
       return;
     }
 
-    final accessTimesText = viewModel.accessTimesController.text;
-    final accessTimes = int.tryParse(accessTimesText);
+    final accessTimes = int.tryParse(viewModel.accessTimesController.text.trim());
 
     // Process files
     for (final fileId in selectedFileIds) {
       await viewModel.grantAccess(
         context,
+        times:accessTimes ?? 0,
         userId: widget.userId,
         itemId: fileId,
         itemType: 'file',
@@ -298,6 +298,7 @@ class _GrantAccessFilesPageContentState
     for (final quizId in selectedQuizIds) {
       await viewModel.grantAccess(
         context,
+        times:accessTimes ?? 0,
         userId: widget.userId,
         itemId: quizId,
         itemType: 'quiz_set',
@@ -369,6 +370,7 @@ class _GrantAccessFilesPageContentState
     for (final fileId in selectedFileIds) {
       await viewModel.grantAccess(
         context,
+        times: 0,
         userId: widget.userId,
         itemId: fileId,
         itemType: 'file',
@@ -380,6 +382,7 @@ class _GrantAccessFilesPageContentState
     for (final quizId in selectedQuizIds) {
       await viewModel.grantAccess(
         context,
+        times: 0,
         userId: widget.userId,
         itemId: quizId,
         itemType: 'quiz_set',
@@ -547,6 +550,10 @@ class _GrantAccessFilesPageContentState
                   const SizedBox(height: 16),
                   _buildModeToggle(),
                   const SizedBox(height: 16),
+                  if (!isRevoke) ...[
+                    _buildAccessTimesField(viewModel),
+                    const SizedBox(height: 16),
+                  ],
                   if (isRevoke)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -968,4 +975,68 @@ class _SelectionSummary extends StatelessWidget {
       ),
     );
   }
+}
+Widget _buildAccessTimesField(AccessControlViewModel viewModel) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Row(
+        children: [
+          Icon(Icons.repeat_rounded, size: 16, color: FolderTheme.textSub),
+          SizedBox(width: 6),
+          Text(
+            'Number of Access Times',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: FolderTheme.textSub,
+            ),
+          ),
+          SizedBox(width: 6),
+
+        ],
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        controller: viewModel.accessTimesController,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          hintText: 'e.g. 3  (leave blank for unlimited)',
+          hintStyle: TextStyle(
+            color: FolderTheme.textSub.withOpacity(0.6),
+            fontSize: 14,
+          ),
+          prefixIcon: const Icon(
+            Icons.timer_outlined,
+            size: 20,
+            color: FolderTheme.textSub,
+          ),
+          suffixText: 'times',
+          suffixStyle: TextStyle(
+            fontSize: 13,
+            color: FolderTheme.textSub,
+            fontWeight: FontWeight.w500,
+          ),
+          filled: true,
+          fillColor: FolderTheme.surface,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: FolderTheme.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: FolderTheme.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: FolderTheme.accent, width: 1.5),
+          ),
+        ),
+      ),
+    ],
+  );
 }

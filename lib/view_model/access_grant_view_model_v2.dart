@@ -228,7 +228,6 @@ class AccessControlViewModel extends ChangeNotifier {
   List<FolderFileModel> folderFiles = [];
   List<FolderQuizSetModel> folderQuizSets = [];
   int? _currentFolderId;
-
   // ── Selection tracking for UI ──────────────────────────────────────────
   final Map<int, bool> selectedFiles = {};
   final Map<int, bool> selectedQuizSets = {};
@@ -583,6 +582,7 @@ class AccessControlViewModel extends ChangeNotifier {
   // ══════════════════════════════════════════════════════════════════════════
   Future<void> grantAccess(
       BuildContext context, {
+        required int times,
         required int userId,
         required int itemId,
         required String itemType,
