@@ -121,9 +121,9 @@ class _HomePageState extends State<HomePage>
     ),
     _NavItem(
       icon: Icons.explore,
-      label: 'Explore',
+      label: 'EMA UTB',
       color: const Color(0xFFF7956C),
-      // assetIcon: 'assets/ema.jpg',
+      assetIcon: 'assets/ema.jpg',
       onTap: () => Navigator.push(context, MaterialPageRoute(
         builder: (_) => GuestFreeFilesQuizSets(),
       )),

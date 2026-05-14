@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
@@ -12,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -730,9 +730,9 @@ class _ContentListState extends State<_ContentList> {
   @override
   void initState() {
     super.initState();
-    _scrollCtrl = ScrollController()..addListener(_onScroll);  // ← ADD
+    _scrollCtrl = ScrollController()..addListener(_onScroll);
   }
-  void _onScroll() {                                            // ← ADD ENTIRE METHOD
+  void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
     final threshold = _scrollCtrl.position.maxScrollExtent - 200;
     if (_scrollCtrl.position.pixels >= threshold) {
@@ -741,21 +741,88 @@ class _ContentListState extends State<_ContentList> {
     }
   }
   // ── Download & open a file ─────────────────────────────────────────────────
-  Future<void> _downloadAndOpenFile(
-      BuildContext context, FileModel file) async {
+  Future<void> _downloadAndOpenFile(BuildContext context, FileModel file) async {
     final messenger = ScaffoldMessenger.of(context);
 
-    messenger.showSnackBar(SnackBar(
-      content: Text('Opening: ${file.name ?? ""}…'),
-      backgroundColor: FolderTheme.accent,
-      duration: const Duration(seconds: 2),
-    ));
+    // ── 1. Permission check ──────────────────────────────────────────────────
+    if (Platform.isAndroid) {
+      final sdk = await _getSdkInt();
+      if (sdk < 33) {
+        final status = await Permission.storage.request();
+        if (status.isPermanentlyDenied) {
+          messenger.showSnackBar(SnackBar(
+            content: const Text('Permission permanently denied.'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Open Settings',
+              textColor: Colors.white,
+              onPressed: openAppSettings,
+            ),
+          ));
+          return;
+        }
+        if (!status.isGranted) {
+          messenger.showSnackBar(const SnackBar(
+            content: Text('Storage permission required to download files.'),
+            backgroundColor: Colors.red,
+          ));
+          return;
+        }
+      }
+    }
+
+    // ── 2. Show downloading dialog ───────────────────────────────────────────
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: FolderTheme.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              const CircularProgressIndicator(
+                color: FolderTheme.accent,
+                strokeWidth: 3,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Downloading…',
+                style: const TextStyle(
+                  color: FolderTheme.textMain,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                file.name ?? 'file',
+                style: const TextStyle(
+                  color: FolderTheme.textSub,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
 
     try {
+      // ── 3. Download ──────────────────────────────────────────────────────────
       final headers = await getAuthHeaders();
-      // file.downloadUrl resolves to BaseUrl.baseUrl + /files/{id}/download
       final response =
       await http.get(Uri.parse(file.downloadUrl), headers: headers);
+
+      // ── 4. Close dialog ──────────────────────────────────────────────────────
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
 
       if (response.statusCode != 200) {
         if (!context.mounted) return;
@@ -766,35 +833,51 @@ class _ContentListState extends State<_ContentList> {
         return;
       }
 
-      final ext =
-      file.extension.isNotEmpty ? '.${file.extension}' : '';
+      // ── 5. Save file ─────────────────────────────────────────────────────────
+      final ext = file.extension.isNotEmpty ? '.${file.extension}' : '';
       final safeName =
       (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
 
-      final dir = Platform.isAndroid
-          ? Directory('/storage/emulated/0/Download')
-          : await getApplicationDocumentsDirectory();
+      final saveDir = (await getExternalStorageDirectory())!;
+      if (!await saveDir.exists()) await saveDir.create(recursive: true);
 
-      if (!await dir.exists()) await dir.create(recursive: true);
-
-      final savePath = '${dir.path}/$safeName$ext';
+      final savePath = '${saveDir.path}/$safeName$ext';
       await File(savePath).writeAsBytes(response.bodyBytes);
 
       if (!context.mounted) return;
 
+      // ── 6. Open file ─────────────────────────────────────────────────────────
       messenger.showSnackBar(SnackBar(
-        content: Text('Saved to $savePath'),
+        content: const Text('Download complete! Opening…'),
         backgroundColor: Colors.green.shade600,
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 2),
       ));
 
-      await OpenFile.open(savePath);
+      final result = await OpenFile.open(savePath);
+      if (result.type != ResultType.done) {
+        if (!context.mounted) return;
+        messenger.showSnackBar(SnackBar(
+          content: Text('No app found to open this file: ${result.message}'),
+          backgroundColor: Colors.orange.shade600,
+        ));
+      }
     } catch (e) {
+      // ── Close dialog on error too ────────────────────────────────────────────
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
       if (!context.mounted) return;
       messenger.showSnackBar(SnackBar(
         content: Text('Error: $e'),
         backgroundColor: Colors.red.shade600,
       ));
+    }
+  }
+
+  Future<int> _getSdkInt() async {
+    try {
+      final result = await Process.run('getprop', ['ro.build.version.sdk']);
+      return int.tryParse(result.stdout.toString().trim()) ?? 0;
+    } catch (_) {
+      return 0;
     }
   }
 
