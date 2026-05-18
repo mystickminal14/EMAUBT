@@ -207,6 +207,10 @@ class AccessControlViewModel extends ChangeNotifier {
   final Logger _logger = Logger();
   final NetworkApiService _apiService = NetworkApiService();
 
+  // ── Status filter constants ────────────────────────────────────────────
+  static const String _fileStatusFilter = 'active';
+  static const String _quizStatusFilter = 'published';
+
   // ── Loading states ─────────────────────────────────────────────────────
   bool isLoading = false;
   bool isActionLoading = false;
@@ -235,7 +239,7 @@ class AccessControlViewModel extends ChangeNotifier {
 
   // ══════════════════════════════════════════════════════════════════════════
   // USER-GRANT INSPECTION — Granted Files
-  // GET /api/admin/users/{userId}/files/granted?page=N&per_page=20
+  // GET /api/admin/users/{userId}/files/granted?page=N&per_page=20&status=active
   // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedFile> grantedFiles = [];
   PaginationMeta? grantedFilesPagination;
@@ -264,7 +268,7 @@ class AccessControlViewModel extends ChangeNotifier {
       notifyListeners();
 
       final response = await _apiService.getApiResponse(
-        '${AccessEndpoints.userGrantedFiles(userId)}?page=$_grantedFilesPage&per_page=20',
+        '${AccessEndpoints.userGrantedFiles(userId)}?page=$_grantedFilesPage&per_page=20&status=$_fileStatusFilter',
       );
 
       if (response['success'] == true) {
@@ -301,7 +305,7 @@ class AccessControlViewModel extends ChangeNotifier {
 
   // ══════════════════════════════════════════════════════════════════════════
   // USER-GRANT INSPECTION — Not-Granted Files
-  // GET /api/admin/users/{userId}/files/not-granted?page=N&per_page=20
+  // GET /api/admin/users/{userId}/files/not-granted?page=N&per_page=20&status=active
   // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedFile> notGrantedFiles = [];
   PaginationMeta? notGrantedFilesPagination;
@@ -329,7 +333,7 @@ class AccessControlViewModel extends ChangeNotifier {
       notifyListeners();
 
       final response = await _apiService.getApiResponse(
-        '${AccessEndpoints.userNotGrantedFiles(userId)}?page=$_notGrantedFilesPage&per_page=20',
+        '${AccessEndpoints.userNotGrantedFiles(userId)}?page=$_notGrantedFilesPage&per_page=20&status=$_fileStatusFilter',
       );
 
       if (response['success'] == true) {
@@ -366,7 +370,7 @@ class AccessControlViewModel extends ChangeNotifier {
 
   // ══════════════════════════════════════════════════════════════════════════
   // USER-GRANT INSPECTION — Granted Quiz Sets
-  // GET /api/admin/users/{userId}/quiz-sets/granted?page=N&per_page=20
+  // GET /api/admin/users/{userId}/quiz-sets/granted?page=N&per_page=20&status=published
   // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedQuizSet> grantedQuizSets = [];
   PaginationMeta? grantedQuizSetsPagination;
@@ -394,7 +398,7 @@ class AccessControlViewModel extends ChangeNotifier {
       notifyListeners();
 
       final response = await _apiService.getApiResponse(
-        '${AccessEndpoints.userGrantedQuizSets(userId)}?page=$_grantedQuizSetsPage&per_page=20',
+        '${AccessEndpoints.userGrantedQuizSets(userId)}?page=$_grantedQuizSetsPage&per_page=20&status=$_quizStatusFilter',
       );
 
       if (response['success'] == true) {
@@ -431,7 +435,7 @@ class AccessControlViewModel extends ChangeNotifier {
 
   // ══════════════════════════════════════════════════════════════════════════
   // USER-GRANT INSPECTION — Not-Granted Quiz Sets
-  // GET /api/admin/users/{userId}/quiz-sets/not-granted?page=N&per_page=20
+  // GET /api/admin/users/{userId}/quiz-sets/not-granted?page=N&per_page=20&status=published
   // ══════════════════════════════════════════════════════════════════════════
   List<UserGrantedQuizSet> notGrantedQuizSets = [];
   PaginationMeta? notGrantedQuizSetsPagination;
@@ -460,7 +464,7 @@ class AccessControlViewModel extends ChangeNotifier {
       notifyListeners();
 
       final response = await _apiService.getApiResponse(
-        '${AccessEndpoints.userNotGrantedQuizSets(userId)}?page=$_notGrantedQuizSetsPage&per_page=20',
+        '${AccessEndpoints.userNotGrantedQuizSets(userId)}?page=$_notGrantedQuizSetsPage&per_page=20&status=$_quizStatusFilter',
       );
 
       if (response['success'] == true) {
@@ -499,13 +503,6 @@ class AccessControlViewModel extends ChangeNotifier {
   // Convenience: load all 4 grant-inspection lists for a user at once.
   // Call this when first opening the user-detail / access-inspection screen.
   // ══════════════════════════════════════════════════════════════════════════
-  Future<void> fetchUserGrantData(int userId, {bool refresh = false}) async {
-    _currentUserId = userId;
-    await Future.wait([
-      fetchGrantedFiles(userId, refresh: refresh),
-      fetchGrantedQuizSets(userId, refresh: refresh),
-    ]);
-  }
   Future<void> fetchAllUserGrantData(int userId, {bool refresh = false}) async {
     _currentUserId = userId;
     await Future.wait([
@@ -530,7 +527,7 @@ class AccessControlViewModel extends ChangeNotifier {
     if (grantedFilesPagination?.hasNextPage == true &&
         !isGrantedFilesLoadingMore &&
         !isGrantedFilesLoading) {
-      fetchGrantedFiles(_currentUserId); // userId is not needed for pagination, but we need to pass something
+      fetchGrantedFiles(_currentUserId);
     }
   }
 
@@ -538,7 +535,7 @@ class AccessControlViewModel extends ChangeNotifier {
     if (notGrantedFilesPagination?.hasNextPage == true &&
         !isNotGrantedFilesLoadingMore &&
         !isNotGrantedFilesLoading) {
-      fetchNotGrantedFiles(0);
+      fetchNotGrantedFiles(_currentUserId);
     }
   }
 
@@ -546,7 +543,7 @@ class AccessControlViewModel extends ChangeNotifier {
     if (grantedQuizSetsPagination?.hasNextPage == true &&
         !isGrantedQuizSetsLoadingMore &&
         !isGrantedQuizSetsLoading) {
-      fetchGrantedQuizSets(0);
+      fetchGrantedQuizSets(_currentUserId);
     }
   }
 
@@ -554,7 +551,7 @@ class AccessControlViewModel extends ChangeNotifier {
     if (notGrantedQuizSetsPagination?.hasNextPage == true &&
         !isNotGrantedQuizSetsLoadingMore &&
         !isNotGrantedQuizSetsLoading) {
-      fetchNotGrantedQuizSets(0);
+      fetchNotGrantedQuizSets(_currentUserId);
     }
   }
 

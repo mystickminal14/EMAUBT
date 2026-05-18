@@ -1,12 +1,16 @@
 import 'dart:io';
 
 import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
+import 'package:ema_app/model/folder_mode_v2/new_quiz_set_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
 import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
+import 'package:ema_app/view_model/folders/new_files_vm.dart';
+import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -14,13 +18,13 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
-// ─── Entry point (provides ViewModel) ────────────────────────────────────────
+// ─── Entry point (provides ViewModels) ───────────────────────────────────────
 class UserFolderDetailsPage extends StatelessWidget {
   final String folderId;
   final String folderName;
   final String userIdentifier;
   final bool isAdmin;
-  final int userId; // needed to fetch granted items for this user
+  final int userId;
 
   const UserFolderDetailsPage({
     super.key,
@@ -66,8 +70,40 @@ class UserFolderDetailsPage extends StatelessWidget {
       );
     }
 
-    return ChangeNotifierProvider(
-      create: (_) => AccessControlViewModel()..fetchUserGrantData(userId),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) {
+            final vm = AccessControlViewModel();
+            if (!isAdmin) {
+              vm.fetchAllUserGrantData(userId);
+            }
+            return vm;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (ctx) {
+            final vm = FolderFilesViewModel();
+            if (isAdmin) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                vm.fetchFiles(ctx, folderIdInt, refresh: true);
+              });
+            }
+            return vm;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (ctx) {
+            final vm = FolderQuizSetsViewModel();
+            if (isAdmin) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                vm.fetchQuizSets(ctx, folderIdInt, refresh: true);
+              });
+            }
+            return vm;
+          },
+        ),
+      ],
       child: _UserFolderDetailsContent(
         folderId: folderIdInt,
         folderName: folderName,
@@ -100,20 +136,24 @@ class _UserFolderDetailsContent extends StatefulWidget {
       _UserFolderDetailsContentState();
 }
 
-class _UserFolderDetailsContentState
-    extends State<_UserFolderDetailsContent> {
+class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
+    with SingleTickerProviderStateMixin {
   // ── Cached user info ──────────────────────────────────────────────────────
   String _cachedFullName = '';
   String _cachedProfileImage = '';
   String _cachedUserEmail = '';
 
-  // ── Scroll ────────────────────────────────────────────────────────────────
-  late final ScrollController _scrollCtrl;
+  // ── Scroll & Tabs ─────────────────────────────────────────────────────────
+  late final ScrollController _filesScrollCtrl;
+  late final ScrollController _quizScrollCtrl;
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _scrollCtrl = ScrollController()..addListener(_onScroll);
+    _filesScrollCtrl = ScrollController()..addListener(_onFilesScroll);
+    _quizScrollCtrl = ScrollController()..addListener(_onQuizScroll);
+    _tabController = TabController(length: 2, vsync: this);
     _initUserInfo();
   }
 
@@ -122,64 +162,126 @@ class _UserFolderDetailsContentState
     final user = await userVm.getUser();
     if (user != null && mounted) {
       setState(() {
-        _cachedFullName     = user.fullName ?? '';
-        _cachedProfileImage = user.image    ?? '';
-        _cachedUserEmail    = user.email    ?? '';
+        _cachedFullName = user.fullName ?? '';
+        _cachedProfileImage = user.image ?? '';
+        _cachedUserEmail = user.email ?? '';
       });
     }
   }
 
-  // ── Scroll near bottom → load next pages ─────────────────────────────────
-  void _onScroll() {
-    if (!_scrollCtrl.hasClients) return;
-    final pos       = _scrollCtrl.position;
+  // ── Scroll handlers ──────────────────────────────────────────────────────
+  bool _isNearBottom(ScrollController ctrl) {
+    if (!ctrl.hasClients) return false;
+    final pos = ctrl.position;
     final maxScroll = pos.maxScrollExtent;
-    final current   = pos.pixels;
-    if (maxScroll <= 0) return;
-
+    final current = pos.pixels;
+    if (maxScroll <= 0) return false;
     final threshold = maxScroll > 200 ? maxScroll - 200 : maxScroll * 0.9;
-    if (current < threshold) return;
+    return current >= threshold;
+  }
 
-    final vm = context.read<AccessControlViewModel>();
+  void _onFilesScroll() {
+    if (!_isNearBottom(_filesScrollCtrl)) return;
 
-    if (!vm.isGrantedFilesLoadingMore &&
-        !vm.isGrantedFilesLoading &&
-        vm.grantedFilesPagination?.hasNextPage == true) {
-      vm.fetchGrantedFiles(widget.userId);
+    if (widget.isAdmin) {
+      final filesVm = context.read<FolderFilesViewModel>();
+      if (filesVm.hasMorePages &&
+          !filesVm.isFetchingMore &&
+          !filesVm.isLoading) {
+        filesVm.fetchNextPage(context, widget.folderId);
+      }
+    } else {
+      final vm = context.read<AccessControlViewModel>();
+      if (!vm.isGrantedFilesLoadingMore &&
+          !vm.isGrantedFilesLoading &&
+          vm.grantedFilesPagination?.hasNextPage == true) {
+        vm.fetchGrantedFiles(widget.userId);
+      }
+      if (!vm.isNotGrantedFilesLoadingMore &&
+          !vm.isNotGrantedFilesLoading &&
+          vm.notGrantedFilesPagination?.hasNextPage == true) {
+        vm.fetchNotGrantedFiles(widget.userId);
+      }
     }
+  }
 
-    if (!vm.isGrantedQuizSetsLoadingMore &&
-        !vm.isGrantedQuizSetsLoading &&
-        vm.grantedQuizSetsPagination?.hasNextPage == true) {
-      vm.fetchGrantedQuizSets(widget.userId);
+  void _onQuizScroll() {
+    if (!_isNearBottom(_quizScrollCtrl)) return;
+
+    if (widget.isAdmin) {
+      final quizVm = context.read<FolderQuizSetsViewModel>();
+      if (quizVm.hasMorePages &&
+          !quizVm.isFetchingMore &&
+          !quizVm.isLoading) {
+        quizVm.fetchNextPage(context, widget.folderId);
+      }
+    } else {
+      final vm = context.read<AccessControlViewModel>();
+      if (!vm.isGrantedQuizSetsLoadingMore &&
+          !vm.isGrantedQuizSetsLoading &&
+          vm.grantedQuizSetsPagination?.hasNextPage == true) {
+        vm.fetchGrantedQuizSets(widget.userId);
+      }
+      if (!vm.isNotGrantedQuizSetsLoadingMore &&
+          !vm.isNotGrantedQuizSetsLoading &&
+          vm.notGrantedQuizSetsPagination?.hasNextPage == true) {
+        vm.fetchNotGrantedQuizSets(widget.userId);
+      }
     }
   }
 
   // ── Refresh ───────────────────────────────────────────────────────────────
   Future<void> _refresh() async {
-    await context.read<AccessControlViewModel>().refreshAllData(widget.userId);
+    if (widget.isAdmin) {
+      await Future.wait([
+        context
+            .read<FolderFilesViewModel>()
+            .fetchFiles(context, widget.folderId, refresh: true),
+        context
+            .read<FolderQuizSetsViewModel>()
+            .fetchQuizSets(context, widget.folderId, refresh: true),
+      ]);
+    } else {
+      await context
+          .read<AccessControlViewModel>()
+          .refreshAllData(widget.userId);
+    }
   }
 
   @override
   void dispose() {
-    _scrollCtrl.dispose();
+    _filesScrollCtrl.dispose();
+    _quizScrollCtrl.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
-  // ─── Download & open file ─────────────────────────────────────────────────
-  Future<void> _downloadAndOpenFile(
+  // ─── Download helpers ─────────────────────────────────────────────────────
+  Future<void> _downloadGrantedFile(
       BuildContext ctx, UserGrantedFile file) async {
+    await _downloadFile(ctx, file.name, file.filePath);
+  }
+
+  Future<void> _downloadAdminFile(BuildContext ctx, FileModel file) async {
+    final name = file.name ?? 'file';
+    final path = file.filePath ?? '';
+    if (path.isEmpty) return;
+    await _downloadFile(ctx, name, path);
+  }
+
+  Future<void> _downloadFile(
+      BuildContext ctx, String name, String filePath) async {
     final messenger = ScaffoldMessenger.of(ctx);
     messenger.showSnackBar(SnackBar(
-      content: Text('Opening: ${file.name}…'),
+      content: Text('Opening: $name…'),
       backgroundColor: FolderTheme.accent,
       duration: const Duration(seconds: 2),
     ));
 
     try {
-      final headers     = await getAuthHeaders();
-      final downloadUrl = '${BaseUrl.baseUrl}/${file.filePath}';
-      final response    =
+      final headers = await getAuthHeaders();
+      final downloadUrl = '${BaseUrl.baseUrl}/$filePath';
+      final response =
       await http.get(Uri.parse(downloadUrl), headers: headers);
 
       if (response.statusCode != 200) {
@@ -191,8 +293,7 @@ class _UserFolderDetailsContentState
         return;
       }
 
-      final safeName =
-      file.name.replaceAll(RegExp(r'[^\w\-.]'), '_');
+      final safeName = name.replaceAll(RegExp(r'[^\w\-.]'), '_');
 
       final dir = Platform.isAndroid
           ? Directory('/storage/emulated/0/Download')
@@ -218,20 +319,60 @@ class _UserFolderDetailsContentState
     }
   }
 
-  // ─── Open quiz set ────────────────────────────────────────────────────────
-  void _openQuizSet(BuildContext ctx, UserGrantedQuizSet item) {
+  // ─── Show locked message ──────────────────────────────────────────────────
+  void _showLockedMessage(BuildContext ctx, String itemName) {
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Access not granted: $itemName',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red.shade600,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // ─── Open quiz set helpers ────────────────────────────────────────────────
+  void _openGrantedQuizSet(BuildContext ctx, UserGrantedQuizSet item) {
     Navigator.push(
       ctx,
       MaterialPageRoute(
         builder: (_) => UserQuizLoadPage(
-          quizSetId:      item.id,
-          quizSetName:    item.name,
-          folderId:       widget.folderId.toString(),
-          folderName:     widget.folderName,
+          quizSetId: item.id,
+          quizSetName: item.name,
+          folderId: widget.folderId.toString(),
+          folderName: widget.folderName,
           userIdentifier: widget.userIdentifier,
-          isAdmin:        widget.isAdmin,
-          fullName:       _cachedFullName,
-          userEmail:      _cachedUserEmail,
+          isAdmin: widget.isAdmin,
+          fullName: _cachedFullName,
+          userEmail: _cachedUserEmail,
+        ),
+      ),
+    ).then((_) => _refresh());
+  }
+
+  void _openAdminQuizSet(BuildContext ctx, QuizSetModel item) {
+    Navigator.push(
+      ctx,
+      MaterialPageRoute(
+        builder: (_) => UserQuizLoadPage(
+          quizSetId: item.id ?? 0,
+          quizSetName: item.name ?? '',
+          folderId: widget.folderId.toString(),
+          folderName: widget.folderName,
+          userIdentifier: widget.userIdentifier,
+          isAdmin: widget.isAdmin,
+          fullName: _cachedFullName,
+          userEmail: _cachedUserEmail,
         ),
       ),
     ).then((_) => _refresh());
@@ -246,13 +387,13 @@ class _UserFolderDetailsContentState
         MaterialPageRoute(
           builder: (_) => UserHomePage(
             userIdentifier: widget.userIdentifier,
-            isAdmin:        widget.isAdmin,
-            fullName:       _cachedFullName,
-            profileImage:   _cachedProfileImage,
-            userEmail:      _cachedUserEmail.isNotEmpty
+            isAdmin: widget.isAdmin,
+            fullName: _cachedFullName,
+            profileImage: _cachedProfileImage,
+            userEmail: _cachedUserEmail.isNotEmpty
                 ? _cachedUserEmail
                 : widget.userIdentifier,
-            folderId:   null,
+            folderId: null,
             folderName: '',
           ),
         ),
@@ -264,8 +405,8 @@ class _UserFolderDetailsContentState
         MaterialPageRoute(
           builder: (_) => HomePage(
             userIdentifier: '',
-            isAdmin:        false,
-            fullName:       _cachedFullName,
+            isAdmin: false,
+            fullName: _cachedFullName,
           ),
         ),
             (route) => false,
@@ -283,7 +424,18 @@ class _UserFolderDetailsContentState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
-            Expanded(child: _buildBody(context)),
+            _buildTabBar(context),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Tab 0 — Files
+                  widget.isAdmin ? _buildAdminFilesTab() : _buildUserFilesTab(),
+                  // Tab 1 — Quiz Sets
+                  widget.isAdmin ? _buildAdminQuizTab() : _buildUserQuizTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -292,73 +444,205 @@ class _UserFolderDetailsContentState
 
   // ─── Header ───────────────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
-    return Consumer<AccessControlViewModel>(
-      builder: (_, vm, __) {
-        final isLoading =
-            vm.isGrantedFilesLoading || vm.isGrantedQuizSetsLoading;
-        return Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          decoration: BoxDecoration(
-            color: FolderTheme.card,
-            border: Border(
-                bottom: BorderSide(color: FolderTheme.border, width: 1)),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: FolderTheme.card,
+        border:
+        Border(bottom: BorderSide(color: FolderTheme.border, width: 1)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: FolderTheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: FolderTheme.border),
+              ),
+              child: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: FolderTheme.textMain, size: 16),
+            ),
           ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.folderName,
+                  style: FolderTheme.screenTitle.copyWith(fontSize: 20),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  widget.isAdmin ? 'Admin view · Full access' : 'Your content',
+                  style: FolderTheme.screenSubtitle,
+                ),
+              ],
+            ),
+          ),
+          _RefreshButton(isAdmin: widget.isAdmin, onRefresh: _refresh),
+          IconButton(
+            onPressed: () => _goHome(context),
+            icon: const Icon(Icons.home_rounded,
+                color: FolderTheme.textSub, size: 22),
+            tooltip: 'Home',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Tab Bar (reactive counts) ────────────────────────────────────────────
+  // NOTE: Status filtering is now handled server-side via query params
+  // (status=active for files, status=published for quiz sets), so we only
+  // filter client-side by folderId here.
+  Widget _buildTabBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: FolderTheme.card,
+        border:
+        Border(bottom: BorderSide(color: FolderTheme.border, width: 1)),
+      ),
+      child: widget.isAdmin
+          ? Consumer2<FolderFilesViewModel, FolderQuizSetsViewModel>(
+        builder: (_, filesVm, quizVm, __) {
+          return _tabBarWidget(
+            fileCount: filesVm.files.length,
+            quizCount: quizVm.quizSets.length,
+          );
+        },
+      )
+          : Consumer<AccessControlViewModel>(
+        builder: (_, vm, __) {
+          final filesTotal = vm.grantedFiles
+              .where((f) => f.folderId == widget.folderId)
+              .length +
+              vm.notGrantedFiles
+                  .where((f) => f.folderId == widget.folderId)
+                  .length;
+          final quizTotal = vm.grantedQuizSets
+              .where((q) => q.folderId == widget.folderId)
+              .length +
+              vm.notGrantedQuizSets
+                  .where((q) => q.folderId == widget.folderId)
+                  .length;
+          return _tabBarWidget(
+              fileCount: filesTotal, quizCount: quizTotal);
+        },
+      ),
+    );
+  }
+
+  Widget _tabBarWidget({required int fileCount, required int quizCount}) {
+    return TabBar(
+      controller: _tabController,
+      indicatorColor: FolderTheme.accent,
+      indicatorWeight: 3,
+      indicatorSize: TabBarIndicatorSize.label,
+      labelColor: FolderTheme.accent,
+      unselectedLabelColor: FolderTheme.textSub,
+      labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      unselectedLabelStyle:
+      const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      tabs: [
+        Tab(
+          height: 48,
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Back
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: FolderTheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: FolderTheme.border),
+              const Icon(Icons.insert_drive_file_rounded, size: 18),
+              const SizedBox(width: 6),
+              const Text('Files'),
+              const SizedBox(width: 6),
+              _tabCountBadge(fileCount),
+            ],
+          ),
+        ),
+        Tab(
+          height: 48,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.quiz_rounded, size: 18),
+              const SizedBox(width: 6),
+              const Text('Quiz Sets'),
+              const SizedBox(width: 6),
+              _tabCountBadge(quizCount),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tabCountBadge(int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+      decoration: BoxDecoration(
+        color: FolderTheme.accent.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '$count',
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: FolderTheme.accent,
+        ),
+      ),
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // ADMIN — FILES TAB
+  // ═════════════════════════════════════════════════════════════════════════
+  Widget _buildAdminFilesTab() {
+    return Consumer<FolderFilesViewModel>(
+      builder: (ctx, filesVm, _) {
+        if (filesVm.isLoading && filesVm.files.isEmpty) {
+          return const Center(
+            child: CircularProgressIndicator(
+                color: FolderTheme.accent, strokeWidth: 2.5),
+          );
+        }
+
+        final adminFiles = filesVm.files;
+        if (adminFiles.isEmpty && !filesVm.isLoading) {
+          return _EmptyState(
+            onRetry: _refresh,
+            message: 'No files in this folder.',
+          );
+        }
+
+        return RefreshIndicator(
+          color: FolderTheme.accent,
+          onRefresh: _refresh,
+          child: ListView(
+            controller: _filesScrollCtrl,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+            children: [
+              ...adminFiles.asMap().entries.map(
+                    (e) => _AdminFileCard(
+                  item: e.value,
+                  index: e.key,
+                  folderName: widget.folderName,
+                  onTap: () => _downloadAdminFile(ctx, e.value),
+                ),
+              ),
+              if (filesVm.isFetchingMore)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: FolderTheme.accent, strokeWidth: 2.5),
                   ),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: FolderTheme.textMain, size: 16),
                 ),
-              ),
-              const SizedBox(width: 12),
-
-              // Title
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.folderName,
-                      style: FolderTheme.screenTitle.copyWith(fontSize: 20),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      widget.isAdmin ? 'Admin view' : 'Your content',
-                      style: FolderTheme.screenSubtitle,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Refresh
-              IconButton(
-                onPressed: isLoading ? null : _refresh,
-                icon: AnimatedRotation(
-                  turns: isLoading ? 1 : 0,
-                  duration: const Duration(seconds: 1),
-                  child: const Icon(Icons.refresh_rounded,
-                      color: FolderTheme.textSub, size: 22),
-                ),
-              ),
-
-              // Home
-              IconButton(
-                onPressed: () => _goHome(context),
-                icon: const Icon(Icons.home_rounded,
-                    color: FolderTheme.textSub, size: 22),
-                tooltip: 'Home',
-              ),
             ],
           ),
         );
@@ -366,92 +650,215 @@ class _UserFolderDetailsContentState
     );
   }
 
-  // ─── Body ─────────────────────────────────────────────────────────────────
-  Widget _buildBody(BuildContext context) {
-    return Consumer<AccessControlViewModel>(
-      builder: (ctx, vm, _) {
-        // ── Initial loading ──
-        final isInitialLoading =
-            (vm.isGrantedFilesLoading && vm.grantedFiles.isEmpty) ||
-                (vm.isGrantedQuizSetsLoading && vm.grantedQuizSets.isEmpty);
-
-        if (isInitialLoading) {
+  // ═════════════════════════════════════════════════════════════════════════
+  // ADMIN — QUIZ TAB
+  // ═════════════════════════════════════════════════════════════════════════
+  Widget _buildAdminQuizTab() {
+    return Consumer<FolderQuizSetsViewModel>(
+      builder: (ctx, quizVm, _) {
+        if (quizVm.isLoading && quizVm.quizSets.isEmpty) {
           return const Center(
             child: CircularProgressIndicator(
                 color: FolderTheme.accent, strokeWidth: 2.5),
           );
         }
 
-        // ── Filter by active status + private access type ──
-        final visibleFiles = vm.grantedFiles
-            .where((f) =>
-        f.status.toLowerCase() == 'active' &&
-            f.accessType == 'private' &&
-            f.folderId == widget.folderId)          // ← add this
-            .toList();
-
-        final visibleQuiz = vm.grantedQuizSets
-            .where((q) =>
-        q.status == "published" &&
-            q.accessType == 'private' &&
-            q.folderId == widget.folderId)          // ← add this
-            .toList();
-
-        // ── Empty state ──
-        if (visibleFiles.isEmpty &&
-            visibleQuiz.isEmpty &&
-            !vm.isGrantedFilesLoading &&
-            !vm.isGrantedQuizSetsLoading) {
-          return _EmptyState(onRetry: _refresh);
+        final adminQuiz = quizVm.quizSets;
+        if (adminQuiz.isEmpty && !quizVm.isLoading) {
+          return _EmptyState(
+            onRetry: _refresh,
+            message: 'No quiz sets in this folder.',
+          );
         }
-
-        final isFetchingMore =
-            vm.isGrantedFilesLoadingMore || vm.isGrantedQuizSetsLoadingMore;
 
         return RefreshIndicator(
           color: FolderTheme.accent,
           onRefresh: _refresh,
           child: ListView(
-            controller: _scrollCtrl,
+            controller: _quizScrollCtrl,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
             children: [
-              // ── Quiz Sets ──────────────────────────────────────────────
-              if (visibleQuiz.isNotEmpty) ...[
-                _SectionHeader(
-                  icon:  Icons.quiz_rounded,
-                  title: 'Quiz Sets',
-                  count: visibleQuiz.length,
+              ...adminQuiz.asMap().entries.map(
+                    (e) => _AdminQuizSetCard(
+                  item: e.value,
+                  index: e.key,
+                  folderName: widget.folderName,
+                  onTap: () => _openAdminQuizSet(ctx, e.value),
                 ),
-                const SizedBox(height: 10),
-                ...visibleQuiz.asMap().entries.map(
-                      (e) => _QuizSetCard(
-                    item:  e.value,
-                    index: e.key,
-                    onTap: () => _openQuizSet(ctx, e.value),
+              ),
+              if (quizVm.isFetchingMore)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: FolderTheme.accent, strokeWidth: 2.5),
                   ),
                 ),
-                if (visibleFiles.isNotEmpty) const SizedBox(height: 20),
-              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-              // ── Files ──────────────────────────────────────────────────
-              if (visibleFiles.isNotEmpty) ...[
-                _SectionHeader(
-                  icon:  Icons.insert_drive_file_rounded,
-                  title: 'Files',
-                  count: visibleFiles.length,
+  // ═════════════════════════════════════════════════════════════════════════
+  // USER — FILES TAB (granted + not-granted)
+  // Status filter (active) is applied server-side; we only filter by folderId.
+  // ═════════════════════════════════════════════════════════════════════════
+  Widget _buildUserFilesTab() {
+    return Consumer<AccessControlViewModel>(
+      builder: (ctx, vm, _) {
+        final isInitial = vm.isGrantedFilesLoading &&
+            vm.grantedFiles.isEmpty &&
+            vm.notGrantedFiles.isEmpty;
+
+        if (isInitial) {
+          return const Center(
+            child: CircularProgressIndicator(
+                color: FolderTheme.accent, strokeWidth: 2.5),
+          );
+        }
+
+        final grantedFiles = vm.grantedFiles
+            .where((f) => f.folderId == widget.folderId)
+            .toList();
+
+        final notGrantedFiles = vm.notGrantedFiles
+            .where((f) => f.folderId == widget.folderId)
+            .toList();
+
+        if (grantedFiles.isEmpty &&
+            notGrantedFiles.isEmpty &&
+            !vm.isGrantedFilesLoading &&
+            !vm.isNotGrantedFilesLoading) {
+          return _EmptyState(
+            onRetry: _refresh,
+            message: 'No files available in this folder.',
+          );
+        }
+
+        final allFiles = <_FileEntry>[
+          ...grantedFiles.map((f) => _FileEntry(file: f, granted: true)),
+          ...notGrantedFiles.map((f) => _FileEntry(file: f, granted: false)),
+        ];
+
+        final isFetchingMore =
+            vm.isGrantedFilesLoadingMore || vm.isNotGrantedFilesLoadingMore;
+
+        return RefreshIndicator(
+          color: FolderTheme.accent,
+          onRefresh: _refresh,
+          child: ListView(
+            controller: _filesScrollCtrl,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+            children: [
+              if (allFiles.isNotEmpty)
+                _LegendRow(
+                  grantedCount: grantedFiles.length,
+                  lockedCount: notGrantedFiles.length,
                 ),
-                const SizedBox(height: 10),
-                ...visibleFiles.asMap().entries.map(
-                      (e) => _FileCard(
-                    item:  e.value,
-                    index: e.key,
-                    onTap: () => _downloadAndOpenFile(ctx, e.value),
+              ...allFiles.asMap().entries.map(
+                    (e) => _FileCard(
+                  item: e.value.file,
+                  index: e.key,
+                  granted: e.value.granted,
+                  onTap: () {
+                    if (e.value.granted) {
+                      _downloadGrantedFile(ctx, e.value.file);
+                    } else {
+                      _showLockedMessage(ctx, e.value.file.name);
+                    }
+                  },
+                ),
+              ),
+              if (isFetchingMore)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: FolderTheme.accent, strokeWidth: 2.5),
                   ),
                 ),
-              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-              // ── Pagination spinner ──────────────────────────────────────
+  // ═════════════════════════════════════════════════════════════════════════
+  // USER — QUIZ TAB (granted + not-granted)
+  // Status filter (published) is applied server-side; we only filter by folderId.
+  // ═════════════════════════════════════════════════════════════════════════
+  Widget _buildUserQuizTab() {
+    return Consumer<AccessControlViewModel>(
+      builder: (ctx, vm, _) {
+        final isInitial = vm.isGrantedQuizSetsLoading &&
+            vm.grantedQuizSets.isEmpty &&
+            vm.notGrantedQuizSets.isEmpty;
+
+        if (isInitial) {
+          return const Center(
+            child: CircularProgressIndicator(
+                color: FolderTheme.accent, strokeWidth: 2.5),
+          );
+        }
+
+        final grantedQuiz = vm.grantedQuizSets
+            .where((q) => q.folderId == widget.folderId)
+            .toList();
+
+        final notGrantedQuiz = vm.notGrantedQuizSets
+            .where((q) => q.folderId == widget.folderId)
+            .toList();
+
+        if (grantedQuiz.isEmpty &&
+            notGrantedQuiz.isEmpty &&
+            !vm.isGrantedQuizSetsLoading &&
+            !vm.isNotGrantedQuizSetsLoading) {
+          return _EmptyState(
+            onRetry: _refresh,
+            message: 'No quiz sets available in this folder.',
+          );
+        }
+
+        final allQuiz = <_QuizEntry>[
+          ...grantedQuiz.map((q) => _QuizEntry(quiz: q, granted: true)),
+          ...notGrantedQuiz.map((q) => _QuizEntry(quiz: q, granted: false)),
+        ];
+
+        final isFetchingMore = vm.isGrantedQuizSetsLoadingMore ||
+            vm.isNotGrantedQuizSetsLoadingMore;
+
+        return RefreshIndicator(
+          color: FolderTheme.accent,
+          onRefresh: _refresh,
+          child: ListView(
+            controller: _quizScrollCtrl,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+            children: [
+              if (allQuiz.isNotEmpty)
+                _LegendRow(
+                  grantedCount: grantedQuiz.length,
+                  lockedCount: notGrantedQuiz.length,
+                ),
+              ...allQuiz.asMap().entries.map(
+                    (e) => _QuizSetCard(
+                  item: e.value.quiz,
+                  index: e.key,
+                  granted: e.value.granted,
+                  onTap: () {
+                    if (e.value.granted) {
+                      _openGrantedQuizSet(ctx, e.value.quiz);
+                    } else {
+                      _showLockedMessage(ctx, e.value.quiz.name);
+                    }
+                  },
+                ),
+              ),
               if (isFetchingMore)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
@@ -468,63 +875,391 @@ class _UserFolderDetailsContentState
   }
 }
 
-// ─── Section Header ───────────────────────────────────────────────────────────
-class _SectionHeader extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final int count;
+// ─── Internal merge wrappers ────────────────────────────────────────────────
+class _FileEntry {
+  final UserGrantedFile file;
+  final bool granted;
+  _FileEntry({required this.file, required this.granted});
+}
 
-  const _SectionHeader({
-    required this.icon,
-    required this.title,
-    required this.count,
-  });
+class _QuizEntry {
+  final UserGrantedQuizSet quiz;
+  final bool granted;
+  _QuizEntry({required this.quiz, required this.granted});
+}
+
+// ─── Legend Row (above lists in user view) ──────────────────────────────────
+class _LegendRow extends StatelessWidget {
+  final int grantedCount;
+  final int lockedCount;
+  const _LegendRow({required this.grantedCount, required this.lockedCount});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: FolderTheme.accent.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          _LegendChip(
+            color: const Color(0xFF10B981),
+            label: '$grantedCount accessible',
           ),
-          child: Icon(icon, size: 16, color: FolderTheme.accent),
-        ),
-        const SizedBox(width: 10),
-        Text(title,
-            style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: FolderTheme.textMain)),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: FolderTheme.accent.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
+          const SizedBox(width: 8),
+          _LegendChip(
+            color: Colors.red.shade400,
+            label: '$lockedCount locked',
           ),
-          child: Text('$count',
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: FolderTheme.accent)),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-// ─── File Card ────────────────────────────────────────────────────────────────
+// ─── Refresh Button ─────────────────────────────────────────────────────────
+class _RefreshButton extends StatelessWidget {
+  final bool isAdmin;
+  final VoidCallback onRefresh;
+  const _RefreshButton({required this.isAdmin, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isAdmin) {
+      return Consumer2<FolderFilesViewModel, FolderQuizSetsViewModel>(
+        builder: (_, fVm, qVm, __) {
+          final loading = fVm.isLoading || qVm.isLoading;
+          return _buildButton(loading);
+        },
+      );
+    }
+    return Consumer<AccessControlViewModel>(
+      builder: (_, vm, __) {
+        final loading = vm.isGrantedFilesLoading ||
+            vm.isNotGrantedFilesLoading ||
+            vm.isGrantedQuizSetsLoading ||
+            vm.isNotGrantedQuizSetsLoading;
+        return _buildButton(loading);
+      },
+    );
+  }
+
+  Widget _buildButton(bool loading) => IconButton(
+    onPressed: loading ? null : onRefresh,
+    icon: AnimatedRotation(
+      turns: loading ? 1 : 0,
+      duration: const Duration(seconds: 1),
+      child: const Icon(Icons.refresh_rounded,
+          color: FolderTheme.textSub, size: 22),
+    ),
+  );
+}
+
+// ─── Legend Chip ────────────────────────────────────────────────────────────
+class _LegendChip extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _LegendChip({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── File Card (USER — granted/not-granted aware) ───────────────────────────
 class _FileCard extends StatelessWidget {
   final UserGrantedFile item;
   final int index;
+  final bool granted;
   final VoidCallback onTap;
 
   const _FileCard({
     required this.item,
     required this.index,
+    required this.granted,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor =
+    granted ? const Color(0xFF10B981) : Colors.red.shade400;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 250 + (index.clamp(0, 10) * 30)),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, child) => Opacity(opacity: v, child: child),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: FolderTheme.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: accentColor.withOpacity(0.35),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accentColor.withOpacity(0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      bottomLeft: Radius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                leading: Opacity(
+                  opacity: granted ? 1.0 : 0.55,
+                  child: _ItemIconBox(iconPath: item.iconPath, isQuiz: false),
+                ),
+                title: Text(
+                  item.name,
+                  style: FolderTheme.cardTitle.copyWith(
+                    color: granted
+                        ? FolderTheme.textMain
+                        : FolderTheme.textMain.withOpacity(0.65),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        granted ? Icons.lock_open_rounded : Icons.lock_rounded,
+                        size: 12,
+                        color: accentColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          granted
+                              ? item.folderName
+                              : 'Locked · ${item.folderName}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: accentColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                trailing: Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    granted ? 'View' : 'Locked',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Quiz Set Card (USER — granted/not-granted aware) ───────────────────────
+class _QuizSetCard extends StatelessWidget {
+  final UserGrantedQuizSet item;
+  final int index;
+  final bool granted;
+  final VoidCallback onTap;
+
+  const _QuizSetCard({
+    required this.item,
+    required this.index,
+    required this.granted,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor =
+    granted ? const Color(0xFF10B981) : Colors.red.shade400;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 250 + (index.clamp(0, 10) * 30)),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, child) => Opacity(opacity: v, child: child),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: FolderTheme.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: accentColor.withOpacity(0.35),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accentColor.withOpacity(0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      bottomLeft: Radius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                leading: Opacity(
+                  opacity: granted ? 1.0 : 0.55,
+                  child: _ItemIconBox(iconPath: item.iconPath, isQuiz: true),
+                ),
+                title: Text(
+                  item.name,
+                  style: FolderTheme.cardTitle.copyWith(
+                    color: granted
+                        ? FolderTheme.textMain
+                        : FolderTheme.textMain.withOpacity(0.65),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        granted ? Icons.lock_open_rounded : Icons.lock_rounded,
+                        size: 12,
+                        color: accentColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          granted
+                              ? '${item.questionCount} questions · ${item.durationMinutes} min · ${item.folderName}'
+                              : 'Locked · ${item.questionCount} questions · ${item.durationMinutes} min',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: accentColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                trailing: Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    granted ? 'Open' : 'Locked',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Admin File Card (FileModel) ────────────────────────────────────────────
+class _AdminFileCard extends StatelessWidget {
+  final FileModel item;
+  final int index;
+  final String folderName;
+  final VoidCallback onTap;
+
+  const _AdminFileCard({
+    required this.item,
+    required this.index,
+    required this.folderName,
     required this.onTap,
   });
 
@@ -545,7 +1280,7 @@ class _FileCard extends StatelessWidget {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             leading: _ItemIconBox(iconPath: item.iconPath, isQuiz: false),
             title: Text(
-              item.name,
+              item.name ?? 'Untitled',
               style: FolderTheme.cardTitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -554,12 +1289,12 @@ class _FileCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.open_in_full,
+                  const Icon(Icons.admin_panel_settings_rounded,
                       size: 12, color: Color(0xFF10B981)),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      item.folderName,
+                      folderName,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -595,15 +1330,17 @@ class _FileCard extends StatelessWidget {
   }
 }
 
-// ─── Quiz Set Card ────────────────────────────────────────────────────────────
-class _QuizSetCard extends StatelessWidget {
-  final UserGrantedQuizSet item;
+// ─── Admin Quiz Card (QuizSetModel) ─────────────────────────────────────────
+class _AdminQuizSetCard extends StatelessWidget {
+  final QuizSetModel item;
   final int index;
+  final String folderName;
   final VoidCallback onTap;
 
-  const _QuizSetCard({
+  const _AdminQuizSetCard({
     required this.item,
     required this.index,
+    required this.folderName,
     required this.onTap,
   });
 
@@ -624,7 +1361,7 @@ class _QuizSetCard extends StatelessWidget {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             leading: _ItemIconBox(iconPath: item.iconPath, isQuiz: true),
             title: Text(
-              item.name,
+              item.name ?? 'Untitled',
               style: FolderTheme.cardTitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -633,12 +1370,12 @@ class _QuizSetCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.lock_open_outlined,
+                  const Icon(Icons.admin_panel_settings_rounded,
                       size: 12, color: Color(0xFF10B981)),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      '${item.questionCount} questions · ${item.durationMinutes} min · ${item.folderName}',
+                      '${item.questionCount ?? 0} questions · ${item.durationMinutes ?? 0} min · $folderName',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -674,7 +1411,7 @@ class _QuizSetCard extends StatelessWidget {
   }
 }
 
-// ─── Item Icon Box ────────────────────────────────────────────────────────────
+// ─── Item Icon Box ──────────────────────────────────────────────────────────
 class _ItemIconBox extends StatelessWidget {
   final String? iconPath;
   final bool isQuiz;
@@ -726,62 +1463,73 @@ class _FallbackIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Icon(
-      isQuiz
-          ? Icons.quiz_rounded
-          : Icons.insert_drive_file_rounded,
+      isQuiz ? Icons.quiz_rounded : Icons.insert_drive_file_rounded,
       size: 28,
       color: FolderTheme.accent,
     ),
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
+// ─── Empty State ────────────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
   final VoidCallback onRetry;
-  const _EmptyState({required this.onRetry});
+  final String message;
+  const _EmptyState({
+    required this.onRetry,
+    this.message = 'No content available.',
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: FolderTheme.accent.withOpacity(0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.folder_open_rounded,
-                size: 38, color: FolderTheme.accent),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: FolderTheme.accent.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.folder_open_rounded,
+                    size: 38, color: FolderTheme.accent),
+              ),
+              const SizedBox(height: 16),
+              const Text('Nothing here', style: FolderTheme.emptyTitle),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  message,
+                  style: FolderTheme.emptySubtitle,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: onRetry,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: FolderTheme.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Retry',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          const Text('No content available', style: FolderTheme.emptyTitle),
-          const SizedBox(height: 6),
-          const Text(
-            'This folder has no granted files or quiz sets.',
-            style: FolderTheme.emptySubtitle,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: onRetry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: FolderTheme.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-              padding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Retry',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
