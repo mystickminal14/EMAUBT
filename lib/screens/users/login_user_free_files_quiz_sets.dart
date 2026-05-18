@@ -740,6 +740,94 @@ class _ContentListState extends State<_ContentList> {
       widget.quizVm.fetchNextPage(context, widget.folderId);
     }
   }
+  Future<void> _openFile(BuildContext context, FileModel file) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    // ── 1. Show loading dialog ─────────────────────────────────────────────
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: FolderTheme.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              const CircularProgressIndicator(
+                  color: FolderTheme.accent, strokeWidth: 3),
+              const SizedBox(height: 20),
+              const Text(
+                'Opening…',
+                style: TextStyle(
+                  color: FolderTheme.textMain,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                file.name ?? 'file',
+                style: const TextStyle(color: FolderTheme.textSub, fontSize: 13),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // ── 2. Fetch file bytes ──────────────────────────────────────────────
+      final headers = await getAuthHeaders();
+      final response =
+      await http.get(Uri.parse(file.downloadUrl), headers: headers);
+
+      // ── 3. Close dialog ──────────────────────────────────────────────────
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      if (response.statusCode != 200) {
+        if (!context.mounted) return;
+        messenger.showSnackBar(SnackBar(
+          content: Text('Failed to open file (${response.statusCode})'),
+          backgroundColor: Colors.red.shade600,
+        ));
+        return;
+      }
+
+      // ── 4. Write to TEMP (not Downloads — no permission needed) ──────────
+      final ext = file.extension.isNotEmpty ? '.${file.extension}' : '';
+      final safeName =
+      (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
+
+      final tmpDir = await getTemporaryDirectory();
+      final tmpPath = '${tmpDir.path}/$safeName$ext';
+      await File(tmpPath).writeAsBytes(response.bodyBytes);
+
+      if (!context.mounted) return;
+
+      // ── 5. Open file ─────────────────────────────────────────────────────
+      final result = await OpenFile.open(tmpPath);
+      if (result.type != ResultType.done && context.mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('No app found to open this file: ${result.message}'),
+          backgroundColor: Colors.orange.shade600,
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (!context.mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red.shade600,
+      ));
+    }
+  }
   // ── Download & open a file ─────────────────────────────────────────────────
   Future<void> _downloadAndOpenFile(BuildContext context, FileModel file) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -952,7 +1040,7 @@ class _ContentListState extends State<_ContentList> {
               item: e.value.toJson(),
               index: e.key,
               itemType: 'file',
-              onTap: () => _downloadAndOpenFile(context, e.value),
+              onTap: () => _openFile(context, e.value),
             ),
           ),
         ],
