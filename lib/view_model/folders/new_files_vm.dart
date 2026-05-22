@@ -75,12 +75,15 @@ class FolderFilesViewModel extends ChangeNotifier {
       _logger.e('Error parsing pagination: $e');
     }
   }
+  String? statusFilter;
   /// Builds: /api/folder/{folderId}/files?page=1&per_page=15&search=...
   String _buildUrl(int folderId, int page) {
     return Uri.parse(FileEndpoints.folderFiles(folderId)).replace(
       queryParameters: {
         'page':     page.toString(),
         'per_page': perPage.toString(),
+        if (statusFilter != null && statusFilter!.isNotEmpty)
+          'status': statusFilter,
         if (_searchQuery.isNotEmpty) 'search': _searchQuery,
       },
     ).toString();

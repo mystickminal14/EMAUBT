@@ -546,12 +546,12 @@ class _FreeForLoginPageContentState extends State<_FreeForLoginPageContent> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context
-            .read<FolderFilesViewModel>()
-            .fetchFiles(context, widget.folderId, refresh: true);
-        context
-            .read<FolderQuizSetsViewModel>()
-            .fetchQuizSets(context, widget.folderId, refresh: true);
+        context.read<FolderFilesViewModel>()
+          ..statusFilter = 'active'                              // ← set filter
+          ..fetchFiles(context, widget.folderId, refresh: true);
+        context.read<FolderQuizSetsViewModel>()
+          ..statusFilter = 'published'                           // ← set filter
+          ..fetchQuizSets(context, widget.folderId, refresh: true);
       }
     });
   }
@@ -661,13 +661,11 @@ class _ContentBody extends StatelessWidget {
         }
 
         // Show empty if both are empty and not loading
-        final hasVisibleFiles = filesVm.filteredFiles
-            .any((f) => f.status?.toLowerCase() == 'active');
-        final hasVisibleQuizSets = quizVm.filteredQuizSets
-            .any((q) => q.status?.toLowerCase() == 'published');
+        final hasFiles = filesVm.filteredFiles.isNotEmpty;
+        final hasQuizSets = quizVm.filteredQuizSets.isNotEmpty;
 
-        if (!hasVisibleFiles &&
-            !hasVisibleQuizSets &&
+        if (!hasFiles &&
+            !hasQuizSets &&
             !filesVm.isLoading &&
             !quizVm.isLoading) {
           return _ContentEmptyStateWithRetry(

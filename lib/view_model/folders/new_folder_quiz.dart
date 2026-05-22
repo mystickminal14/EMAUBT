@@ -73,7 +73,7 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       _logger.e('Error parsing pagination: $e');
     }
   }
-
+  String? statusFilter;
   // ── Build URL ──────────────────────────────────────────────────────────────
   String _buildUrl(int folderId, int page) {
     final uri = Uri.parse(QuizSetEndpoints.quizSetList).replace(
@@ -82,6 +82,8 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
         'page': page.toString(),
         'per_page': perPage.toString(),
         'published_only': 'false',
+        if (statusFilter != null && statusFilter!.isNotEmpty)
+          'status': statusFilter,
         if (_searchQuery.isNotEmpty) 'search': _searchQuery,
       },
     );
