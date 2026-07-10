@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/utils/get_headers.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -878,28 +879,32 @@ class _FileListBody extends StatelessWidget {
           return const _FilesEmptyState();
         }
 
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-          itemCount:
-          vm.filteredFiles.length + (vm.isFetchingMore ? 1 : 0),
-          itemBuilder: (_, i) {
-            if (i == vm.filteredFiles.length) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                    child: CircularProgressIndicator(
-                        color: FolderTheme.accent, strokeWidth: 2)),
+        return ResponsiveCenter(
+          tabletMaxWidth: 640,
+          desktopMaxWidth: 800,
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+            itemCount:
+            vm.filteredFiles.length + (vm.isFetchingMore ? 1 : 0),
+            itemBuilder: (_, i) {
+              if (i == vm.filteredFiles.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                      child: CircularProgressIndicator(
+                          color: FolderTheme.accent, strokeWidth: 2)),
+                );
+              }
+              final file = vm.filteredFiles[i];
+              return FileCard(
+                file: file,
+                index: i,
+                folderId: folderId,
+                onDelete: () => _confirmDelete(context, vm, file),
               );
-            }
-            final file = vm.filteredFiles[i];
-            return FileCard(
-              file: file,
-              index: i,
-              folderId: folderId,
-              onDelete: () => _confirmDelete(context, vm, file),
-            );
-          },
+            },
+          ),
         );
       },
     );

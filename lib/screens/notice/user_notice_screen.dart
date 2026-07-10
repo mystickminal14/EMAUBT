@@ -3,6 +3,7 @@ import 'package:ema_app/screens/notice/detail_screen.dart';
 import 'package:ema_app/screens/notice/notice_card.dart';
 import 'package:ema_app/screens/notice/notice_search.dart';
 import 'package:ema_app/screens/notice/notice_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/folders/notice_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -133,28 +134,32 @@ class _NoticeListView extends StatelessWidget {
         return RefreshIndicator(
           color: NoticeTheme.accent,
           onRefresh: () => vm.fetchNotices(context, refresh: true),
-          child: ListView.builder(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-            itemCount:
-            vm.filteredNotices.length + (vm.isFetchingMore ? 1 : 0),
-            itemBuilder: (_, i) {
-              if (i == vm.filteredNotices.length) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        color: NoticeTheme.accent, strokeWidth: 2),
-                  ),
+          child: ResponsiveCenter(
+            tabletMaxWidth: 640,
+            desktopMaxWidth: 800,
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+              itemCount:
+              vm.filteredNotices.length + (vm.isFetchingMore ? 1 : 0),
+              itemBuilder: (_, i) {
+                if (i == vm.filteredNotices.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                          color: NoticeTheme.accent, strokeWidth: 2),
+                    ),
+                  );
+                }
+                final notice = vm.filteredNotices[i];
+                return NoticeCard(
+                  notice: notice,
+                  index: i,
+                  onTap: () => _openDetail(context, notice),
                 );
-              }
-              final notice = vm.filteredNotices[i];
-              return NoticeCard(
-                notice: notice,
-                index: i,
-                onTap: () => _openDetail(context, notice),
-              );
-            },
+              },
+            ),
           ),
         );
       },

@@ -4,6 +4,7 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_quiz_set_model.dart';
 import 'package:ema_app/screens/admin/quizSet_details.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -243,31 +244,35 @@ class _QuizSetListBody extends StatelessWidget {
           return const _QuizSetsEmptyState();
         }
 
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-          itemCount:
-          vm.filteredQuizSets.length + (vm.isFetchingMore ? 1 : 0),
-          itemBuilder: (_, i) {
-            if (i == vm.filteredQuizSets.length) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                    child: CircularProgressIndicator(
-                        color: FolderTheme.accent, strokeWidth: 2)),
+        return ResponsiveCenter(
+          tabletMaxWidth: 640,
+          desktopMaxWidth: 800,
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            itemCount:
+            vm.filteredQuizSets.length + (vm.isFetchingMore ? 1 : 0),
+            itemBuilder: (_, i) {
+              if (i == vm.filteredQuizSets.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                      child: CircularProgressIndicator(
+                          color: FolderTheme.accent, strokeWidth: 2)),
+                );
+              }
+              final quizSet = vm.filteredQuizSets[i];
+              return  QuizSetCard(
+                quizSet: quizSet,
+                index: i,
+                onEdit: () => onEdit(quizSet),
+                onDelete: () => _confirmDelete(context, vm, quizSet),
+                onUpdate: () {
+                  vm.publishQuizSet(context, quizSet, folderId);
+                },
               );
-            }
-            final quizSet = vm.filteredQuizSets[i];
-            return  QuizSetCard(
-              quizSet: quizSet,
-              index: i,
-              onEdit: () => onEdit(quizSet),
-              onDelete: () => _confirmDelete(context, vm, quizSet),
-              onUpdate: () {
-                vm.publishQuizSet(context, quizSet, folderId);
-              },
-            );
-          },
+            },
+          ),
         );
       },
     );

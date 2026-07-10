@@ -8,6 +8,7 @@ import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
 import 'package:ema_app/utils/get_headers.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
@@ -622,28 +623,32 @@ class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
         return RefreshIndicator(
           color: FolderTheme.accent,
           onRefresh: _refresh,
-          child: ListView(
-            controller: _filesScrollCtrl,
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
-            children: [
-              ...adminFiles.asMap().entries.map(
-                    (e) => _AdminFileCard(
-                  item: e.value,
-                  index: e.key,
-                  folderName: widget.folderName,
-                  onTap: () => _downloadAdminFile(ctx, e.value),
-                ),
-              ),
-              if (filesVm.isFetchingMore)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        color: FolderTheme.accent, strokeWidth: 2.5),
+          child: ResponsiveCenter(
+            tabletMaxWidth: 640,
+            desktopMaxWidth: 800,
+            child: ListView(
+              controller: _filesScrollCtrl,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+              children: [
+                ...adminFiles.asMap().entries.map(
+                      (e) => _AdminFileCard(
+                    item: e.value,
+                    index: e.key,
+                    folderName: widget.folderName,
+                    onTap: () => _downloadAdminFile(ctx, e.value),
                   ),
                 ),
-            ],
+                if (filesVm.isFetchingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                          color: FolderTheme.accent, strokeWidth: 2.5),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -674,28 +679,32 @@ class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
         return RefreshIndicator(
           color: FolderTheme.accent,
           onRefresh: _refresh,
-          child: ListView(
-            controller: _quizScrollCtrl,
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
-            children: [
-              ...adminQuiz.asMap().entries.map(
-                    (e) => _AdminQuizSetCard(
-                  item: e.value,
-                  index: e.key,
-                  folderName: widget.folderName,
-                  onTap: () => _openAdminQuizSet(ctx, e.value),
-                ),
-              ),
-              if (quizVm.isFetchingMore)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        color: FolderTheme.accent, strokeWidth: 2.5),
+          child: ResponsiveCenter(
+            tabletMaxWidth: 640,
+            desktopMaxWidth: 800,
+            child: ListView(
+              controller: _quizScrollCtrl,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+              children: [
+                ...adminQuiz.asMap().entries.map(
+                      (e) => _AdminQuizSetCard(
+                    item: e.value,
+                    index: e.key,
+                    folderName: widget.folderName,
+                    onTap: () => _openAdminQuizSet(ctx, e.value),
                   ),
                 ),
-            ],
+                if (quizVm.isFetchingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                          color: FolderTheme.accent, strokeWidth: 2.5),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -749,39 +758,43 @@ class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
         return RefreshIndicator(
           color: FolderTheme.accent,
           onRefresh: _refresh,
-          child: ListView(
-            controller: _filesScrollCtrl,
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
-            children: [
-              if (allFiles.isNotEmpty)
-                _LegendRow(
-                  grantedCount: grantedFiles.length,
-                  lockedCount: notGrantedFiles.length,
-                ),
-              ...allFiles.asMap().entries.map(
-                    (e) => _FileCard(
-                  item: e.value.file,
-                  index: e.key,
-                  granted: e.value.granted,
-                  onTap: () {
-                    if (e.value.granted) {
-                      _downloadGrantedFile(ctx, e.value.file);
-                    } else {
-                      _showLockedMessage(ctx, e.value.file.name);
-                    }
-                  },
-                ),
-              ),
-              if (isFetchingMore)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        color: FolderTheme.accent, strokeWidth: 2.5),
+          child: ResponsiveCenter(
+            tabletMaxWidth: 640,
+            desktopMaxWidth: 800,
+            child: ListView(
+              controller: _filesScrollCtrl,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+              children: [
+                if (allFiles.isNotEmpty)
+                  _LegendRow(
+                    grantedCount: grantedFiles.length,
+                    lockedCount: notGrantedFiles.length,
+                  ),
+                ...allFiles.asMap().entries.map(
+                      (e) => _FileCard(
+                    item: e.value.file,
+                    index: e.key,
+                    granted: e.value.granted,
+                    onTap: () {
+                      if (e.value.granted) {
+                        _downloadGrantedFile(ctx, e.value.file);
+                      } else {
+                        _showLockedMessage(ctx, e.value.file.name);
+                      }
+                    },
                   ),
                 ),
-            ],
+                if (isFetchingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                          color: FolderTheme.accent, strokeWidth: 2.5),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -835,39 +848,43 @@ class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
         return RefreshIndicator(
           color: FolderTheme.accent,
           onRefresh: _refresh,
-          child: ListView(
-            controller: _quizScrollCtrl,
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
-            children: [
-              if (allQuiz.isNotEmpty)
-                _LegendRow(
-                  grantedCount: grantedQuiz.length,
-                  lockedCount: notGrantedQuiz.length,
-                ),
-              ...allQuiz.asMap().entries.map(
-                    (e) => _QuizSetCard(
-                  item: e.value.quiz,
-                  index: e.key,
-                  granted: e.value.granted,
-                  onTap: () {
-                    if (e.value.granted) {
-                      _openGrantedQuizSet(ctx, e.value.quiz);
-                    } else {
-                      _showLockedMessage(ctx, e.value.quiz.name);
-                    }
-                  },
-                ),
-              ),
-              if (isFetchingMore)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        color: FolderTheme.accent, strokeWidth: 2.5),
+          child: ResponsiveCenter(
+            tabletMaxWidth: 640,
+            desktopMaxWidth: 800,
+            child: ListView(
+              controller: _quizScrollCtrl,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+              children: [
+                if (allQuiz.isNotEmpty)
+                  _LegendRow(
+                    grantedCount: grantedQuiz.length,
+                    lockedCount: notGrantedQuiz.length,
+                  ),
+                ...allQuiz.asMap().entries.map(
+                      (e) => _QuizSetCard(
+                    item: e.value.quiz,
+                    index: e.key,
+                    granted: e.value.granted,
+                    onTap: () {
+                      if (e.value.granted) {
+                        _openGrantedQuizSet(ctx, e.value.quiz);
+                      } else {
+                        _showLockedMessage(ctx, e.value.quiz.name);
+                      }
+                    },
                   ),
                 ),
-            ],
+                if (isFetchingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                          color: FolderTheme.accent, strokeWidth: 2.5),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },

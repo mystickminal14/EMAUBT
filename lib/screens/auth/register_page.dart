@@ -1,5 +1,6 @@
 import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -173,7 +174,10 @@ class _RegisterPageState extends State<RegisterPage>
             opacity: _fadeCtrl,
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
+              child: ResponsiveCenter(
+                tabletMaxWidth: 520,
+                desktopMaxWidth: 520,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 36),
@@ -489,6 +493,7 @@ class _RegisterPageState extends State<RegisterPage>
                   ),
                   const SizedBox(height: 32),
                 ],
+                ),
               ),
             ),
           ),

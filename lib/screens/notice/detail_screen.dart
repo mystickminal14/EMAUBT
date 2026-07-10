@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:ema_app/model/notice_model.dart';
 import 'package:ema_app/screens/notice/notice_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
@@ -44,8 +45,10 @@ class NoticeDetailScreen extends StatelessWidget {
         slivers: [
           _buildAppBar(context),
           SliverToBoxAdapter(
-            child: Padding(
+            child: ResponsiveCenter(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+              tabletMaxWidth: 700,
+              desktopMaxWidth: 860,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -252,8 +255,8 @@ class _ImageGallery extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: context.gridColumns(mobile: 2, tablet: 3, desktop: 4),
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
         childAspectRatio: 1,

@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/data/standard_response.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -196,8 +197,10 @@ class _FreeFilesQuizLoggedInUsersPageState
                         ),
                       )
                     : SingleChildScrollView(
-                        child: Padding(
+                        child: ResponsiveCenter(
                           padding: const EdgeInsets.all(16.0),
+                          tabletMaxWidth: 640,
+                          desktopMaxWidth: 800,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -620,8 +623,10 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
                       child: Text("No content available in this folder.",
                           style: TextStyle(color: Colors.grey, fontSize: 16)))
                   : SingleChildScrollView(
-                      child: Padding(
+                      child: ResponsiveCenter(
                         padding: const EdgeInsets.all(16.0),
+                        tabletMaxWidth: 640,
+                        desktopMaxWidth: 800,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

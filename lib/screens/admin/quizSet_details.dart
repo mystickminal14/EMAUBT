@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:ema_app/view_model/folders/quiz_question_view_model.dart';
 import 'package:ema_app/model/quiz_question_model.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:another_flushbar/flushbar.dart';
@@ -544,27 +545,31 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
             }
             return false; // don't absorb the notification
           },
-          child: ListView.builder(
-            controller: _scrollCtrl,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-            // +1 for the footer loader / end-of-list indicator
-            itemCount: list.length + 1,
-            itemBuilder: (_, i) {
-              // Footer item
-              if (i == list.length) {
-                return _buildPaginationFooter(vm);
-              }
+          child: ResponsiveCenter(
+            tabletMaxWidth: 700,
+            desktopMaxWidth: 860,
+            child: ListView.builder(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+              // +1 for the footer loader / end-of-list indicator
+              itemCount: list.length + 1,
+              itemBuilder: (_, i) {
+                // Footer item
+                if (i == list.length) {
+                  return _buildPaginationFooter(vm);
+                }
 
-              final q = list[i];
-              final actualIdx = vm.questions.indexOf(q);
-              return _QuestionCard(
-                question: q,
-                index: actualIdx,
-                onEdit: () => _startEdit(actualIdx),
-                onDelete: () => _confirmDelete(actualIdx),
-                onOpenFile: _openFile,
-              );
-            },
+                final q = list[i];
+                final actualIdx = vm.questions.indexOf(q);
+                return _QuestionCard(
+                  question: q,
+                  index: actualIdx,
+                  onEdit: () => _startEdit(actualIdx),
+                  onDelete: () => _confirmDelete(actualIdx),
+                  onOpenFile: _openFile,
+                );
+              },
+            ),
           ),
         );
       },

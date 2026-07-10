@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/folders/public_folder_vm.dart'; // ← new single VM
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -274,27 +275,31 @@ class _GuestFreeFilesQuizSetsState extends State<_GuestFolderListBody>
           );
         }
 
-        return ListView.builder(
-          controller: _scrollCtrl,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-          itemCount: visible.length + (vm.isFoldersLoadingMore ? 1 : 0),
-          itemBuilder: (_, i) {
-            if (i == visible.length) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(
-                  child: CircularProgressIndicator(
-                      color: FolderTheme.accent, strokeWidth: 2.5),
-                ),
+        return ResponsiveCenter(
+          tabletMaxWidth: 640,
+          desktopMaxWidth: 800,
+          child: ListView.builder(
+            controller: _scrollCtrl,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+            itemCount: visible.length + (vm.isFoldersLoadingMore ? 1 : 0),
+            itemBuilder: (_, i) {
+              if (i == visible.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: FolderTheme.accent, strokeWidth: 2.5),
+                  ),
+                );
+              }
+              final folder = visible[i];
+              return _GuestFolderCard(
+                folder: folder,
+                index: i,
+                onTap: () => _openFolder(folder.id, folder.name),
               );
-            }
-            final folder = visible[i];
-            return _GuestFolderCard(
-              folder: folder,
-              index: i,
-              onTap: () => _openFolder(folder.id, folder.name),
-            );
-          },
+            },
+          ),
         );
       },
     );
@@ -776,7 +781,10 @@ class _GuestContentListState extends State<_GuestContentList> {
     final isFetchingMore =
         widget.vm.isFolderFilesLoadingMore || widget.vm.isFolderQuizSetsLoadingMore;
 
-    return ListView(
+    return ResponsiveCenter(
+      tabletMaxWidth: 640,
+      desktopMaxWidth: 800,
+      child: ListView(
       controller: _scrollCtrl,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       children: [
@@ -829,6 +837,7 @@ class _GuestContentListState extends State<_GuestContentList> {
             ),
           ),
       ],
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'register_page.dart';
@@ -59,7 +60,10 @@ class _LoginPageState extends State<LoginPage>
           opacity: _fadeCtrl,
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
+            child: ResponsiveCenter(
+              tabletMaxWidth: 480,
+              desktopMaxWidth: 480,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 48),
@@ -253,6 +257,7 @@ class _LoginPageState extends State<LoginPage>
                 ),
                 const SizedBox(height: 32),
               ],
+              ),
             ),
           ),
         ),

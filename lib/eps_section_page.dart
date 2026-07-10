@@ -2,6 +2,7 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/screens/users/user_folder_detail_page.dart';
 import 'package:ema_app/shared_manager_utility.dart';
 import 'package:ema_app/utils/get_headers.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
@@ -329,28 +330,32 @@ class _EPSSectionPageState extends State<EPSSectionPage> {
                       }
                       return false; // don't absorb — let the ListView handle it too
                     },
-                    child: ListView.builder(
-                      controller: _scrollCtrl,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      itemCount: itemCount,
-                      itemBuilder: (_, i) {
-                        // Last slot → pagination spinner
-                        if (i == vm.filteredFolders.length) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.blue),
+                    child: ResponsiveCenter(
+                      tabletMaxWidth: 640,
+                      desktopMaxWidth: 800,
+                      child: ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        itemCount: itemCount,
+                        itemBuilder: (_, i) {
+                          // Last slot → pagination spinner
+                          if (i == vm.filteredFolders.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue),
+                                ),
                               ),
-                            ),
-                          );
-                        }
+                            );
+                          }
 
-                        final folder = vm.filteredFolders[i];
-                        return _buildFolderCard(folder.toJson(), i);
-                      },
+                          final folder = vm.filteredFolders[i];
+                          return _buildFolderCard(folder.toJson(), i);
+                        },
+                      ),
                     ),
                   ),
                 ),

@@ -3,6 +3,7 @@ import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/utils/get_headers.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
@@ -76,7 +77,10 @@ class _FolderContentTabState extends State<FolderContentTab>
           color: FolderTheme.accent,
           backgroundColor: Colors.white,
           onRefresh: () => folderVM.fetchFolders(context, refresh: true),
-          child: ListView(
+          child: ResponsiveCenter(
+            tabletMaxWidth: 640,
+            desktopMaxWidth: 800,
+            child: ListView(
             controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             children: [
@@ -140,6 +144,7 @@ class _FolderContentTabState extends State<FolderContentTab>
                   ),
                 ),
             ],
+            ),
           ),
         );
       },
@@ -586,7 +591,10 @@ class _FolderContentDetailScreenState
               child: SingleChildScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
+                child: ResponsiveCenter(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                tabletMaxWidth: 700,
+                desktopMaxWidth: 860,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -667,6 +675,7 @@ class _FolderContentDetailScreenState
                         ),
                       ),
                   ],
+                ),
                 ),
               ),
             );

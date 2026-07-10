@@ -4,6 +4,7 @@ import 'package:ema_app/screens/admin/folder_management_v2.dart';
 import 'package:ema_app/screens/folder_comp/folder_card.dart';
 import 'package:ema_app/screens/folder_comp/folder_form_sheet.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -29,36 +30,40 @@ class FolderList extends StatelessWidget {
           return const FolderEmptyState();
         }
 
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-          itemCount:
-          vm.filteredFolders.length + (vm.isFetchingMore ? 1 : 0),
-          itemBuilder: (_, i) {
-            // Bottom pagination spinner
-            if (i == vm.filteredFolders.length) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: CircularProgressIndicator(
-                      color: FolderTheme.accent, strokeWidth: 2),
-                ),
-              );
-            }
+        return ResponsiveCenter(
+          tabletMaxWidth: 640,
+          desktopMaxWidth: 800,
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            itemCount:
+            vm.filteredFolders.length + (vm.isFetchingMore ? 1 : 0),
+            itemBuilder: (_, i) {
+              // Bottom pagination spinner
+              if (i == vm.filteredFolders.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: FolderTheme.accent, strokeWidth: 2),
+                  ),
+                );
+              }
 
-            final folder = vm.filteredFolders[i];
-            return FolderCard(
-              folder: folder,
-              index: i,
-              onTap: ()=>{
-                Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => FolderDetailScreen(folder: folder),
-                ))
-              },
-              onEdit: () => _showEditSheet(context, vm, folder),
-              onDelete: () => _confirmDelete(context, vm, folder),
-            );
-          },
+              final folder = vm.filteredFolders[i];
+              return FolderCard(
+                folder: folder,
+                index: i,
+                onTap: ()=>{
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => FolderDetailScreen(folder: folder),
+                  ))
+                },
+                onEdit: () => _showEditSheet(context, vm, folder),
+                onDelete: () => _confirmDelete(context, vm, folder),
+              );
+            },
+          ),
         );
       },
     );

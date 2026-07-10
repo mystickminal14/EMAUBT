@@ -1,6 +1,7 @@
 import 'package:ema_app/give_access/grant_access_files_v2.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
 import 'package:ema_app/view_model/user_management/user_view_model.dart';
 import 'package:flutter/material.dart';
@@ -206,32 +207,36 @@ class _RoleUserListState extends State<_RoleUserList> {
           );
         }
 
-        return ListView.builder(
-          key: ValueKey('${widget.role}_list'),
-          controller: _controller,
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-          itemCount: filtered.length + (userVM.isFetchingMore ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (index == filtered.length) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(
-                    color: FolderTheme.accent,
-                    strokeWidth: 2.5,
+        return ResponsiveCenter(
+          tabletMaxWidth: 640,
+          desktopMaxWidth: 800,
+          child: ListView.builder(
+            key: ValueKey('${widget.role}_list'),
+            controller: _controller,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+            itemCount: filtered.length + (userVM.isFetchingMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == filtered.length) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(
+                      color: FolderTheme.accent,
+                      strokeWidth: 2.5,
+                    ),
                   ),
-                ),
+                );
+              }
+              final entity = filtered[index];
+              return _PersonCard(
+                entity: entity,
+                isAdmin: widget.role == 'admin',
+                matchingUsers: const [],
+                viewModel: widget.viewModel,
+                index: index,
               );
-            }
-            final entity = filtered[index];
-            return _PersonCard(
-              entity: entity,
-              isAdmin: widget.role == 'admin',
-              matchingUsers: const [],
-              viewModel: widget.viewModel,
-              index: index,
-            );
-          },
+            },
+          ),
         );
       },
     );

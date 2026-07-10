@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../users/user_home_page.dart';
 import 'admin_notices_page.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   final String fullName;
@@ -210,36 +211,44 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
             slivers: [
               // ── Profile header ───────────────────────────────────────────
               SliverToBoxAdapter(
-                child: _ProfileHeader(
-                  fullName: widget.fullName,
-                  email: widget.userEmail,
-                  imageUrl: widget.profileImage,
+                child: ResponsiveCenter(
+                  child: _ProfileHeader(
+                    fullName: widget.fullName,
+                    email: widget.userEmail,
+                    imageUrl: widget.profileImage,
+                  ),
                 ),
               ),
 
               // ── Section label ────────────────────────────────────────────
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 24, 20, 12),
-                  child: Text('Quick Actions', style: UMTheme.screenTitle),
+              SliverToBoxAdapter(
+                child: ResponsiveCenter(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                  child: const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Quick Actions', style: UMTheme.screenTitle),
+                  ),
                 ),
               ),
 
               // ── Grid ─────────────────────────────────────────────────────
-              SliverPadding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                sliver: SliverGrid(
-                  delegate: SliverChildBuilderDelegate(
-                        (_, i) => _AnimatedDashCard(item: _items[i], index: i),
-                    childCount: _items.length,
-                  ),
-                  gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                    childAspectRatio: 1.1,
+              SliverToBoxAdapter(
+                child: ResponsiveCenter(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _items.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount:
+                      context.gridColumns(mobile: 2, tablet: 3, desktop: 4),
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 1.1,
+                    ),
+                    itemBuilder: (_, i) =>
+                        _AnimatedDashCard(item: _items[i], index: i),
                   ),
                 ),
               ),

@@ -3,6 +3,7 @@ import 'package:ema_app/screens/user_comp/user_form_sheet.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:ema_app/screens/user_comp/user_password_form.dart';
 import 'package:ema_app/model/user_model.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/user_management/user_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -28,34 +29,38 @@ class UserList extends StatelessWidget {
           return const UserEmptyState();
         }
 
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-          itemCount: vm.filteredUsers.length + (vm.isFetchingMore ? 1 : 0),
-          itemBuilder: (_, i) {
-            // Bottom pagination spinner
-            if (i == vm.filteredUsers.length) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: CircularProgressIndicator(
-                      color: UMTheme.accent, strokeWidth: 2),
-                ),
-              );
-            }
+        return ResponsiveCenter(
+          tabletMaxWidth: 640,
+          desktopMaxWidth: 800,
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            itemCount: vm.filteredUsers.length + (vm.isFetchingMore ? 1 : 0),
+            itemBuilder: (_, i) {
+              // Bottom pagination spinner
+              if (i == vm.filteredUsers.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: UMTheme.accent, strokeWidth: 2),
+                  ),
+                );
+              }
 
-            final user = vm.filteredUsers[i];
-            return UserCard(
-              user: user,
-              index: i,
-              changePassword: () =>
-                  _showChangePasswordSheet(context, vm, user),
-              makeAdmin: () => _makeAdmin(context, vm, user),
-              removeAdmin: () => _removeAdmin(context, vm, user),
-              onEdit: () => _showEditSheet(context, vm, user),
-              onDelete: () => _confirmDelete(context, vm, user),
-            );
-          },
+              final user = vm.filteredUsers[i];
+              return UserCard(
+                user: user,
+                index: i,
+                changePassword: () =>
+                    _showChangePasswordSheet(context, vm, user),
+                makeAdmin: () => _makeAdmin(context, vm, user),
+                removeAdmin: () => _removeAdmin(context, vm, user),
+                onEdit: () => _showEditSheet(context, vm, user),
+                onDelete: () => _confirmDelete(context, vm, user),
+              );
+            },
+          ),
         );
       },
     );

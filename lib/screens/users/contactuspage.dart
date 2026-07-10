@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -131,8 +132,10 @@ gmailProtocolUrl = 'intent://sendto/mailto:$email#Intent;package=com.google.andr
         shadowColor: Colors.black54,
       ),
       body: SingleChildScrollView(
-        child: Padding(
+        child: ResponsiveCenter(
           padding: const EdgeInsets.all(16.0),
+          tabletMaxWidth: 640,
+          desktopMaxWidth: 720,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -189,6 +192,7 @@ gmailProtocolUrl = 'intent://sendto/mailto:$email#Intent;package=com.google.andr
       ),
     );
   }
+
 
   // Reusable contact card widget
   Widget _buildContactCard(

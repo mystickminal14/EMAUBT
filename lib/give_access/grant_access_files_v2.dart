@@ -1,4 +1,5 @@
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
+import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -485,8 +486,11 @@ class _GrantAccessFilesPageContentState
             child: SingleChildScrollView(
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-              child: Column(
+              child: ResponsiveCenter(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                tabletMaxWidth: 700,
+                desktopMaxWidth: 860,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Person card ──────────────────────────────────
@@ -689,6 +693,7 @@ class _GrantAccessFilesPageContentState
                   ),
                   const SizedBox(height: 16),
                 ],
+                ),
               ),
             ),
           ),

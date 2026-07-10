@@ -1,4 +1,5 @@
 // forgot_password_page.dart
+import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -20,26 +21,30 @@ class ForgotPasswordPage extends StatelessWidget {
       appBar: AppBar(title: const Text("Forgot Password")),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Text(
-              "Contact to Admin",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _launchFacebook,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+        child: ResponsiveCenter(
+          tabletMaxWidth: 480,
+          desktopMaxWidth: 480,
+          child: Column(
+            children: [
+              const Text(
+                "Contact to Admin",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              child: const Text('Contact via Facebook'),
-            ),
-          ],
+              const SizedBox(height: 20),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _launchFacebook,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  backgroundColor: Colors.teal,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Contact via Facebook'),
+              ),
+            ],
+          ),
         ),
       ),
     );
