@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:logger/logger.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:ema_app/utils/image_compress_util.dart';
 
 class FoldersPage extends StatefulWidget {
   const FoldersPage({super.key});
@@ -36,18 +36,20 @@ class _FoldersPageState extends State<FoldersPage> {
   Future<XFile?> _compressImage(File file) async {
     final dir = file.parent.path;
     final targetPath = '$dir/compressed_${file.uri.pathSegments.last}';
-    final result = await FlutterImageCompress.compressAndGetFile(
-      file.absolute.path,
-      targetPath,
-      quality: 70,
-      minWidth: 800,
-      minHeight: 800,
-    );
-    if (result != null) {
+    try {
+      final result = await ImageCompressUtil.compressFileToFile(
+        file,
+        targetPath,
+        quality: 70,
+        minWidth: 800,
+        minHeight: 800,
+      );
       _logger.i("Image compressed: ${result.path}");
-      return XFile(result.path);
+      return result;
+    } catch (e) {
+      _logger.w("Compression failed, using original: $e");
+      return XFile(file.path);
     }
-    return XFile(file.path); // fallback if compression fails
   }
 
   /// Pick image and compress if needed

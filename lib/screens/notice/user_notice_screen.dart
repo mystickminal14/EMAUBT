@@ -81,6 +81,12 @@ class _UserNoticeHeader extends StatelessWidget {
       child: Consumer<NoticeViewModel>(
         builder: (_, vm, __) => Row(
           children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: NoticeTheme.textSub, size: 20),
+              tooltip: 'Back',
+            ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

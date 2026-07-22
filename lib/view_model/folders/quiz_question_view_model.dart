@@ -7,7 +7,7 @@ import 'package:ema_app/model/quiz_question_model.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:ema_app/utils/image_compress_util.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
@@ -572,24 +572,22 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
 
         if (kIsWeb) {
           final raw = await pickedFile.readAsBytes();
-          final compressed = await FlutterImageCompress.compressWithList(
+          final compressed = await ImageCompressUtil.compressBytes(
             raw,
             quality: 80,
             minWidth: 1024,
             minHeight: 1024,
-            format: CompressFormat.jpeg,
           );
           if (compressed != null) {
             setQuestionFileFromBytes(compressed, 'image/jpeg', null,
                 fileName: 'question_file.jpg');
           }
         } else {
-          final compressed = await FlutterImageCompress.compressWithFile(
+          final compressed = await ImageCompressUtil.compressFile(
             pickedFile.path,
             quality: 80,
             minWidth: 1024,
             minHeight: 1024,
-            format: CompressFormat.jpeg,
           );
           if (compressed != null) {
             final tmp =
@@ -641,12 +639,11 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
 
         if (kIsWeb) {
           final raw = await pickedFile.readAsBytes();
-          final compressed = await FlutterImageCompress.compressWithList(
+          final compressed = await ImageCompressUtil.compressBytes(
             raw,
             quality: 80,
             minWidth: 1024,
             minHeight: 1024,
-            format: CompressFormat.jpeg,
           );
           if (compressed != null) {
             setChoiceFileFromBytes(
@@ -654,12 +651,11 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
                 fileName: 'choice_${letter}_file.jpg');
           }
         } else {
-          final compressed = await FlutterImageCompress.compressWithFile(
+          final compressed = await ImageCompressUtil.compressFile(
             pickedFile.path,
             quality: 80,
             minWidth: 1024,
             minHeight: 1024,
-            format: CompressFormat.jpeg,
           );
           if (compressed != null) {
             final tmp =

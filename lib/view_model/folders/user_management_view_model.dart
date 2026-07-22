@@ -8,7 +8,7 @@ import 'package:ema_app/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:ema_app/utils/image_compress_util.dart';
 
 class UserManagementViewModel extends ChangeNotifier {
   final Logger _logger = Logger();
@@ -91,12 +91,11 @@ class UserManagementViewModel extends ChangeNotifier {
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         // Compress the image
-        final compressedBytes = await FlutterImageCompress.compressWithFile(
+        final compressedBytes = await ImageCompressUtil.compressFile(
           pickedFile.path,
           quality: 85, // 85% quality
           minWidth: 1024,
           minHeight: 1024,
-          format: CompressFormat.jpeg,
         );
         if (compressedBytes != null) {
           // Create a temporary file for the compressed bytes

@@ -497,14 +497,21 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
         await tempFile.writeAsBytes(response.bodyBytes);
 
         if (fileName.endsWith('.pdf')) {
-          // Open PDF in-app using flutter_pdfview
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PDFViewerPage(
-                  filePath: tempFile.path, fileName: file['name']),
-            ),
-          );
+          // flutter_pdfview only supports Android/iOS; open with the OS's
+          // default viewer on desktop instead of embedding it in-app.
+          final supportsInAppPdfView =
+              !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+          if (supportsInAppPdfView) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PDFViewerPage(
+                    filePath: tempFile.path, fileName: file['name']),
+              ),
+            );
+          } else {
+            await OpenFile.open(tempFile.path);
+          }
         } else if (fileName.endsWith('.txt')) {
           // Handle TXT files by reading and displaying content
           final content = await tempFile.readAsString();

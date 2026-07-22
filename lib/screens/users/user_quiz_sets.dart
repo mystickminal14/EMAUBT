@@ -2463,7 +2463,10 @@ class SubmitPage extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                     ),
                     backgroundColor: Colors.blue[700],
-                    automaticallyImplyLeading: false,
+                    leading: IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.pop(context),
+                    ),
                 ),
             ),
             body: SingleChildScrollView(
@@ -2528,21 +2531,7 @@ class SubmitPage extends StatelessWidget {
                         const SizedBox(height: 16),
                         Center(
                             child: ElevatedButton(
-                                onPressed: () {
-                                    // Navigator.pushAndRemoveUntil(
-                                    //     context,
-                                    //     MaterialPageRoute(
-                                    //         builder: (context) => UserFolderDetailsPage(
-                                    //             folderId: folderId,
-                                    //             folderName: folderName,
-                                    //             userIdentifier: userIdentifier,
-                                    //             isAdmin: isAdmin,
-                                    //             userId: 0,
-                                    //         ),
-                                    //     ),
-                                    //         (Route<dynamic> route) => false,
-                                    // );
-                                },
+                                onPressed: () => Navigator.pop(context),
                                 style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blue[600],
                                     padding: const EdgeInsets.symmetric(

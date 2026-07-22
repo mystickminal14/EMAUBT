@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:ema_app/utils/image_compress_util.dart';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:another_flushbar/flushbar.dart';
@@ -54,14 +54,13 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
     try {
       final dir = file.parent.path;
       final targetPath = '$dir/compressed_${file.uri.pathSegments.last}';
-      final result = await FlutterImageCompress.compressAndGetFile(
-        file.absolute.path,
+      return await ImageCompressUtil.compressFileToFile(
+        file,
         targetPath,
         quality: 70,
         minWidth: 800,
         minHeight: 800,
       );
-      return result ?? XFile(file.path);
     } catch (e) {
       if (mounted) {
         Flushbar(

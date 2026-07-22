@@ -2,6 +2,7 @@ import 'package:ema_app/view_model/auth_view_model/auth_view_model.dart';
 import 'package:ema_app/screens/user_comp/user_manage_theme.dart';
 import 'package:ema_app/utils/responsive.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
@@ -108,23 +109,27 @@ class _RegisterPageState extends State<RegisterPage>
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _PickerOption(
-                      icon: Icons.camera_alt_outlined,
-                      label: 'Camera',
-                      onTap: () async {
-                        Navigator.pop(context);
-                        final picked = await _picker.pickImage(
-                          source: ImageSource.camera,
-                          imageQuality: 80,
-                        );
-                        if (picked != null) {
-                          setState(() => _imageFile = File(picked.path));
-                        }
-                      },
+                  // image_picker only supports camera capture on
+                  // mobile/web, not on desktop (Windows/macOS/Linux).
+                  if (kIsWeb || Platform.isAndroid || Platform.isIOS) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _PickerOption(
+                        icon: Icons.camera_alt_outlined,
+                        label: 'Camera',
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final picked = await _picker.pickImage(
+                            source: ImageSource.camera,
+                            imageQuality: 80,
+                          );
+                          if (picked != null) {
+                            setState(() => _imageFile = File(picked.path));
+                          }
+                        },
+                      ),
                     ),
-                  ),
+                  ],
                   if (_imageFile != null) ...[
                     const SizedBox(width: 12),
                     Expanded(

@@ -6,8 +6,8 @@ import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:ema_app/utils/image_compress_util.dart';
 import 'package:logger/logger.dart';
 
 class FolderFilesViewModel extends ChangeNotifier {
@@ -209,12 +209,11 @@ class FolderFilesViewModel extends ChangeNotifier {
       if (pickedFile == null) return;
 
       // Compress before upload
-      final compressedBytes = await FlutterImageCompress.compressWithFile(
+      final compressedBytes = await ImageCompressUtil.compressFile(
         pickedFile.path,
         quality:   85,
         minWidth:  512,
         minHeight: 512,
-        format:    CompressFormat.jpeg,
       );
 
       if (compressedBytes != null) {

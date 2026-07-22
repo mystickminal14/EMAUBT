@@ -7,8 +7,8 @@ import 'package:ema_app/model/folder_mode_v2/folder_model_v2.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:ema_app/utils/image_compress_util.dart';
 import 'package:logger/logger.dart';
 
 class UpdatedFolderViewModel extends ChangeNotifier {
@@ -305,23 +305,21 @@ class UpdatedFolderViewModel extends ChangeNotifier {
       if (kIsWeb) {
         // Web: read bytes, then compress in-memory
         final rawBytes = await pickedFile.readAsBytes();
-        compressedBytes = await FlutterImageCompress.compressWithList(
+        compressedBytes = await ImageCompressUtil.compressBytes(
           rawBytes,
           quality: 80,
           minWidth: 256,
           minHeight: 256,
-          format: CompressFormat.jpeg,
         );
         selectedIconBytes = compressedBytes ?? rawBytes;
         selectedIconFile = null;
       } else {
         // Mobile/desktop: compress from file path
-        compressedBytes = await FlutterImageCompress.compressWithFile(
+        compressedBytes = await ImageCompressUtil.compressFile(
           pickedFile.path,
           quality: 80,
           minWidth: 256,
           minHeight: 256,
-          format: CompressFormat.jpeg,
         );
 
         if (compressedBytes != null) {

@@ -6,8 +6,8 @@ import 'package:ema_app/model/folder_mode_v2/new_quiz_set_model.dart';
 import 'package:ema_app/utils/utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:ema_app/utils/image_compress_util.dart';
 import 'package:logger/logger.dart';
 
 class FolderQuizSetsViewModel extends ChangeNotifier {
@@ -322,22 +322,20 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
 
       if (kIsWeb) {
         final rawBytes = await pickedFile.readAsBytes();
-        compressedBytes = await FlutterImageCompress.compressWithList(
+        compressedBytes = await ImageCompressUtil.compressBytes(
           rawBytes,
           quality: 80,
           minWidth: 256,
           minHeight: 256,
-          format: CompressFormat.jpeg,
         );
         selectedIconBytes = compressedBytes ?? rawBytes;
         selectedIconFile = null;
       } else {
-        compressedBytes = await FlutterImageCompress.compressWithFile(
+        compressedBytes = await ImageCompressUtil.compressFile(
           pickedFile.path,
           quality: 80,
           minWidth: 256,
           minHeight: 256,
-          format: CompressFormat.jpeg,
         );
 
         if (compressedBytes != null) {
