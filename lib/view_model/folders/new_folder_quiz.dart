@@ -342,16 +342,22 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
           format: CompressFormat.jpeg,
         );
 
+        final tempDir = await Directory.systemTemp.createTemp('quiz_icon_');
         if (compressedBytes != null) {
-          final tempDir = await Directory.systemTemp.createTemp('quiz_icon_');
           final file = File(
               '${tempDir.path}/icon_${DateTime.now().millisecondsSinceEpoch}.jpg');
           await file.writeAsBytes(compressedBytes);
           selectedIconFile = file;
           selectedIconBytes = compressedBytes;
         } else {
-          selectedIconFile = File(pickedFile.path);
-          selectedIconBytes = await selectedIconFile!.readAsBytes();
+          // Compression failed — copy the original into our own temp dir
+          // rather than holding a File on the picker's own path, which may
+          // be the user's real device file and must never be deleted.
+          final ext = pickedFile.path.split('.').last;
+          final copy = await File(pickedFile.path).copy(
+              '${tempDir.path}/icon_${DateTime.now().millisecondsSinceEpoch}.$ext');
+          selectedIconFile = copy;
+          selectedIconBytes = await copy.readAsBytes();
         }
       }
 

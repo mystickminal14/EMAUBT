@@ -453,16 +453,22 @@ _logger.d(user);
         format: CompressFormat.jpeg,
       );
 
+      final tempDir = await Directory.systemTemp.createTemp('user_pick_');
       if (compressedBytes != null) {
-        final tempDir = await Directory.systemTemp.createTemp();
         final file = File(
             '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
         await file.writeAsBytes(compressedBytes);
         selectedImage = file;
         _logger.i('Image compressed: ${file.path}');
       } else {
-        selectedImage = File(pickedFile.path);
-        _logger.w('Compression failed, using original');
+        // Fallback: copy the original into our own temp dir rather than
+        // holding a File on the picker's own path, which may be the
+        // user's real device file and must never be deleted.
+        final ext = pickedFile.path.split('.').last;
+        final copy = await File(pickedFile.path)
+            .copy('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.$ext');
+        selectedImage = copy;
+        _logger.w('Compression failed, using copied original');
       }
       notifyListeners();
     } catch (e) {

@@ -98,17 +98,22 @@ class UserManagementViewModel extends ChangeNotifier {
           minHeight: 1024,
           format: CompressFormat.jpeg,
         );
+        final tempDir = await Directory.systemTemp.createTemp('user_icon_');
         if (compressedBytes != null) {
           // Create a temporary file for the compressed bytes
-          final tempDir = await Directory.systemTemp.createTemp();
           final compressedFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
           await compressedFile.writeAsBytes(compressedBytes);
           selectedImage = compressedFile;
           _logger.i('Image picked and compressed: ${compressedFile.path} (original: ${pickedFile.path})');
         } else {
-          // Fallback to original if compression fails
-          selectedImage = File(pickedFile.path);
-          _logger.w('Compression failed, using original image');
+          // Fallback: copy the original into our own temp dir rather than
+          // holding a File on the picker's own path, which may be the
+          // user's real device file and must never be deleted.
+          final ext = pickedFile.path.split('.').last;
+          final copy = await File(pickedFile.path)
+              .copy('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.$ext');
+          selectedImage = copy;
+          _logger.w('Compression failed, using copied original');
         }
         notifyListeners();
       }

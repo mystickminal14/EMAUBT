@@ -624,10 +624,18 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
 
         final mimeType = _getMimeType(file.extension ?? 'bin',
             isAudio: fileType == 'audio', isVideo: fileType == 'video');
+        // Never hold a File reference to the picker's own path — it may
+        // point at the user's real media file. Copy into our own temp
+        // file so later cleanup only ever deletes a disposable copy.
+        final tmp = await Directory.systemTemp.createTemp('quiz_qmedia_');
+        final ext = file.extension != null ? '.${file.extension}' : '';
+        final copy = File(
+            '${tmp.path}/qmedia_${DateTime.now().millisecondsSinceEpoch}$ext');
+        await copy.writeAsBytes(bytes);
         setQuestionFileFromBytes(
           bytes,
           mimeType,
-          file.path != null ? File(file.path!) : null,
+          copy,
           fileName: file.name,
         );
       }
@@ -694,11 +702,19 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
 
         final mimeType = _getMimeType(file.extension ?? 'bin',
             isAudio: fileType == 'audio', isVideo: fileType == 'video');
+        // Never hold a File reference to the picker's own path — it may
+        // point at the user's real media file. Copy into our own temp
+        // file so later cleanup only ever deletes a disposable copy.
+        final tmp = await Directory.systemTemp.createTemp('quiz_cmedia_');
+        final ext = file.extension != null ? '.${file.extension}' : '';
+        final copy = File(
+            '${tmp.path}/cmedia_${DateTime.now().millisecondsSinceEpoch}$ext');
+        await copy.writeAsBytes(bytes);
         setChoiceFileFromBytes(
           choiceIndex,
           bytes,
           mimeType,
-          file.path != null ? File(file.path!) : null,
+          copy,
           fileName: file.name,
         );
       }

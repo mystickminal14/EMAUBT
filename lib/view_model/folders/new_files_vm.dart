@@ -217,14 +217,20 @@ class FolderFilesViewModel extends ChangeNotifier {
         format:    CompressFormat.jpeg,
       );
 
+      final tempDir = await Directory.systemTemp.createTemp('icon_pick_');
       if (compressedBytes != null) {
-        final tempDir = await Directory.systemTemp.createTemp();
-        final file    = File(
+        final file = File(
             '${tempDir.path}/icon_${DateTime.now().millisecondsSinceEpoch}.jpg');
         await file.writeAsBytes(compressedBytes);
         selectedIcon = file;
       } else {
-        selectedIcon = File(pickedFile.path);
+        // Compression failed — copy the original into our own temp dir
+        // rather than holding a File on the picker's own path, which may
+        // be the user's real device file and must never be deleted.
+        final ext = pickedFile.path.split('.').last;
+        final copy = await File(pickedFile.path).copy(
+            '${tempDir.path}/icon_${DateTime.now().millisecondsSinceEpoch}.$ext');
+        selectedIcon = copy;
       }
       notifyListeners();
     } catch (e) {
