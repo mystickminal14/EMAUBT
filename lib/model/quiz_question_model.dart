@@ -350,9 +350,9 @@ class QuizChoiceInput {
     _clearFileInternal();
   }
   void _clearFileInternal() {
-    try {
-      file?.deleteSync();
-    } catch (_) {}
+    // Never delete `file` from disk here — for audio/video picks it's the
+    // user's original file on the device (file_picker gives us its real
+    // path, not a temp copy), not an app-owned temp file.
     file = null;
     fileBytes = null;
     mimeType = null;

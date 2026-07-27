@@ -20,10 +20,15 @@ import 'package:ema_app/view_model/user_management/user_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/user_folder_view_model.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  // video_player has no official Windows backend; fvp plugs in a
+  // media_kit-based decoder so the existing video_player/Chewie widgets
+  // (e.g. video preview while adding quiz questions) also work on Windows.
+  fvp.registerWith(options: {'platforms': ['windows']});
   runApp(const MyApp());
 }
 

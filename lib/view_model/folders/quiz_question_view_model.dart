@@ -531,9 +531,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
   }
 
   void clearQuestionFile() {
-    try {
-      selectedQuestionFile?.deleteSync();
-    } catch (_) {}
+    // Never delete `selectedQuestionFile` from disk here — for audio/video
+    // picks it's the user's original file on the device (file_picker gives
+    // us its real path, not a temp copy), not an app-owned temp file.
     selectedQuestionFile = null;
     selectedQuestionFileBytes = null;
     selectedQuestionFileMimeType = null;
