@@ -166,11 +166,11 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
   }
 
   // ── Create quiz set ────────────────────────────────────────────────────────
-  Future<void> addQuizSet(BuildContext context, int folderId) async {
+  Future<bool> addQuizSet(BuildContext context, int folderId) async {
     if (name == null || name!.trim().isEmpty) {
       Utils.showApiResponse(
           Utils.errorResponse('Quiz set name is required'), context);
-      return;
+      return false;
     }
 
     try {
@@ -185,8 +185,12 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
         if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (passingScore != null) 'passing_score': passingScore,
         'is_published': isPublished,
-        // FIX: always send selectedIconBase64 which is already in "data:image/jpeg;base64,..." format
-        if (selectedIconBase64 != null && selectedIconBase64!.isNotEmpty)
+        // Only send 'icon' when it's a freshly-picked base64 data URI — the
+        // server rejects anything else (e.g. a stored "icons/xxx.jpg" path)
+        // with "Invalid icon format". If unchanged, omit the field entirely
+        // so the backend keeps whatever icon is already set.
+        if (selectedIconBase64 != null &&
+            selectedIconBase64!.startsWith('data:'))
           'icon': selectedIconBase64,
       };
       _logger.d("addQuizSet body icon prefix → ${selectedIconBase64?.substring(0, 50)}");
@@ -198,11 +202,14 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       if (response['success'] == true) {
         clearFields();
         await fetchQuizSets(context, folderId, refresh: true);
+        return true;
       }
+      return false;
     } catch (e) {
       Utils.showApiResponse(
           Utils.errorResponse('Error creating quiz set: $e'), context);
       _logger.e('addQuizSet error: $e');
+      return false;
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -210,12 +217,12 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
   }
 
   // ── Update quiz set ────────────────────────────────────────────────────────
-  Future<void> editQuizSet(
+  Future<bool> editQuizSet(
       BuildContext context, QuizSetModel quizSet, int folderId) async {
     if (name == null || name!.trim().isEmpty) {
       Utils.showApiResponse(
           Utils.errorResponse('Quiz set name is required'), context);
-      return;
+      return false;
     }
 
     try {
@@ -230,8 +237,12 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
         if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (passingScore != null) 'passing_score': passingScore,
         'is_published': isPublished,
-        // FIX: always send selectedIconBase64 which is already in "data:image/jpeg;base64,..." format
-        if (selectedIconBase64 != null && selectedIconBase64!.isNotEmpty)
+        // Only send 'icon' when it's a freshly-picked base64 data URI — the
+        // server rejects anything else (e.g. a stored "icons/xxx.jpg" path)
+        // with "Invalid icon format". If unchanged, omit the field entirely
+        // so the backend keeps the icon that's already saved.
+        if (selectedIconBase64 != null &&
+            selectedIconBase64!.startsWith('data:'))
           'icon': selectedIconBase64,
       };
       // _logger.d("editQuizSet body icon prefix → ${selectedIconBase64?.substring(0, 50)}");
@@ -245,11 +256,14 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       if (response['success'] == true) {
         clearFields();
         await fetchQuizSets(context, folderId, refresh: true);
+        return true;
       }
+      return false;
     } catch (e) {
       Utils.showApiResponse(
           Utils.errorResponse('Error updating quiz set: $e'), context);
       _logger.e('editQuizSet error: $e');
+      return false;
     } finally {
       isActionLoading = false;
       notifyListeners();

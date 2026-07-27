@@ -150,9 +150,9 @@ class _QuizSetsTabState extends State<QuizSetsTab>
             );
 
             if (existing == null) {
-              await vm.addQuizSet(context, widget.folderId);
+              return await vm.addQuizSet(context, widget.folderId);
             } else {
-              await vm.editQuizSet(context, existing, widget.folderId);
+              return await vm.editQuizSet(context, existing, widget.folderId);
             }
           },
         ),
@@ -646,7 +646,7 @@ class _QuizSetsEmptyState extends StatelessWidget {
 // ─── Quiz Set Form Sheet ──────────────────────────────────────────────────────
 class QuizSetFormSheet extends StatefulWidget {
   final QuizSetModel? existing;
-  final Future<void> Function(Map<String, dynamic>) onSubmit;
+  final Future<bool> Function(Map<String, dynamic>) onSubmit;
 
   const QuizSetFormSheet({
     super.key,
@@ -695,7 +695,7 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
     FocusScope.of(context).unfocus();
     setState(() => _submitting = true);
     try {
-      await widget.onSubmit({
+      final success = await widget.onSubmit({
         'name': _name.text.trim(),
         'description': _description.text.trim(),
         'duration_minutes': int.tryParse(_duration.text),
@@ -704,6 +704,11 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
         // and is captured directly in _showFormSheet's onSubmit callback.
       });
       if (!mounted) return;
+
+      // The API call failed (e.g. validation error) — the error was already
+      // surfaced by the view model. Keep the sheet open so the user can fix
+      // the offending field instead of silently closing as if it worked.
+      if (!success) return;
 
       // Clear form
       _name.clear();
