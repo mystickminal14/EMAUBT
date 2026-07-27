@@ -255,10 +255,12 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-  Future<void> publishQuizSet(
+  /// Change a quiz set's status — [status] is `published` or `draft`.
+  Future<void> changeQuizSetStatus(
       BuildContext context,
       QuizSetModel quizSet,
       int folderId,
+      String status,
       ) async {
     try {
       isActionLoading = true;
@@ -267,7 +269,7 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       final response = await _apiService.getPostApiResponse(
         '${QuizSetEndpoints.updateQuizSetStatus}${quizSet.id}/status',
         {
-          "status": "published",
+          "status": status,
         },
       );
 
@@ -278,10 +280,10 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       }
     } catch (e) {
       Utils.showApiResponse(
-        Utils.errorResponse('Error publishing quiz set: $e'),
+        Utils.errorResponse('Error updating quiz set status: $e'),
         context,
       );
-      _logger.e('publishQuizSet error: $e');
+      _logger.e('changeQuizSetStatus error: $e');
     } finally {
       isActionLoading = false;
       notifyListeners();
