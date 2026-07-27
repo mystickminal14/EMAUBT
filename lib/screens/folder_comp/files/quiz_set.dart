@@ -267,8 +267,8 @@ class _QuizSetListBody extends StatelessWidget {
                 index: i,
                 onEdit: () => onEdit(quizSet),
                 onDelete: () => _confirmDelete(context, vm, quizSet),
-                onUpdate: () {
-                  vm.publishQuizSet(context, quizSet, folderId);
+                onUpdate: (status) {
+                  vm.updateQuizSetStatus(context, quizSet, folderId, status);
                 },
               );
             },
@@ -317,12 +317,17 @@ class _QuizSetListBody extends StatelessWidget {
 }
 
 // ─── Quiz Set Card ────────────────────────────────────────────────────────────
+bool _isPublished(String? status) =>
+    (status ?? '').trim().toLowerCase() == 'published';
+
 class QuizSetCard extends StatelessWidget {
   final QuizSetModel quizSet;
   final int index;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onUpdate;
+
+  /// Called with the new status (`published` / `draft`).
+  final void Function(String status) onUpdate;
 
 
   const QuizSetCard({
@@ -386,11 +391,16 @@ class QuizSetCard extends StatelessWidget {
                       icon: Icons.check_circle_outline_rounded,
                       label: 'Pass: ${quizSet.passingScore}%',
                     ),
-                  _PublishedBadge(isPublished: quizSet.status ?? "Draft"),
+                  _PublishedBadge(status: quizSet.status ?? "draft"),
                 ],
               ),
             ),
-            trailing: _QuizSetCardMenu(onEdit: onEdit,onDelete: onDelete,onUpdate: onUpdate),
+            trailing: _QuizSetCardMenu(
+              onEdit: onEdit,
+              onDelete: onDelete,
+              onUpdate: onUpdate,
+              isPublished: _isPublished(quizSet.status),
+            ),
           ),
         ),
       ),
@@ -477,26 +487,27 @@ class _InfoChip extends StatelessWidget {
 
 // ─── Published Badge ──────────────────────────────────────────────────────────
 class _PublishedBadge extends StatelessWidget {
-  final String isPublished;
+  final String status;
 
-  const _PublishedBadge({required this.isPublished});
+  const _PublishedBadge({required this.status});
 
   @override
   Widget build(BuildContext context) {
+    final published = _isPublished(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: isPublished == "published"
+        color: published
             ? const Color(0xFF10B981).withOpacity(0.12)
             : Colors.orange.withOpacity(0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        isPublished,
+        status,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: isPublished == "published"
+          color: published
               ? const Color(0xFF059669)
               : Colors.orange.shade700,
         ),
@@ -509,10 +520,16 @@ class _PublishedBadge extends StatelessWidget {
 class _QuizSetCardMenu extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onUpdate;
+  final void Function(String status) onUpdate;
+  final bool isPublished;
 
 
-  const _QuizSetCardMenu({required this.onEdit, required this.onDelete, required this.onUpdate});
+  const _QuizSetCardMenu({
+    required this.onEdit,
+    required this.onDelete,
+    required this.onUpdate,
+    required this.isPublished,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -522,7 +539,8 @@ class _QuizSetCardMenu extends StatelessWidget {
       onSelected: (v) {
         if (v == 'edit') onEdit();
         if (v == 'delete') onDelete();
-        if (v == 'publish') onUpdate();
+        if (v == 'publish') onUpdate('published');
+        if (v == 'draft') onUpdate('draft');
       },
       itemBuilder: (_) => [
         const PopupMenuItem(
@@ -543,26 +561,48 @@ class _QuizSetCardMenu extends StatelessWidget {
                     fontWeight: FontWeight.w600, color: Colors.red)),
           ]),
         ),
-        const PopupMenuItem(
-          value: 'publish',
-          child: Row(
-            children: [
-              Icon(
-                Icons.publish_rounded,
-                size: 18,
-                color: Colors.green,
-              ),
-              SizedBox(width: 10),
-              Text(
-                'Publish Now',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
+        if (isPublished)
+          const PopupMenuItem(
+            value: 'draft',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.unpublished_rounded,
+                  size: 18,
+                  color: Colors.orange,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Move to Draft',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          const PopupMenuItem(
+            value: 'publish',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.publish_rounded,
+                  size: 18,
                   color: Colors.green,
                 ),
-              ),
-            ],
+                SizedBox(width: 10),
+                Text(
+                  'Publish Now',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
