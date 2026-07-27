@@ -330,6 +330,18 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
     );
   }
 
+  /// Keeps the view-model in sync with what the dropdowns fall back to when
+  /// nothing has been picked yet — otherwise the form shows "Answer A" /
+  /// "Reading" while the underlying value is still null and saving fails.
+  void _applyQuestionDefaults(NewQuizSetQuestionsViewModel vm) {
+    final answer = vm.correctAnswer?.trim().toUpperCase();
+    vm.correctAnswer =
+    const ['A', 'B', 'C', 'D'].contains(answer) ? answer : 'A';
+    if (vm.questionType == null || vm.questionType!.trim().isEmpty) {
+      vm.questionType = 'reading';
+    }
+  }
+
   void _showQuestionDialog(String title,
       {required bool isEdit, int? questionId}) {
     final vm = context.read<NewQuizSetQuestionsViewModel>();
@@ -343,18 +355,19 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
           (i) => TextEditingController(text: vm.choices[i].text ?? ''),
     );
 
-    if (vm.correctAnswer == null || vm.correctAnswer!.isEmpty) {
-      vm.correctAnswer = 'A';
-    }
-    if (vm.questionType == null || vm.questionType!.isEmpty) {
-      vm.questionType = 'Reading';
-    }
+    _applyQuestionDefaults(vm);
+
+    // Bumped after every successful save so the dialog subtree is rebuilt from
+    // scratch — that disposes the audio/video players and image previews of the
+    // question that was just saved instead of reusing their state.
+    int formGeneration = 0;
 
     showDialog(
       context: context,
       useRootNavigator: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDs) => _QuestionDialog(
+          key: ValueKey('question-form-$formGeneration'),
           title: title,
           vm: vm,
           questionCtrl: questionCtrl,
@@ -381,22 +394,39 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
               if (isEdit && questionId != null) {
                 final q =
                 vm.questions.firstWhere((q) => q.id == questionId);
+                success =
                 await vm.editQuestion(context, q, widget.quizSetId);
               } else {
+                success =
                 await vm.addQuestion(context, widget.quizSetId);
               }
-              success = true;
             } finally {
               _hideLoading();
             }
 
+            // Only wipe the form when the question really was saved —
+            // otherwise the admin would lose everything they typed.
             if (success) {
               vm.clearFields();
+              // Drop every picked/existing image, audio and video so no
+              // media from the saved question leaks into the next one.
+              vm.clearQuestionFile();
+              vm.existingQuestionFilePath = null;
+              for (var i = 0; i < vm.choices.length; i++) {
+                vm.clearChoiceFile(i);
+              }
               questionCtrl.clear();
               optionalCtrl.clear();
               for (final c in choiceCtrls) {
                 c.clear();
               }
+              // The dialog stays open so the next question can be added
+              // straight away — re-seed the dropdown defaults and rebuild the
+              // form from scratch so no media preview survives.
+              setDs(() {
+                _applyQuestionDefaults(vm);
+                formGeneration++;
+              });
             }
           },
         ),
@@ -814,6 +844,7 @@ class _QuestionDialog extends StatelessWidget {
   final VoidCallback onSave;
 
   const _QuestionDialog({
+    super.key,
     required this.title,
     required this.vm,
     required this.questionCtrl,
@@ -981,6 +1012,10 @@ class _QuestionDialog extends StatelessWidget {
                       },
                     ),
                     _FilePreview(
+                      // Keyed so a cleared/replaced file always builds a fresh
+                      // player instead of reusing the previous one's state.
+                      key: ValueKey('q-${vm.selectedQuestionFileName ?? ''}'
+                          '-${vm.existingQuestionFilePath ?? ''}'),
                       bytes: vm.selectedQuestionFileBytes,
                       mimeType: vm.selectedQuestionFileMimeType,
                       fileName: vm.selectedQuestionFileName,
@@ -1066,6 +1101,8 @@ class _QuestionDialog extends StatelessWidget {
                         },
                       ),
                       _FilePreview(
+                        key: ValueKey('c$i-${vm.choices[i].fileName ?? ''}'
+                            '-${vm.choices[i].existingFilePath ?? ''}'),
                         bytes: vm.choices[i].fileBytes,           // newly picked bytes (null in edit mode)
                         mimeType: vm.choices[i].mimeType,
                         fileName: vm.choices[i].fileName,
@@ -1202,7 +1239,12 @@ class _FilePreview extends StatelessWidget {
   final String? fileName;
   final String? existingPath;
 
-  const _FilePreview({this.bytes, this.mimeType, this.fileName, this.existingPath});
+  const _FilePreview(
+      {super.key,
+        this.bytes,
+        this.mimeType,
+        this.fileName,
+        this.existingPath});
 
   bool get _isImage => mimeType?.startsWith('image/') ?? false;
   bool get _isAudio => mimeType?.startsWith('audio/') ?? false;
