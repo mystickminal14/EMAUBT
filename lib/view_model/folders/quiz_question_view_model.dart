@@ -339,8 +339,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
   }
 
   // ── Add question ───────────────────────────────────────────────────────────
-  Future<void> addQuestion(BuildContext context, int quizSetId) async {
-    if (!_validateQuestion(context)) return;
+  /// Returns `true` only when the question was actually saved.
+  Future<bool> addQuestion(BuildContext context, int quizSetId) async {
+    if (!_validateQuestion(context)) return false;
 
     try {
       isActionLoading = true;
@@ -356,11 +357,14 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
       if (response['success'] == true) {
         clearFields();
         await fetchQuestions(context, quizSetId, refresh: true);
+        return true;
       }
+      return false;
     } catch (e) {
       _logger.e('addQuestion error: $e');
       Utils.showApiResponse(
           Utils.errorResponse('Error creating question: $e'), context);
+      return false;
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -368,12 +372,13 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
   }
 
   // ── Edit question ──────────────────────────────────────────────────────────
-  Future<void> editQuestion(
+  /// Returns `true` only when the question was actually saved.
+  Future<bool> editQuestion(
       BuildContext context,
       QuizQuestionModel question,
       int quizSetId,
       ) async {
-    if (!_validateQuestion(context)) return;
+    if (!_validateQuestion(context)) return false;
 
     try {
       isActionLoading = true;
@@ -390,11 +395,14 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
       if (response['success'] == true) {
         clearFields();
         await fetchQuestions(context, quizSetId, refresh: true);
+        return true;
       }
+      return false;
     } catch (e) {
       _logger.e('editQuestion error: $e');
       Utils.showApiResponse(
           Utils.errorResponse('Error updating question: $e'), context);
+      return false;
     } finally {
       isActionLoading = false;
       notifyListeners();
