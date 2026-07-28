@@ -166,11 +166,11 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
   }
 
   // ── Create quiz set ────────────────────────────────────────────────────────
-  Future<void> addQuizSet(BuildContext context, int folderId) async {
+  Future<bool> addQuizSet(BuildContext context, int folderId) async {
     if (name == null || name!.trim().isEmpty) {
       Utils.showApiResponse(
           Utils.errorResponse('Quiz set name is required'), context);
-      return;
+      return false;
     }
 
     try {
@@ -195,14 +195,17 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
           QuizSetEndpoints.createQuizSet, body);
 
       Utils.showApiResponse(response, context);
-      if (response['success'] == true) {
+      final success = response['success'] == true;
+      if (success) {
         clearFields();
         await fetchQuizSets(context, folderId, refresh: true);
       }
+      return success;
     } catch (e) {
       Utils.showApiResponse(
           Utils.errorResponse('Error creating quiz set: $e'), context);
       _logger.e('addQuizSet error: $e');
+      return false;
     } finally {
       isActionLoading = false;
       notifyListeners();
@@ -210,12 +213,12 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
   }
 
   // ── Update quiz set ────────────────────────────────────────────────────────
-  Future<void> editQuizSet(
+  Future<bool> editQuizSet(
       BuildContext context, QuizSetModel quizSet, int folderId) async {
     if (name == null || name!.trim().isEmpty) {
       Utils.showApiResponse(
           Utils.errorResponse('Quiz set name is required'), context);
-      return;
+      return false;
     }
 
     try {
@@ -242,14 +245,17 @@ class FolderQuizSetsViewModel extends ChangeNotifier {
       );
 
       Utils.showApiResponse(response, context);
-      if (response['success'] == true) {
+      final success = response['success'] == true;
+      if (success) {
         clearFields();
         await fetchQuizSets(context, folderId, refresh: true);
       }
+      return success;
     } catch (e) {
       Utils.showApiResponse(
           Utils.errorResponse('Error updating quiz set: $e'), context);
       _logger.e('editQuizSet error: $e');
+      return false;
     } finally {
       isActionLoading = false;
       notifyListeners();

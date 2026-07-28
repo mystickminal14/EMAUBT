@@ -12,6 +12,8 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:ffmpeg_kit_flutter_new_audio/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new_audio/return_code.dart';
 import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,6 +37,27 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
   static const int perPage = 8; // Match server default per_page
 
   bool get hasMorePages => currentPage < totalPages;
+
+  // Set when a pick/convert step fails, so the UI can surface it. Cleared
+  // at the start of every pick call.
+  String? lastPickError;
+
+  // True while an audio file is being transcoded (ffmpeg) after picking, so
+  // the preview can show a loading state instead of a stale/empty player.
+  bool isConvertingQuestionAudio = false;
+  final List<bool> isConvertingChoiceAudio = List<bool>.filled(4, false);
+
+  // These pass straight through to the backend. Anything else (m4a, mp4a,
+  // mpa, ...) gets transcoded to mp3 first via
+  // _resolveAudioFile/_convertAudioToMp3 — confirmed the backend rejects
+  // m4a directly ("Choice B file type is not supported"), so it can't be
+  // in this list even though the container is otherwise valid audio.
+  static const Set<String> _supportedAudioExtensions = {
+    'mp3',
+    'wav',
+    'aac',
+    'ogg',
+  };
 
   String? existingQuestionFilePath;
 
@@ -570,8 +593,56 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Audio format normalization ─────────────────────────────────────────────
+  // Transcodes an unsupported audio format (e.g. .mpa) to mp3 via ffmpeg.
+  // Returns null if the conversion fails.
+  Future<Uint8List?> _convertAudioToMp3(Uint8List inputBytes, String inputExt) async {
+    final tmp = await Directory.systemTemp.createTemp('audio_convert_');
+    try {
+      final inputFile = File('${tmp.path}/input.$inputExt');
+      final outputFile = File('${tmp.path}/output.mp3');
+      await inputFile.writeAsBytes(inputBytes);
+
+      final session = await FFmpegKit.execute(
+          '-y -i "${inputFile.path}" -c:a libmp3lame -q:a 2 "${outputFile.path}"');
+      final returnCode = await session.getReturnCode();
+
+      if (ReturnCode.isSuccess(returnCode) && await outputFile.exists()) {
+        return await outputFile.readAsBytes();
+      }
+      final logs = await session.getAllLogsAsString();
+      _logger.e('ffmpeg audio conversion failed (.$inputExt -> mp3): $logs');
+      return null;
+    } finally {
+      await tmp.delete(recursive: true);
+    }
+  }
+
+  // Ensures the picked audio bytes are in a format the backend/players
+  // support, converting to mp3 first if the picked extension isn't one of
+  // _supportedAudioExtensions (e.g. .mpa).
+  Future<({Uint8List bytes, String ext, String fileName})> _resolveAudioFile(
+      PlatformFile file, Uint8List bytes) async {
+    final ext = (file.extension ?? '').toLowerCase();
+    if (_supportedAudioExtensions.contains(ext)) {
+      return (bytes: bytes, ext: ext, fileName: file.name);
+    }
+
+    _logger.i('Converting unsupported audio format .$ext to mp3');
+    final converted = await _convertAudioToMp3(bytes, ext.isEmpty ? 'bin' : ext);
+    if (converted == null) {
+      throw Exception(
+          'Could not convert .$ext audio to a supported format (mp3).');
+    }
+
+    final dot = file.name.lastIndexOf('.');
+    final baseName = dot > 0 ? file.name.substring(0, dot) : file.name;
+    return (bytes: converted, ext: 'mp3', fileName: '$baseName.mp3');
+  }
+
   // ── Pick question file ─────────────────────────────────────────────────────
   Future<void> pickQuestionFile({String fileType = 'image'}) async {
+    lastPickError = null;
     try {
       if (fileType == 'image') {
         final picker = ImagePicker();
@@ -616,31 +687,47 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
         if (result == null || result.files.isEmpty) return;
         final file = result.files.first;
 
-        final bytes = file.bytes ??
+        var bytes = file.bytes ??
             (file.path != null
                 ? await File(file.path!).readAsBytes()
                 : null);
         if (bytes == null) return;
 
-        final mimeType = _getMimeType(file.extension ?? 'bin',
+        var extension = file.extension ?? 'bin';
+        var fileName = file.name;
+        if (fileType == 'audio') {
+          isConvertingQuestionAudio = true;
+          notifyListeners();
+          try {
+            final resolved = await _resolveAudioFile(file, bytes);
+            bytes = resolved.bytes;
+            extension = resolved.ext;
+            fileName = resolved.fileName;
+          } finally {
+            isConvertingQuestionAudio = false;
+            notifyListeners();
+          }
+        }
+
+        final mimeType = _getMimeType(extension,
             isAudio: fileType == 'audio', isVideo: fileType == 'video');
         // Never hold a File reference to the picker's own path — it may
         // point at the user's real media file. Copy into our own temp
         // file so later cleanup only ever deletes a disposable copy.
         final tmp = await Directory.systemTemp.createTemp('quiz_qmedia_');
-        final ext = file.extension != null ? '.${file.extension}' : '';
         final copy = File(
-            '${tmp.path}/qmedia_${DateTime.now().millisecondsSinceEpoch}$ext');
+            '${tmp.path}/qmedia_${DateTime.now().millisecondsSinceEpoch}.$extension');
         await copy.writeAsBytes(bytes);
         setQuestionFileFromBytes(
           bytes,
           mimeType,
           copy,
-          fileName: file.name,
+          fileName: fileName,
         );
       }
     } catch (e) {
       _logger.e('pickQuestionFile error: $e');
+      lastPickError = 'Could not use that audio file: $e';
     }
   }
 
@@ -694,32 +781,48 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
         if (result == null || result.files.isEmpty) return;
         final file = result.files.first;
 
-        final bytes = file.bytes ??
+        var bytes = file.bytes ??
             (file.path != null
                 ? await File(file.path!).readAsBytes()
                 : null);
         if (bytes == null) return;
 
-        final mimeType = _getMimeType(file.extension ?? 'bin',
+        var extension = file.extension ?? 'bin';
+        var fileName = file.name;
+        if (fileType == 'audio') {
+          isConvertingChoiceAudio[choiceIndex] = true;
+          notifyListeners();
+          try {
+            final resolved = await _resolveAudioFile(file, bytes);
+            bytes = resolved.bytes;
+            extension = resolved.ext;
+            fileName = resolved.fileName;
+          } finally {
+            isConvertingChoiceAudio[choiceIndex] = false;
+            notifyListeners();
+          }
+        }
+
+        final mimeType = _getMimeType(extension,
             isAudio: fileType == 'audio', isVideo: fileType == 'video');
         // Never hold a File reference to the picker's own path — it may
         // point at the user's real media file. Copy into our own temp
         // file so later cleanup only ever deletes a disposable copy.
         final tmp = await Directory.systemTemp.createTemp('quiz_cmedia_');
-        final ext = file.extension != null ? '.${file.extension}' : '';
         final copy = File(
-            '${tmp.path}/cmedia_${DateTime.now().millisecondsSinceEpoch}$ext');
+            '${tmp.path}/cmedia_${DateTime.now().millisecondsSinceEpoch}.$extension');
         await copy.writeAsBytes(bytes);
         setChoiceFileFromBytes(
           choiceIndex,
           bytes,
           mimeType,
           copy,
-          fileName: file.name,
+          fileName: fileName,
         );
       }
     } catch (e) {
       _logger.e('pickChoiceFile $letter error: $e');
+      lastPickError = 'Could not use that audio file: $e';
     }
   }
 

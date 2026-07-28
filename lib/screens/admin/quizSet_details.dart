@@ -16,6 +16,25 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:chewie/chewie.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Toast Helper (shared by the page state and its dialog widgets)
+// ─────────────────────────────────────────────────────────────────────────────
+void _showFlushbar(BuildContext context, String msg, {bool isError = false}) {
+  Flushbar(
+    message: msg,
+    backgroundColor: isError ? _T.danger : _T.success,
+    duration: const Duration(seconds: 3),
+    margin: const EdgeInsets.all(14),
+    borderRadius: BorderRadius.circular(_T.r12),
+    icon: Icon(
+      isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+      color: Colors.white,
+      size: 20,
+    ),
+    flushbarPosition: FlushbarPosition.TOP,
+  ).show(context);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Auth Headers Helper
 // ─────────────────────────────────────────────────────────────────────────────
 Future<Map<String, String>> getAuthHeaders() async {
@@ -259,21 +278,7 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
   // ── Toast ──────────────────────────────────────────────────────────────────
   void _toast(String msg, {bool isError = false}) {
     if (!mounted) return;
-    Flushbar(
-      message: msg,
-      backgroundColor: isError ? _T.danger : _T.success,
-      duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(14),
-      borderRadius: BorderRadius.circular(_T.r12),
-      icon: Icon(
-        isError
-            ? Icons.error_outline_rounded
-            : Icons.check_circle_outline_rounded,
-        color: Colors.white,
-        size: 20,
-      ),
-      flushbarPosition: FlushbarPosition.TOP,
-    ).show(context);
+    _showFlushbar(context, msg, isError: isError);
   }
 
   // ── CRUD entrypoints ───────────────────────────────────────────────────────
@@ -1000,6 +1005,10 @@ class _QuestionDialog extends StatelessWidget {
                       },
                       onPickAudio: () async {
                         await vm.pickQuestionFile(fileType: 'audio');
+                        if (vm.lastPickError != null) {
+                          _showFlushbar(context, vm.lastPickError!,
+                              isError: true);
+                        }
                         setDs(() {});
                       },
                       onPickVideo: () async {
@@ -1011,15 +1020,24 @@ class _QuestionDialog extends StatelessWidget {
                         setDs(() {});
                       },
                     ),
-                    _FilePreview(
-                      // Keyed so a cleared/replaced file always builds a fresh
-                      // player instead of reusing the previous one's state.
-                      key: ValueKey('q-${vm.selectedQuestionFileName ?? ''}'
-                          '-${vm.existingQuestionFilePath ?? ''}'),
-                      bytes: vm.selectedQuestionFileBytes,
-                      mimeType: vm.selectedQuestionFileMimeType,
-                      fileName: vm.selectedQuestionFileName,
-                      existingPath: vm.existingQuestionFilePath, // ← add this
+                    Consumer<NewQuizSetQuestionsViewModel>(
+                      builder: (_, liveVm, __) {
+                        if (liveVm.isConvertingQuestionAudio) {
+                          return const _AudioConvertingIndicator();
+                        }
+                        return _FilePreview(
+                          // Keyed so a cleared/replaced file always builds a
+                          // fresh player instead of reusing the previous
+                          // one's state.
+                          key: ValueKey(
+                              'q-${liveVm.selectedQuestionFileName ?? ''}'
+                              '-${liveVm.existingQuestionFilePath ?? ''}'),
+                          bytes: liveVm.selectedQuestionFileBytes,
+                          mimeType: liveVm.selectedQuestionFileMimeType,
+                          fileName: liveVm.selectedQuestionFileName,
+                          existingPath: liveVm.existingQuestionFilePath,
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 20),
@@ -1088,6 +1106,10 @@ class _QuestionDialog extends StatelessWidget {
                         onPickAudio: () async {
                           await vm.pickChoiceFile(i,
                               fileType: 'audio');
+                          if (vm.lastPickError != null) {
+                            _showFlushbar(context, vm.lastPickError!,
+                                isError: true);
+                          }
                           setDs(() {});
                         },
                         onPickVideo: () async {
@@ -1100,13 +1122,21 @@ class _QuestionDialog extends StatelessWidget {
                           setDs(() {});
                         },
                       ),
-                      _FilePreview(
-                        key: ValueKey('c$i-${vm.choices[i].fileName ?? ''}'
-                            '-${vm.choices[i].existingFilePath ?? ''}'),
-                        bytes: vm.choices[i].fileBytes,           // newly picked bytes (null in edit mode)
-                        mimeType: vm.choices[i].mimeType,
-                        fileName: vm.choices[i].fileName,
-                        existingPath: vm.choices[i].existingFilePath, // ← server path shown in edit mode
+                      Consumer<NewQuizSetQuestionsViewModel>(
+                        builder: (_, liveVm, __) {
+                          if (liveVm.isConvertingChoiceAudio[i]) {
+                            return const _AudioConvertingIndicator();
+                          }
+                          return _FilePreview(
+                            key: ValueKey(
+                                'c$i-${liveVm.choices[i].fileName ?? ''}'
+                                '-${liveVm.choices[i].existingFilePath ?? ''}'),
+                            bytes: liveVm.choices[i].fileBytes,           // newly picked bytes (null in edit mode)
+                            mimeType: liveVm.choices[i].mimeType,
+                            fileName: liveVm.choices[i].fileName,
+                            existingPath: liveVm.choices[i].existingFilePath, // ← server path shown in edit mode
+                          );
+                        },
                       ),
                       if (i < 3) const SizedBox(height: 10),
                     ],
@@ -1232,6 +1262,42 @@ class _QuestionDialog extends StatelessWidget {
     );
   }
 }
+// ── Loading state shown while a picked audio file is being converted ───────
+class _AudioConvertingIndicator extends StatelessWidget {
+  const _AudioConvertingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _T.purpleLight,
+          borderRadius: BorderRadius.circular(_T.r12),
+          border: Border.all(color: _T.purple.withOpacity(0.2)),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: _T.purple),
+            ),
+            SizedBox(width: 10),
+            Text('Converting audio…',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: _T.purple,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Updated _FilePreview ──────────────────────────────────────────
 class _FilePreview extends StatelessWidget {
   final Uint8List? bytes;

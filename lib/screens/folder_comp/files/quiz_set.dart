@@ -150,9 +150,9 @@ class _QuizSetsTabState extends State<QuizSetsTab>
             );
 
             if (existing == null) {
-              await vm.addQuizSet(context, widget.folderId);
+              return vm.addQuizSet(context, widget.folderId);
             } else {
-              await vm.editQuizSet(context, existing, widget.folderId);
+              return vm.editQuizSet(context, existing, widget.folderId);
             }
           },
         ),
@@ -644,7 +644,7 @@ class _QuizSetsEmptyState extends StatelessWidget {
 // ─── Quiz Set Form Sheet ──────────────────────────────────────────────────────
 class QuizSetFormSheet extends StatefulWidget {
   final QuizSetModel? existing;
-  final Future<void> Function(Map<String, dynamic>) onSubmit;
+  final Future<bool> Function(Map<String, dynamic>) onSubmit;
 
   const QuizSetFormSheet({
     super.key,
@@ -693,7 +693,7 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
     FocusScope.of(context).unfocus();
     setState(() => _submitting = true);
     try {
-      await widget.onSubmit({
+      final success = await widget.onSubmit({
         'name': _name.text.trim(),
         'description': _description.text.trim(),
         'duration_minutes': int.tryParse(_duration.text),
@@ -701,6 +701,9 @@ class _QuizSetFormSheetState extends State<QuizSetFormSheet> {
         // NOTE: icon is NOT passed here — it lives in the VM's selectedIconBase64
         // and is captured directly in _showFormSheet's onSubmit callback.
       });
+      // API failure already showed its own error toast (Utils.showApiResponse
+      // inside addQuizSet/editQuizSet) — don't also claim success here.
+      if (!success) return;
       if (!mounted) return;
 
       // Clear form
