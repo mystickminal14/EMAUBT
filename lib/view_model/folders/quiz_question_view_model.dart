@@ -150,6 +150,7 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
     required String url,
     required String method,
     required int quizSetId,
+    bool isEdit = false,
   }) async {
     final headers = await _getAuthHeaders();
     final request = http.MultipartRequest(method, Uri.parse(url));
@@ -192,6 +193,13 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
           contentType: MediaType.parse(selectedQuestionFileMimeType!),
         ),
       );
+    } else if (isEdit &&
+        (existingQuestionFilePath == null ||
+            existingQuestionFilePath!.isEmpty)) {
+      // No new file and no existing one left → the user removed it.
+      // Send an explicit empty string so the backend clears the old file
+      // instead of leaving it untouched (an absent field means "keep as is").
+      request.fields['question_file'] = '';
     }
 
     // Choice fields
@@ -212,6 +220,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
             contentType: MediaType.parse(choice.mimeType!),
           ),
         );
+      } else if (isEdit && !choice.hasExistingFile) {
+        // Same rationale as the question file: signal removal explicitly.
+        request.fields['choice_${letter}_file'] = '';
       }
     }
 
@@ -389,6 +400,7 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
         url: url,
         method: 'POST',
         quizSetId: quizSetId,
+        isEdit: true,
       );
 
       Utils.showApiResponse(response, context);
@@ -538,6 +550,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
     selectedQuestionFileBytes = null;
     selectedQuestionFileMimeType = null;
     selectedQuestionFileName = null;
+    // Also drop the server-side path so the preview disappears and the
+    // upcoming edit request knows the image was explicitly removed.
+    existingQuestionFilePath = null;
     notifyListeners();
   }
 
