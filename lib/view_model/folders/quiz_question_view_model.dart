@@ -61,6 +61,29 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
 
   String? existingQuestionFilePath;
 
+  // The question file may live in memory (just picked) or only on the server
+  // (editing an existing question). The UI needs to treat both as "there is a
+  // file here", otherwise the remove button never renders for a stored image
+  // and it becomes impossible to delete one.
+  bool get hasExistingQuestionFile =>
+      existingQuestionFilePath != null &&
+      existingQuestionFilePath!.trim().isNotEmpty;
+
+  bool get hasAnyQuestionFile =>
+      selectedQuestionFileBytes != null || hasExistingQuestionFile;
+
+  String? get questionFileDisplayName =>
+      selectedQuestionFileName ??
+      (hasExistingQuestionFile
+          ? existingQuestionFilePath!.split('/').last
+          : null);
+
+  String? get questionFileDisplayMime =>
+      selectedQuestionFileMimeType ??
+      (hasExistingQuestionFile
+          ? _guessMimeFromPath(existingQuestionFilePath!)
+          : null);
+
   // ── Question-level fields ──────────────────────────────────────────────────
   String? questionText;
   String? correctAnswer;
@@ -169,10 +192,18 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
   }
 
   // ── Multipart request builder ─────────────────────────────────────────────
+  // `isEdit` switches the payload from "only send what is set" to "send every
+  // field, always". On an update the server cannot tell an omitted field from
+  // an untouched one, so a field left out reads as "keep the stored value" —
+  // which is why removing an option image or clearing its text used to survive
+  // the save. On edit every text field is sent (empty string = clear it) and
+  // every file field is sent as either the upload, the existing path (keep) or
+  // an empty string (delete the stored file).
   Future<Map<String, dynamic>> _sendMultipartRequest({
     required String url,
     required String method,
     required int quizSetId,
+    bool isEdit = false,
   }) async {
     final headers = await _getAuthHeaders();
     final request = http.MultipartRequest(method, Uri.parse(url));
@@ -190,7 +221,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
       request.fields['question_type'] = questionType!.toLowerCase();
     }
 
-    if (optionalText != null && optionalText!.trim().isNotEmpty) {
+    if (isEdit) {
+      request.fields['optional_text'] = optionalText?.trim() ?? '';
+    } else if (optionalText != null && optionalText!.trim().isNotEmpty) {
       request.fields['optional_text'] = optionalText!.trim();
     }
 
@@ -215,6 +248,10 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
           contentType: MediaType.parse(selectedQuestionFileMimeType!),
         ),
       );
+    } else if (isEdit) {
+      // Nothing new picked: echo the stored path back to keep the file, or an
+      // empty string when the admin removed it so the server deletes it.
+      request.fields['question_file'] = existingQuestionFilePath?.trim() ?? '';
     }
 
     // Choice fields
@@ -222,7 +259,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
       final letter = String.fromCharCode(65 + i);
       final choice = choices[i];
 
-      if (choice.hasText) {
+      if (isEdit) {
+        request.fields['choice_${letter}_text'] = choice.text?.trim() ?? '';
+      } else if (choice.hasText) {
         request.fields['choice_${letter}_text'] = choice.text!.trim();
       }
 
@@ -235,6 +274,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
             contentType: MediaType.parse(choice.mimeType!),
           ),
         );
+      } else if (isEdit) {
+        request.fields['choice_${letter}_file'] =
+            choice.existingFilePath?.trim() ?? '';
       }
     }
 
@@ -412,6 +454,7 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
         url: url,
         method: 'POST',
         quizSetId: quizSetId,
+        isEdit: true,
       );
 
       Utils.showApiResponse(response, context);
@@ -466,7 +509,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
   bool _validateQuestion(BuildContext context) {
     final hasQuestionText =
         questionText != null && questionText!.trim().isNotEmpty;
-    final hasQuestionFile = selectedQuestionFileBytes != null;
+    // An image-only question being edited without re-picking the image still
+    // has a file — it just lives on the server rather than in memory.
+    final hasQuestionFile = hasAnyQuestionFile;
 
     if (!hasQuestionText && !hasQuestionFile) {
       Utils.showApiResponse(
@@ -561,6 +606,9 @@ class NewQuizSetQuestionsViewModel extends ChangeNotifier {
     selectedQuestionFileBytes = null;
     selectedQuestionFileMimeType = null;
     selectedQuestionFileName = null;
+    // Drop the server-side path too — without this, removing the image of a
+    // question being edited still sent the old path back and the file stayed.
+    existingQuestionFilePath = null;
     notifyListeners();
   }
 

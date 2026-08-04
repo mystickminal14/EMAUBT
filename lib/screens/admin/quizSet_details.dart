@@ -382,7 +382,9 @@ class _QuizSetDetailPageState extends State<QuizSetDetailPage> {
           onCancel: () => Navigator.of(ctx).pop(),
           onSave: () async {
             final hasQuestionText = questionCtrl.text.trim().isNotEmpty;
-            final hasQuestionFile = vm.selectedQuestionFileBytes != null;
+            // On edit the stored file counts too — it is only absent from
+            // memory because the admin never re-picked it.
+            final hasQuestionFile = vm.hasAnyQuestionFile;
             if (!hasQuestionText && !hasQuestionFile) {
               _toast('Question must have text or a file', isError: true);
               return;
@@ -996,9 +998,9 @@ class _QuestionDialog extends StatelessWidget {
                     _FieldLabel('QUESTION FILE'),
                     const SizedBox(height: 8),
                     _MediaDropZone(
-                      hasFile: vm.selectedQuestionFileBytes != null,
-                      fileName: vm.selectedQuestionFileName,
-                      mimeType: vm.selectedQuestionFileMimeType,
+                      hasFile: vm.hasAnyQuestionFile,
+                      fileName: vm.questionFileDisplayName,
+                      mimeType: vm.questionFileDisplayMime,
                       onPickImage: () async {
                         await vm.pickQuestionFile(fileType: 'image');
                         setDs(() {});
