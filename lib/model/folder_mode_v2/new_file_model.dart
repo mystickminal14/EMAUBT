@@ -68,12 +68,12 @@ class FileModel {
   String get downloadUrl =>
       '${BaseUrl.baseUrl}/files/$id/download';
 
-  /// Full URL to stream/view the raw file
-  /// e.g. http://10.10.100.144:8000/uploads/files/file_xxx.pdf
+  /// Full URL to stream/view the raw file.
+  /// Static assets are served through the `/api/res` route, same as icons.
+  /// e.g. http://10.10.100.144:8000/api/res/uploads/files/file_xxx.pdf
   String? get fileViewUrl {
     if (filePath == null || filePath!.isEmpty) return null;
-    final base = BaseUrl.baseUrl.replaceAll('/api', '');
-    return '$base/$filePath';
+    return '${BaseUrl.baseUrl}/res/${filePath!.replaceFirst(RegExp(r'^/+'), '')}';
   }
 
   // ── File type helpers (derived from filePath extension) ───────────────────

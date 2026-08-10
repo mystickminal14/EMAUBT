@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/model/folder_mode_v2/new_quiz_set_model.dart';
@@ -7,6 +5,7 @@ import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
 import 'package:ema_app/screens/users/home_page.dart';
 import 'package:ema_app/screens/users/user_home_page.dart';
+import 'package:ema_app/screens/viewer/in_app_file_viewer.dart';
 import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/access_grant_view_model_v2.dart';
@@ -14,9 +13,6 @@ import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:ema_app/view_model/user_view_model/user_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 // ─── Entry point (provides ViewModels) ───────────────────────────────────────
@@ -257,67 +253,28 @@ class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
     super.dispose();
   }
 
-  // ─── Download helpers ─────────────────────────────────────────────────────
-  Future<void> _downloadGrantedFile(
-      BuildContext ctx, UserGrantedFile file) async {
-    await _downloadFile(ctx, file.name, file.filePath);
+  // ─── View helpers (in-app only — files are never downloaded) ──────────────
+  void _viewGrantedFile(BuildContext ctx, UserGrantedFile file) {
+    _viewFile(ctx, file.name, file.filePath);
   }
 
-  Future<void> _downloadAdminFile(BuildContext ctx, FileModel file) async {
-    final name = file.name ?? 'file';
+  void _viewAdminFile(BuildContext ctx, FileModel file) {
     final path = file.filePath ?? '';
     if (path.isEmpty) return;
-    await _downloadFile(ctx, name, path);
+    _viewFile(ctx, file.name ?? 'file', path);
   }
 
-  Future<void> _downloadFile(
-      BuildContext ctx, String name, String filePath) async {
-    final messenger = ScaffoldMessenger.of(ctx);
-    messenger.showSnackBar(SnackBar(
-      content: Text('Opening: $name…'),
-      backgroundColor: FolderTheme.accent,
-      duration: const Duration(seconds: 2),
-    ));
+  void _viewFile(BuildContext ctx, String name, String filePath) {
+    // Static assets live behind the `/api/res` route.
+    final url =
+        '${BaseUrl.baseUrl}/res/${filePath.replaceFirst(RegExp(r'^/+'), '')}';
 
-    try {
-      final headers = await getAuthHeaders();
-      final downloadUrl = '${BaseUrl.baseUrl}/$filePath';
-      final response =
-      await http.get(Uri.parse(downloadUrl), headers: headers);
-
-      if (response.statusCode != 200) {
-        if (!ctx.mounted) return;
-        messenger.showSnackBar(SnackBar(
-          content: Text('Download failed (${response.statusCode})'),
-          backgroundColor: Colors.red.shade600,
-        ));
-        return;
-      }
-
-      final safeName = name.replaceAll(RegExp(r'[^\w\-.]'), '_');
-
-      final dir = Platform.isAndroid
-          ? Directory('/storage/emulated/0/Download')
-          : await getApplicationDocumentsDirectory();
-      if (!await dir.exists()) await dir.create(recursive: true);
-
-      final savePath = '${dir.path}/$safeName';
-      await File(savePath).writeAsBytes(response.bodyBytes);
-
-      if (!ctx.mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text('Saved to $savePath'),
-        backgroundColor: Colors.green.shade600,
-        duration: const Duration(seconds: 3),
-      ));
-      await OpenFile.open(savePath);
-    } catch (e) {
-      if (!ctx.mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text('Error: $e'),
-        backgroundColor: Colors.red.shade600,
-      ));
-    }
+    Navigator.push(
+      ctx,
+      MaterialPageRoute(
+        builder: (_) => InAppFileViewerPage(url: url, fileName: name),
+      ),
+    );
   }
 
   // ─── Show locked message ──────────────────────────────────────────────────
@@ -636,7 +593,7 @@ class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
                     item: e.value,
                     index: e.key,
                     folderName: widget.folderName,
-                    onTap: () => _downloadAdminFile(ctx, e.value),
+                    onTap: () => _viewAdminFile(ctx, e.value),
                   ),
                 ),
                 if (filesVm.isFetchingMore)
@@ -778,7 +735,7 @@ class _UserFolderDetailsContentState extends State<_UserFolderDetailsContent>
                     granted: e.value.granted,
                     onTap: () {
                       if (e.value.granted) {
-                        _downloadGrantedFile(ctx, e.value.file);
+                        _viewGrantedFile(ctx, e.value.file);
                       } else {
                         _showLockedMessage(ctx, e.value.file.name);
                       }

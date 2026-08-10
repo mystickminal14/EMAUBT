@@ -1,18 +1,14 @@
-import 'dart:io';
 import 'package:ema_app/constants/base_url.dart';
 import 'package:ema_app/model/folder_mode_v2/new_file_model.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
 import 'package:ema_app/screens/play_quiz/user_play_quiz.dart';
+import 'package:ema_app/screens/viewer/in_app_file_viewer.dart';
 import 'package:ema_app/utils/get_headers.dart';
 import 'package:ema_app/utils/responsive.dart';
 import 'package:ema_app/view_model/folders/folder_vm2.dart';
 import 'package:ema_app/view_model/folders/new_files_vm.dart';
 import 'package:ema_app/view_model/folders/new_folder_quiz.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -743,233 +739,27 @@ class _ContentListState extends State<_ContentList> {
       widget.quizVm.fetchNextPage(context, widget.folderId);
     }
   }
-  Future<void> _openFile(BuildContext context, FileModel file) async {
-    final messenger = ScaffoldMessenger.of(context);
+  /// Opens the file inside the app — it is never saved to the device or
+  /// handed off to an external viewer.
+  void _openFile(BuildContext context, FileModel file) {
+    final url = file.fileViewUrl;
+    if (url == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('This file has no content to preview.'),
+        backgroundColor: Colors.red.shade600,
+      ));
+      return;
+    }
 
-    // ── 1. Show loading dialog ─────────────────────────────────────────────
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          backgroundColor: FolderTheme.card,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              const CircularProgressIndicator(
-                  color: FolderTheme.accent, strokeWidth: 3),
-              const SizedBox(height: 20),
-              const Text(
-                'Opening…',
-                style: TextStyle(
-                  color: FolderTheme.textMain,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                file.name ?? 'file',
-                style: const TextStyle(color: FolderTheme.textSub, fontSize: 13),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InAppFileViewerPage(
+          url: url,
+          fileName: file.name ?? 'file',
         ),
       ),
     );
-
-    try {
-      // ── 2. Fetch file bytes ──────────────────────────────────────────────
-      final headers = await getAuthHeaders();
-      final response =
-      await http.get(Uri.parse(file.downloadUrl), headers: headers);
-
-      // ── 3. Close dialog ──────────────────────────────────────────────────
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-
-      if (response.statusCode != 200) {
-        if (!context.mounted) return;
-        messenger.showSnackBar(SnackBar(
-          content: Text('Failed to open file (${response.statusCode})'),
-          backgroundColor: Colors.red.shade600,
-        ));
-        return;
-      }
-
-      // ── 4. Write to TEMP (not Downloads — no permission needed) ──────────
-      final ext = file.extension.isNotEmpty ? '.${file.extension}' : '';
-      final safeName =
-      (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
-
-      final tmpDir = await getTemporaryDirectory();
-      final tmpPath = '${tmpDir.path}/$safeName$ext';
-      await File(tmpPath).writeAsBytes(response.bodyBytes);
-
-      if (!context.mounted) return;
-
-      // ── 5. Open file ─────────────────────────────────────────────────────
-      final result = await OpenFile.open(tmpPath);
-      if (result.type != ResultType.done && context.mounted) {
-        messenger.showSnackBar(SnackBar(
-          content: Text('No app found to open this file: ${result.message}'),
-          backgroundColor: Colors.orange.shade600,
-        ));
-      }
-    } catch (e) {
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-      if (!context.mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text('Error: $e'),
-        backgroundColor: Colors.red.shade600,
-      ));
-    }
-  }
-  // ── Download & open a file ─────────────────────────────────────────────────
-  Future<void> _downloadAndOpenFile(BuildContext context, FileModel file) async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    // ── 1. Permission check ──────────────────────────────────────────────────
-    if (Platform.isAndroid) {
-      final sdk = await _getSdkInt();
-      if (sdk < 33) {
-        final status = await Permission.storage.request();
-        if (status.isPermanentlyDenied) {
-          messenger.showSnackBar(SnackBar(
-            content: const Text('Permission permanently denied.'),
-            backgroundColor: Colors.red,
-            action: SnackBarAction(
-              label: 'Open Settings',
-              textColor: Colors.white,
-              onPressed: openAppSettings,
-            ),
-          ));
-          return;
-        }
-        if (!status.isGranted) {
-          messenger.showSnackBar(const SnackBar(
-            content: Text('Storage permission required to download files.'),
-            backgroundColor: Colors.red,
-          ));
-          return;
-        }
-      }
-    }
-
-    // ── 2. Show downloading dialog ───────────────────────────────────────────
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          backgroundColor: FolderTheme.card,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              const CircularProgressIndicator(
-                color: FolderTheme.accent,
-                strokeWidth: 3,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Downloading…',
-                style: const TextStyle(
-                  color: FolderTheme.textMain,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                file.name ?? 'file',
-                style: const TextStyle(
-                  color: FolderTheme.textSub,
-                  fontSize: 13,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    try {
-      // ── 3. Download ──────────────────────────────────────────────────────────
-      final headers = await getAuthHeaders();
-      final response =
-      await http.get(Uri.parse(file.downloadUrl), headers: headers);
-
-      // ── 4. Close dialog ──────────────────────────────────────────────────────
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-
-      if (response.statusCode != 200) {
-        if (!context.mounted) return;
-        messenger.showSnackBar(SnackBar(
-          content: Text('Download failed (${response.statusCode})'),
-          backgroundColor: Colors.red.shade600,
-        ));
-        return;
-      }
-
-      // ── 5. Save file ─────────────────────────────────────────────────────────
-      final ext = file.extension.isNotEmpty ? '.${file.extension}' : '';
-      final safeName =
-      (file.name ?? 'file').replaceAll(RegExp(r'[^\w\-.]'), '_');
-
-      final saveDir = (await getExternalStorageDirectory())!;
-      if (!await saveDir.exists()) await saveDir.create(recursive: true);
-
-      final savePath = '${saveDir.path}/$safeName$ext';
-      await File(savePath).writeAsBytes(response.bodyBytes);
-
-      if (!context.mounted) return;
-
-      // ── 6. Open file ─────────────────────────────────────────────────────────
-      messenger.showSnackBar(SnackBar(
-        content: const Text('Download complete! Opening…'),
-        backgroundColor: Colors.green.shade600,
-        duration: const Duration(seconds: 2),
-      ));
-
-      final result = await OpenFile.open(savePath);
-      if (result.type != ResultType.done) {
-        if (!context.mounted) return;
-        messenger.showSnackBar(SnackBar(
-          content: Text('No app found to open this file: ${result.message}'),
-          backgroundColor: Colors.orange.shade600,
-        ));
-      }
-    } catch (e) {
-      // ── Close dialog on error too ────────────────────────────────────────────
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-      if (!context.mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text('Error: $e'),
-        backgroundColor: Colors.red.shade600,
-      ));
-    }
-  }
-
-  Future<int> _getSdkInt() async {
-    try {
-      final result = await Process.run('getprop', ['ro.build.version.sdk']);
-      return int.tryParse(result.stdout.toString().trim()) ?? 0;
-    } catch (_) {
-      return 0;
-    }
   }
 
   // ── Open quiz set (new flow) ───────────────────────────────────────────────
