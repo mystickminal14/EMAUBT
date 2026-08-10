@@ -9,9 +9,9 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:ema_app/constants/base_url.dart';
+import 'package:ema_app/screens/folder_comp/in_app_file_viewer.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:another_flushbar/flushbar.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class FolderDetailPage extends StatefulWidget {
   final String folderId;
@@ -124,42 +124,27 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
     }
   }
 
-  Future<void> _openFile(FileData file) async {
+  // Files are shown inside the app (never downloaded or handed to an
+  // external app).
+  void _openFile(FileData file) {
     if (file.filePath == null || file.filePath!.isEmpty) {
-      if (mounted) {
-        Flushbar(
-          message: 'Invalid file path for: ${file.name}',
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 3),
-        ).show(context);
-      }
+      Flushbar(
+        message: 'Invalid file path for: ${file.name}',
+        backgroundColor: Colors.redAccent,
+        duration: const Duration(seconds: 3),
+      ).show(context);
       return;
     }
 
-    final fileUrl = '${BaseUrl.baseUrl}${file.filePath!.replaceFirst(RegExp(r'^\/+'), '')}';
-    final uri = Uri.parse(fileUrl);
-
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          Flushbar(
-            message: 'Could not open file: ${file.name}',
-            backgroundColor: Colors.redAccent,
-            duration: const Duration(seconds: 3),
-          ).show(context);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        Flushbar(
-          message: 'Error opening file: ${file.name} - $e',
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 3),
-        ).show(context);
-      }
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InAppFileViewerPage(
+          fileName: file.name ?? 'file',
+          filePath: file.filePath!,
+        ),
+      ),
+    );
   }
 
   void _showFileDialog({FileData? file, bool isEditing = false}) {
@@ -641,7 +626,7 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
                       ? ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Image.network(
-                      '${BaseUrl.baseUrl}${file.iconPath!}',
+                      BaseUrl.resUrl(file.iconPath!),
                       width: 40,
                       height: 40,
                       fit: BoxFit.cover,
@@ -727,7 +712,7 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
                   leading: quizSet.iconPath != null
                       ? ClipOval(
                     child: Image.network(
-                      '${BaseUrl.baseUrl}${quizSet.iconPath!}',
+                      BaseUrl.resUrl(quizSet.iconPath!),
                       width: 40,
                       height: 40,
                       fit: BoxFit.cover,
