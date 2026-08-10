@@ -12,8 +12,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb; // Keep kIsWeb for file opening logic
-import 'dart:io' show File, Platform;
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'dart:io' show File;
+import 'package:ema_app/screens/viewer/cross_platform_pdf_view.dart';
 
 class FreeFilesQuizLoggedInUsersPage extends StatefulWidget {
   const FreeFilesQuizLoggedInUsersPage({super.key});
@@ -497,21 +497,13 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
         await tempFile.writeAsBytes(response.bodyBytes);
 
         if (fileName.endsWith('.pdf')) {
-          // flutter_pdfview only supports Android/iOS; open with the OS's
-          // default viewer on desktop instead of embedding it in-app.
-          final supportsInAppPdfView =
-              !kIsWeb && (Platform.isAndroid || Platform.isIOS);
-          if (supportsInAppPdfView) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PDFViewerPage(
-                    filePath: tempFile.path, fileName: file['name']),
-              ),
-            );
-          } else {
-            await OpenFile.open(tempFile.path);
-          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PDFViewerPage(
+                  filePath: tempFile.path, fileName: file['name']),
+            ),
+          );
         } else if (fileName.endsWith('.txt')) {
           // Handle TXT files by reading and displaying content
           final content = await tempFile.readAsString();
@@ -556,7 +548,9 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
               backgroundColor: Colors.redAccent),
         );
       }
-    } else if (Platform.isAndroid || Platform.isIOS) {
+    } else {
+      // open_file ships implementations for Windows/macOS/Linux as well as
+      // mobile, so every non-web target can hand the file to the OS.
       try {
         final result = await OpenFile.open(filePath);
         if (result.type != ResultType.done) {
@@ -573,12 +567,6 @@ class _FreeForLoginPageState extends State<FreeForLoginPage> {
               backgroundColor: Colors.redAccent),
         );
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('File opening not supported on this platform'),
-            backgroundColor: Colors.redAccent),
-      );
     }
   }
 
@@ -831,12 +819,8 @@ class PDFViewerPage extends StatelessWidget {
         title: Text(fileName),
         backgroundColor: Colors.green,
       ),
-      body: PDFView(
+      body: CrossPlatformPdfView(
         filePath: filePath,
-        enableSwipe: true,
-        swipeHorizontal: false,
-        autoSpacing: true,
-        pageFling: true,
         onError: (error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

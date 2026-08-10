@@ -42,6 +42,7 @@ dependencies:
   http_parser: ^4.0.0
   logger: ^2.5.0
   another_flushbar: ^1.12.30
+  pdfrx: ^2.4.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

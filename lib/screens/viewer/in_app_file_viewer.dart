@@ -4,11 +4,12 @@ import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:chewie/chewie.dart';
 import 'package:ema_app/screens/folder_comp/folder_theme.dart';
+import 'package:ema_app/screens/viewer/cross_platform_pdf_view.dart';
 import 'package:ema_app/utils/get_headers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 
@@ -21,7 +22,10 @@ _ViewerKind _kindFor(String nameOrPath) {
     return _ViewerKind.image;
   }
   if (ext == 'pdf') return _ViewerKind.pdf;
-  if (['txt', 'csv', 'json', 'md', 'log'].contains(ext)) return _ViewerKind.text;
+  if (['txt', 'csv', 'json', 'md', 'log', 'xml', 'yaml', 'yml', 'ini', 'html']
+      .contains(ext)) {
+    return _ViewerKind.text;
+  }
   if (['mp4', 'mov', 'avi', 'mkv', 'webm'].contains(ext)) {
     return _ViewerKind.video;
   }
@@ -88,14 +92,6 @@ class _InAppFileViewerPageState extends State<InAppFileViewerPage> {
     });
 
     try {
-      if (_kind == _ViewerKind.unsupported) {
-        setState(() {
-          _loading = false;
-          _error = 'Preview is not available for this file type.';
-        });
-        return;
-      }
-
       final headers = await getAuthHeaders();
       final response =
           await http.get(Uri.parse(widget.url), headers: headers);
@@ -120,11 +116,12 @@ class _InAppFileViewerPageState extends State<InAppFileViewerPage> {
         case _ViewerKind.pdf:
         case _ViewerKind.video:
         case _ViewerKind.audio:
+        case _ViewerKind.unsupported:
+          // Office documents, archives and anything else we cannot render get
+          // cached too, so the user can hand them to the OS's default app.
           _cachePath = await _writeToCache(response.bodyBytes);
           if (_kind == _ViewerKind.video) await _initVideo(_cachePath!);
           if (_kind == _ViewerKind.audio) await _initAudio(_cachePath!);
-          break;
-        case _ViewerKind.unsupported:
           break;
       }
 
@@ -224,21 +221,13 @@ class _InAppFileViewerPageState extends State<InAppFileViewerPage> {
         );
 
       case _ViewerKind.pdf:
-      // flutter_pdfview only ships an Android/iOS implementation.
-        if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-          return PDFView(
-            filePath: _cachePath!,
-            enableSwipe: true,
-            autoSpacing: true,
-            pageFling: true,
-            onError: (e) {
-              if (!mounted) return;
-              setState(() => _error = 'Error loading PDF: $e');
-            },
-          );
-        }
-        return _errorView(
-            'PDF preview is only available on the mobile app right now.');
+        return CrossPlatformPdfView(
+          filePath: _cachePath!,
+          onError: (e) {
+            if (!mounted) return;
+            setState(() => _error = 'Error loading PDF: $e');
+          },
+        );
 
       case _ViewerKind.video:
         return Center(
@@ -254,8 +243,55 @@ class _InAppFileViewerPageState extends State<InAppFileViewerPage> {
         return _AudioPanel(player: _audio!, fileName: widget.fileName);
 
       case _ViewerKind.unsupported:
-        return _errorView('Preview is not available for this file type.');
+        return _externalOpenView();
     }
+  }
+
+  /// Shown for file types no in-app renderer can handle (docx, xlsx, zip …).
+  /// The bytes are already cached, so the OS's default app can take over.
+  Widget _externalOpenView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.insert_drive_file_rounded,
+                size: 44, color: FolderTheme.textSub),
+            const SizedBox(height: 16),
+            Text(widget.fileName,
+                textAlign: TextAlign.center, style: FolderTheme.emptyTitle),
+            const SizedBox(height: 8),
+            const Text(
+              'This file type cannot be previewed in the app.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: FolderTheme.textSub),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _openWithDefaultApp,
+              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+              label: const Text('Open with default app'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: FolderTheme.accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openWithDefaultApp() async {
+    if (_cachePath == null) return;
+    final result = await OpenFile.open(_cachePath!);
+    if (!mounted || result.type == ResultType.done) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open this file: ${result.message}')),
+    );
   }
 
   Widget _errorView(String message) {
